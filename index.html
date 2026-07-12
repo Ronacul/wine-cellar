@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>La Cave — Cellar Book</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#1c1518; --panel:#261c20; --panel2:#2e2227;
+  --ink:#efe6d8; --ink-dim:#b8aa9a; --ink-faint:#8a7d70;
+  --claret:#a03040; --claret-soft:#c05060;
+  --gold:#c9a227; --rose:#c98a8a;
+  --line:rgba(239,230,216,.14);
+  --ok:#7da87b; --warn:#c9a227; --urgent:#c05060;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  font-size:15px; line-height:1.45; min-height:100vh;
+  padding-bottom:calc(64px + env(safe-area-inset-bottom));
+}
+.mono{font-family:"IBM Plex Mono",monospace}
+.serif{font-family:"Cormorant Garamond",Georgia,serif}
+
+/* ---------- header ---------- */
+header{
+  padding:18px 16px 12px; border-bottom:1px solid var(--line);
+  display:flex; align-items:baseline; justify-content:space-between; gap:8px;
+}
+header h1{
+  font-family:"Cormorant Garamond",serif; font-weight:600; font-size:26px;
+  letter-spacing:.01em;
+}
+header h1 em{font-style:italic; color:var(--claret-soft)}
+.bottle-count{font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--ink-faint)}
+
+/* ---------- tab bar ---------- */
+nav{
+  position:fixed; bottom:0; left:0; right:0; z-index:50;
+  background:var(--panel); border-top:1px solid var(--line);
+  display:flex; padding-bottom:env(safe-area-inset-bottom);
+}
+nav button{
+  flex:1; background:none; border:none; color:var(--ink-faint);
+  font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.08em;
+  text-transform:uppercase; padding:14px 4px 12px; cursor:pointer;
+}
+nav button.active{color:var(--ink)}
+nav button.active span{border-bottom:2px solid var(--claret); padding-bottom:4px}
+nav button:focus-visible{outline:2px solid var(--claret); outline-offset:-2px}
+
+/* ---------- controls ---------- */
+.toolbar{padding:12px 16px; display:flex; gap:8px}
+.toolbar input[type=search]{
+  flex:1; background:var(--panel); border:1px solid var(--line); border-radius:4px;
+  color:var(--ink); padding:9px 12px; font-size:15px;
+}
+.toolbar select{
+  background:var(--panel); border:1px solid var(--line); border-radius:4px;
+  color:var(--ink-dim); padding:9px 8px; font-size:13px;
+}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{
+  outline:2px solid var(--claret); outline-offset:1px;
+}
+
+/* ---------- wine cards ---------- */
+.list{padding:0 16px}
+.card{
+  background:var(--panel); border:1px solid var(--line); border-radius:6px;
+  margin-bottom:12px; overflow:hidden; cursor:pointer;
+}
+.card-top{display:flex; gap:12px; padding:12px}
+.thumb{
+  width:64px; height:84px; flex:none; border-radius:3px; object-fit:cover;
+  background:var(--panel2); border:1px solid var(--line);
+}
+.thumb.empty{
+  display:flex; align-items:center; justify-content:center;
+  font-family:"Cormorant Garamond",serif; font-size:28px; font-style:italic; color:var(--ink-faint);
+}
+.card-info{flex:1; min-width:0}
+.wine-name{
+  font-family:"Cormorant Garamond",serif; font-weight:600; font-size:19px; line-height:1.2;
+}
+.wine-sub{font-size:12.5px; color:var(--ink-dim); margin-top:2px}
+.chips{display:flex; flex-wrap:wrap; gap:6px; margin-top:7px}
+.chip{
+  font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.04em;
+  padding:2px 7px; border:1px solid var(--line); border-radius:3px; color:var(--ink-dim);
+}
+.chip.vintage{color:var(--ink); border-color:var(--ink-faint)}
+.chip.red{color:var(--claret-soft)}
+.chip.white{color:var(--gold)}
+.chip.rose{color:var(--rose)}
+.chip.sparkling{color:#a8c0c9}
+
+/* ---------- maturity band (the signature) ---------- */
+.band-wrap{padding:0 12px 11px}
+.band-labels{
+  display:flex; justify-content:space-between;
+  font-family:"IBM Plex Mono",monospace; font-size:10px; color:var(--ink-faint);
+  margin-bottom:4px;
+}
+.band-status{text-transform:uppercase; letter-spacing:.08em}
+.band-status.hold{color:var(--ink-faint)}
+.band-status.window{color:var(--ok)}
+.band-status.soon{color:var(--warn)}
+.band-status.now{color:var(--urgent)}
+.band{
+  position:relative; height:6px; border-radius:3px; background:var(--panel2);
+  overflow:visible;
+}
+.band-fill{
+  position:absolute; top:0; bottom:0; border-radius:3px;
+  background:linear-gradient(90deg, #5a6e59 0%, #7da87b 35%, #c9a227 75%, #c05060 100%);
+  opacity:.85;
+}
+.band-now{
+  position:absolute; top:-3px; width:2px; height:12px; background:var(--ink);
+  border-radius:1px;
+}
+
+/* ---------- empty state ---------- */
+.empty-state{
+  text-align:center; padding:56px 32px; color:var(--ink-dim);
+}
+.empty-state .serif{font-size:22px; font-style:italic; margin-bottom:8px; color:var(--ink)}
+
+/* ---------- forms ---------- */
+.sheet{padding:16px}
+.sheet h2{
+  font-family:"Cormorant Garamond",serif; font-weight:600; font-size:24px; margin-bottom:16px;
+}
+.field{margin-bottom:14px}
+.field label{
+  display:block; font-family:"IBM Plex Mono",monospace; font-size:10.5px;
+  text-transform:uppercase; letter-spacing:.08em; color:var(--ink-faint); margin-bottom:5px;
+}
+.field input,.field select,.field textarea{
+  width:100%; background:var(--panel); border:1px solid var(--line); border-radius:4px;
+  color:var(--ink); padding:10px 12px; font-size:15px; font-family:inherit;
+}
+.field textarea{min-height:64px; resize:vertical}
+.row2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px}
+
+.photo-zone{
+  border:1px dashed var(--ink-faint); border-radius:6px; padding:18px;
+  text-align:center; color:var(--ink-dim); cursor:pointer; margin-bottom:14px;
+  background:var(--panel);
+}
+.photo-zone{cursor:default}
+.photo-zone img{max-width:120px; max-height:160px; border-radius:4px; display:block; margin:0 auto 10px}
+.photo-btn{
+  display:block; padding:11px; margin:8px auto 0; max-width:280px;
+  background:var(--panel2); border:1px solid var(--ink-faint); border-radius:5px;
+  color:var(--ink); font-size:14px; cursor:pointer; text-align:center;
+}
+.photo-btn.ghost{background:none; color:var(--ink-dim); border-color:var(--line)}
+.photo-btn input{
+  position:absolute; width:1px; height:1px; opacity:0; overflow:hidden; clip:rect(0 0 0 0);
+}
+
+.btn{
+  display:block; width:100%; padding:13px; border-radius:5px; border:none;
+  font-size:15px; font-weight:600; cursor:pointer; margin-bottom:10px;
+}
+.btn-primary{background:var(--claret); color:#fff}
+.btn-ghost{background:none; border:1px solid var(--line); color:var(--ink-dim)}
+.btn-danger{background:none; border:1px solid var(--urgent); color:var(--urgent)}
+
+/* ---------- detail view ---------- */
+.detail-photo{width:100%; max-height:320px; object-fit:contain; background:var(--panel); border-radius:6px; margin-bottom:14px}
+.detail-name{font-family:"Cormorant Garamond",serif; font-weight:700; font-size:28px; line-height:1.15}
+.detail-sub{color:var(--ink-dim); margin:4px 0 14px}
+.spec{
+  display:grid; grid-template-columns:110px 1fr; gap:6px 14px;
+  padding:14px 0; border-top:1px solid var(--line); font-size:14px;
+}
+.spec dt{font-family:"IBM Plex Mono",monospace; font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-faint); padding-top:2px}
+.spec dd{color:var(--ink)}
+
+/* ---------- settings / sync ---------- */
+.note{font-size:12.5px; color:var(--ink-faint); margin-top:5px; line-height:1.5}
+.sync-status{
+  font-family:"IBM Plex Mono",monospace; font-size:12px; padding:10px 12px;
+  border:1px solid var(--line); border-radius:4px; color:var(--ink-dim);
+  margin-bottom:14px; white-space:pre-wrap; word-break:break-word;
+}
+.section-rule{border:none; border-top:1px solid var(--line); margin:22px 0}
+
+@media (prefers-reduced-motion: no-preference){
+  .card{transition:border-color .15s}
+  .card:active{border-color:var(--claret)}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>La <em>Cave</em></h1>
+  <span class="bottle-count" id="count"></span>
+</header>
+
+<main id="view"></main>
+
+<nav>
+  <button data-tab="cellar" class="active"><span>Cellar</span></button>
+  <button data-tab="soon"><span>Drink Soon</span></button>
+  <button data-tab="add"><span>+ Bottle</span></button>
+  <button data-tab="sync"><span>Sync</span></button>
+</nav>
+
+<script>
+"use strict";
+
+/* ================= state ================= */
+const LS_WINES = "cave.wines.v1";
+const LS_CFG   = "cave.config.v1";
+let wines = JSON.parse(localStorage.getItem(LS_WINES) || "[]");
+let cfg   = JSON.parse(localStorage.getItem(LS_CFG)   || "{}");
+let tab = "cellar";
+let editingId = null;
+let detailId = null;
+let searchQ = "", typeFilter = "";
+
+const saveWines = () => localStorage.setItem(LS_WINES, JSON.stringify(wines));
+const saveCfg   = () => localStorage.setItem(LS_CFG, JSON.stringify(cfg));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const esc = s => (s??"").toString().replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const YEAR = new Date().getFullYear();
+
+/* ================= drink-window logic ================= */
+function windowStatus(w){
+  const from = parseInt(w.drinkFrom), to = parseInt(w.drinkTo);
+  if(!from && !to) return {cls:"", label:""};
+  if(from && YEAR < from) return {cls:"hold", label:"Hold · from " + from};
+  if(to && YEAR > to)     return {cls:"now",  label:"Past window"};
+  if(to && to - YEAR <= 1) return {cls:"now", label:"Drink now"};
+  if(to && to - YEAR <= 3) return {cls:"soon",label:"Approaching peak"};
+  return {cls:"window", label:"In window"};
+}
+function bandHTML(w){
+  const from = parseInt(w.drinkFrom), to = parseInt(w.drinkTo);
+  if(!from || !to || to <= from) return "";
+  const span = to - from;
+  const pos = Math.min(Math.max((YEAR - from) / span, 0), 1);
+  const st = windowStatus(w);
+  return `<div class="band-wrap">
+    <div class="band-labels">
+      <span>${from}</span>
+      <span class="band-status ${st.cls}">${st.label}</span>
+      <span>${to}</span>
+    </div>
+    <div class="band"><div class="band-fill" style="left:0;right:0"></div>
+      <div class="band-now" style="left:calc(${(pos*100).toFixed(1)}% - 1px)"></div>
+    </div>
+  </div>`;
+}
+
+/* ================= images ================= */
+function resizeImage(file){
+  return new Promise((resolve,reject)=>{
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 800;
+      let {width:w, height:h} = img;
+      if(w > MAX || h > MAX){ const r = Math.min(MAX/w, MAX/h); w = Math.round(w*r); h = Math.round(h*r); }
+      const c = document.createElement("canvas"); c.width=w; c.height=h;
+      c.getContext("2d").drawImage(img,0,0,w,h);
+      resolve(c.toDataURL("image/jpeg", 0.82));
+    };
+    img.onerror = reject;
+    img.src = URL.createObjectURL(file);
+  });
+}
+function imgSrc(w){
+  if(w.imageData) return w.imageData;
+  if(w.imagePath && cfg.owner && cfg.repo)
+    return `https://raw.githubusercontent.com/${cfg.owner}/${cfg.repo}/${cfg.branch||"main"}/${w.imagePath}`;
+  return null;
+}
+
+/* ================= rendering ================= */
+const view = document.getElementById("view");
+const countEl = document.getElementById("count");
+
+function render(){
+  countEl.textContent = wines.reduce((n,w)=>n+(parseInt(w.qty)||1),0) + " bottles";
+  if(tab==="cellar") renderList(false);
+  else if(tab==="soon") renderList(true);
+  else if(tab==="add") renderForm();
+  else if(tab==="detail") renderDetail();
+  else if(tab==="sync") renderSync();
+}
+
+function cardHTML(w){
+  const src = imgSrc(w);
+  const thumb = src ? `<img class="thumb" src="${esc(src)}" alt="" loading="lazy">`
+                    : `<div class="thumb empty">?</div>`;
+  const tcls = (w.type||"").toLowerCase();
+  return `<div class="card" data-id="${w.id}">
+    <div class="card-top">
+      ${thumb}
+      <div class="card-info">
+        <div class="wine-name serif">${esc(w.producer||"")} ${esc(w.name||"")}</div>
+        <div class="wine-sub">${esc([w.region, w.source].filter(Boolean).join(" · "))}</div>
+        <div class="chips">
+          ${w.vintage?`<span class="chip vintage">${esc(w.vintage)}</span>`:""}
+          ${w.type?`<span class="chip ${tcls}">${esc(w.type)}</span>`:""}
+          ${w.qty>1?`<span class="chip">×${esc(w.qty)}</span>`:""}
+          ${w.location?`<span class="chip">bin ${esc(w.location)}</span>`:""}
+        </div>
+      </div>
+    </div>
+    ${bandHTML(w)}
+  </div>`;
+}
+
+function renderList(soonMode){
+  let items = wines.slice();
+  if(soonMode){
+    items = items.filter(w => w.drinkTo).sort((a,b)=>(a.drinkTo||9999)-(b.drinkTo||9999));
+  } else {
+    items.sort((a,b)=>(a.producer||"").localeCompare(b.producer||""));
+  }
+  if(searchQ){
+    const q = searchQ.toLowerCase();
+    items = items.filter(w => [w.producer,w.name,w.region,w.vintage,w.source,w.pairings,w.location]
+      .some(f => (f||"").toString().toLowerCase().includes(q)));
+  }
+  if(typeFilter) items = items.filter(w => w.type===typeFilter);
+
+  const toolbar = `<div class="toolbar">
+    <input type="search" id="q" placeholder="Search the cellar…" value="${esc(searchQ)}">
+    <select id="tf">
+      <option value="">All</option>
+      ${["Red","White","Rosé","Sparkling","Dessert"].map(t=>`<option ${typeFilter===t?"selected":""}>${t}</option>`).join("")}
+    </select>
+  </div>`;
+
+  const body = items.length
+    ? `<div class="list">${items.map(cardHTML).join("")}</div>`
+    : `<div class="empty-state"><div class="serif">The cellar book is empty.</div>
+       ${soonMode ? "Bottles with a drink-by window will appear here, soonest first."
+                  : "Tap <b>+ Bottle</b> below and photograph your first label."}</div>`;
+
+  view.innerHTML = toolbar + body;
+
+  document.getElementById("q").addEventListener("input", e=>{ searchQ=e.target.value; renderListOnly(soonMode); });
+  document.getElementById("tf").addEventListener("change", e=>{ typeFilter=e.target.value; renderListOnly(soonMode); });
+  bindCards();
+}
+function renderListOnly(soonMode){
+  // re-render without resetting focus on search box
+  const q = document.getElementById("q");
+  const pos = q ? q.selectionStart : 0;
+  renderList(soonMode);
+  const q2 = document.getElementById("q");
+  if(q2){ q2.focus(); q2.setSelectionRange(pos,pos); }
+}
+function bindCards(){
+  view.querySelectorAll(".card").forEach(c => c.addEventListener("click", ()=>{
+    detailId = c.dataset.id; tab="detail"; render(); window.scrollTo(0,0);
+  }));
+}
+
+/* ---------- detail ---------- */
+function renderDetail(){
+  const w = wines.find(x=>x.id===detailId);
+  if(!w){ tab="cellar"; return render(); }
+  const src = imgSrc(w);
+  const st = windowStatus(w);
+  view.innerHTML = `<div class="sheet">
+    ${src?`<img class="detail-photo" src="${esc(src)}" alt="Label photo">`:""}
+    <div class="detail-name serif">${esc(w.producer||"")} ${esc(w.name||"")}</div>
+    <div class="detail-sub">${esc([w.vintage,w.type,w.region].filter(Boolean).join(" · "))}</div>
+    ${bandHTML(w)}
+    <dl class="spec">
+      ${w.drinkFrom||w.drinkTo?`<dt>Drink</dt><dd>${esc(w.drinkFrom||"—")} – ${esc(w.drinkTo||"—")}${st.label?` <span class="band-status ${st.cls} mono" style="font-size:10px">· ${st.label}</span>`:""}</dd>`:""}
+      ${w.pairings?`<dt>Serve with</dt><dd>${esc(w.pairings)}</dd>`:""}
+      ${w.source?`<dt>Source</dt><dd>${esc(w.source)}</dd>`:""}
+      ${w.price?`<dt>Price</dt><dd>${esc(w.price)}</dd>`:""}
+      ${w.qty?`<dt>Quantity</dt><dd>${esc(w.qty)}</dd>`:""}
+      ${w.location?`<dt>Bin</dt><dd>${esc(w.location)}</dd>`:""}
+      ${w.notes?`<dt>Notes</dt><dd>${esc(w.notes)}</dd>`:""}
+    </dl>
+    <button class="btn btn-ghost" id="edit">Edit bottle</button>
+    <button class="btn btn-ghost" id="drank">Drank one — reduce quantity</button>
+    <button class="btn btn-danger" id="del">Remove from cellar</button>
+    <button class="btn btn-ghost" id="back">Back to cellar</button>
+  </div>`;
+  document.getElementById("edit").onclick = ()=>{ editingId=w.id; tab="add"; render(); };
+  document.getElementById("back").onclick = ()=>{ tab="cellar"; setTab("cellar"); };
+  document.getElementById("drank").onclick = ()=>{
+    w.qty = Math.max(0,(parseInt(w.qty)||1)-1);
+    if(w.qty===0 && confirm("Last bottle. Remove it from the cellar?")){
+      wines = wines.filter(x=>x.id!==w.id); tab="cellar"; setTab("cellar");
+    }
+    saveWines(); render();
+  };
+  document.getElementById("del").onclick = ()=>{
+    if(confirm("Remove this wine entirely?")){
+      wines = wines.filter(x=>x.id!==w.id); saveWines(); tab="cellar"; setTab("cellar");
+    }
+  };
+}
+
+/* ---------- add / edit form ---------- */
+let pendingImage = null;
+function renderForm(){
+  const w = editingId ? wines.find(x=>x.id===editingId) : {};
+  pendingImage = w && w.imageData ? w.imageData : null;
+  const existingSrc = w ? imgSrc(w) : null;
+  view.innerHTML = `<div class="sheet">
+    <h2>${editingId? "Edit bottle" : "New bottle"}</h2>
+    <div class="photo-zone">
+      ${existingSrc?`<img id="pv" src="${esc(existingSrc)}" alt="">`:`<img id="pv" style="display:none" alt="">`}
+      <label class="photo-btn">📷 Take photo of label
+        <input type="file" id="cam" accept="image/*" capture="environment">
+      </label>
+      <label class="photo-btn ghost">🖼 Choose from gallery
+        <input type="file" id="gal" accept="image/*">
+      </label>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Producer</label><input id="f-producer" value="${esc(w.producer)}" placeholder="Domaine Tempier"></div>
+      <div class="field"><label>Wine / cuvée</label><input id="f-name" value="${esc(w.name)}" placeholder="Bandol Rouge"></div>
+    </div>
+    <div class="row3">
+      <div class="field"><label>Vintage</label><input id="f-vintage" inputmode="numeric" value="${esc(w.vintage)}" placeholder="2019"></div>
+      <div class="field"><label>Type</label><select id="f-type">
+        ${["","Red","White","Rosé","Sparkling","Dessert"].map(t=>`<option ${w.type===t?"selected":""}>${t}</option>`).join("")}
+      </select></div>
+      <div class="field"><label>Qty</label><input id="f-qty" inputmode="numeric" value="${esc(w.qty||1)}"></div>
+    </div>
+    <div class="field"><label>Region / appellation</label><input id="f-region" value="${esc(w.region)}" placeholder="Bandol, Provence"></div>
+    <div class="row2">
+      <div class="field"><label>Drink from (year)</label><input id="f-from" inputmode="numeric" value="${esc(w.drinkFrom)}" placeholder="2026"></div>
+      <div class="field"><label>Drink by (year)</label><input id="f-to" inputmode="numeric" value="${esc(w.drinkTo)}" placeholder="2034"></div>
+    </div>
+    <div class="field"><label>Serve with</label><input id="f-pair" value="${esc(w.pairings)}" placeholder="Braised lamb, hard cheeses"></div>
+    <div class="row2">
+      <div class="field"><label>Source</label><input id="f-source" value="${esc(w.source)}" placeholder="SAQ / winery / gift"></div>
+      <div class="field"><label>Price</label><input id="f-price" value="${esc(w.price)}" placeholder="$42"></div>
+    </div>
+    <div class="field"><label>Bin / rack location</label><input id="f-loc" value="${esc(w.location)}" placeholder="A3"></div>
+    <div class="field"><label>Notes</label><textarea id="f-notes" placeholder="Tasting notes, occasion, who recommended it…">${esc(w.notes)}</textarea></div>
+    <button class="btn btn-primary" id="save">${editingId?"Save changes":"Add to cellar"}</button>
+    ${editingId?`<button class="btn btn-ghost" id="cancel">Cancel</button>`:""}
+  </div>`;
+
+  const pv = document.getElementById("pv");
+  const handlePhoto = async (input)=>{
+    if(!input.files[0]) return;
+    pendingImage = await resizeImage(input.files[0]);
+    pv.src = pendingImage; pv.style.display="block";
+  };
+  document.getElementById("cam").addEventListener("change", e=>handlePhoto(e.target));
+  document.getElementById("gal").addEventListener("change", e=>handlePhoto(e.target));
+  document.getElementById("save").onclick = ()=>{
+    const g = id => document.getElementById(id).value.trim();
+    const rec = editingId ? wines.find(x=>x.id===editingId) : {id:uid(), added:new Date().toISOString().slice(0,10)};
+    Object.assign(rec, {
+      producer:g("f-producer"), name:g("f-name"), vintage:g("f-vintage"),
+      type:document.getElementById("f-type").value, qty:parseInt(g("f-qty"))||1,
+      region:g("f-region"), drinkFrom:g("f-from"), drinkTo:g("f-to"),
+      pairings:g("f-pair"), source:g("f-source"), price:g("f-price"),
+      location:g("f-loc"), notes:g("f-notes")
+    });
+    if(pendingImage){ rec.imageData = pendingImage; rec.imagePath = rec.imagePath || null; rec.imageDirty = true; }
+    if(!editingId) wines.push(rec);
+    saveWines(); editingId=null; tab="cellar"; setTab("cellar");
+  };
+  const c = document.getElementById("cancel");
+  if(c) c.onclick = ()=>{ editingId=null; tab="detail"; render(); };
+}
+
+/* ---------- GitHub sync ---------- */
+const GH = "https://api.github.com";
+function ghHeaders(){ return {"Authorization":"Bearer "+cfg.token, "Accept":"application/vnd.github+json"}; }
+async function ghGetSha(path){
+  const r = await fetch(`${GH}/repos/${cfg.owner}/${cfg.repo}/contents/${path}?ref=${cfg.branch||"main"}`, {headers:ghHeaders()});
+  if(r.status===404) return null;
+  if(!r.ok) throw new Error(`GET ${path}: ${r.status}`);
+  return (await r.json()).sha;
+}
+async function ghPut(path, base64Content, message){
+  const sha = await ghGetSha(path);
+  const body = {message, content:base64Content, branch:cfg.branch||"main"};
+  if(sha) body.sha = sha;
+  const r = await fetch(`${GH}/repos/${cfg.owner}/${cfg.repo}/contents/${path}`, {
+    method:"PUT", headers:{...ghHeaders(),"Content-Type":"application/json"}, body:JSON.stringify(body)
+  });
+  if(!r.ok) throw new Error(`PUT ${path}: ${r.status} ${(await r.text()).slice(0,120)}`);
+}
+function b64EncodeUnicode(str){
+  return btoa(unescape(encodeURIComponent(str)));
+}
+async function pushAll(statusEl){
+  if(!cfg.owner||!cfg.repo||!cfg.token) throw new Error("Fill in owner, repo, and token first.");
+  // 1. upload any new/changed photos
+  const dirty = wines.filter(w=>w.imageData && w.imageDirty!==false);
+  let i=0;
+  for(const w of dirty){
+    i++;
+    statusEl.textContent = `Uploading photo ${i}/${dirty.length}…`;
+    const path = `images/${w.id}.jpg`;
+    const b64 = w.imageData.split(",")[1];
+    await ghPut(path, b64, `Add label photo ${w.producer||""} ${w.vintage||""}`.trim());
+    w.imagePath = path; w.imageDirty = false;
+  }
+  // 2. write wines.json without embedded image data
+  statusEl.textContent = "Writing wines.json…";
+  const clean = wines.map(({imageData, imageDirty, ...rest})=>rest);
+  await ghPut("data/wines.json", b64EncodeUnicode(JSON.stringify(clean,null,2)), `Update cellar (${clean.length} wines)`);
+  // 3. now safe to drop local image blobs (they'll load from the repo)
+  wines.forEach(w=>{ if(w.imagePath){ delete w.imageData; delete w.imageDirty; } });
+  saveWines();
+  cfg.lastSync = new Date().toLocaleString(); saveCfg();
+  statusEl.textContent = `✓ Synced ${clean.length} wines at ${cfg.lastSync}`;
+}
+async function pullAll(statusEl){
+  if(!cfg.owner||!cfg.repo) throw new Error("Fill in owner and repo first.");
+  statusEl.textContent = "Fetching wines.json…";
+  const url = `https://raw.githubusercontent.com/${cfg.owner}/${cfg.repo}/${cfg.branch||"main"}/data/wines.json?t=${Date.now()}`;
+  const r = await fetch(url);
+  if(!r.ok) throw new Error("Could not read data/wines.json ("+r.status+"). Has the cellar been pushed yet?");
+  const remote = await r.json();
+  if(!Array.isArray(remote)) throw new Error("wines.json is not a list.");
+  if(wines.length && !confirm(`Replace the ${wines.length} local wines with ${remote.length} from GitHub?`)){
+    statusEl.textContent = "Pull cancelled."; return;
+  }
+  wines = remote; saveWines();
+  cfg.lastSync = new Date().toLocaleString(); saveCfg();
+  statusEl.textContent = `✓ Loaded ${wines.length} wines from GitHub.`;
+  render();
+}
+
+function renderSync(){
+  view.innerHTML = `<div class="sheet">
+    <h2>Sync with GitHub</h2>
+    <div class="sync-status" id="st">${cfg.lastSync? "Last sync: "+esc(cfg.lastSync) : "Not synced yet. Wines are saved on this device either way."}</div>
+    <div class="field"><label>GitHub username (owner)</label><input id="c-owner" value="${esc(cfg.owner)}" autocapitalize="off"></div>
+    <div class="field"><label>Repository name</label><input id="c-repo" value="${esc(cfg.repo)}" placeholder="wine-cellar" autocapitalize="off"></div>
+    <div class="field"><label>Branch</label><input id="c-branch" value="${esc(cfg.branch||"main")}" autocapitalize="off"></div>
+    <div class="field"><label>Personal access token</label><input id="c-token" type="password" value="${esc(cfg.token)}" autocapitalize="off">
+      <div class="note">Fine-grained token with <b>Contents: read &amp; write</b> on this one repo. Stored only in this browser.</div>
+    </div>
+    <button class="btn btn-ghost" id="savecfg">Save settings</button>
+    <hr class="section-rule">
+    <button class="btn btn-primary" id="push">Push cellar to GitHub</button>
+    <button class="btn btn-ghost" id="pull">Pull cellar from GitHub</button>
+    <div class="note">Push uploads new label photos and writes <span class="mono">data/wines.json</span>. Pull replaces this device's list with the repo copy — use it when opening the site on a new device.</div>
+  </div>`;
+  const st = document.getElementById("st");
+  document.getElementById("savecfg").onclick = ()=>{
+    cfg.owner=document.getElementById("c-owner").value.trim();
+    cfg.repo=document.getElementById("c-repo").value.trim();
+    cfg.branch=document.getElementById("c-branch").value.trim()||"main";
+    cfg.token=document.getElementById("c-token").value.trim();
+    saveCfg(); st.textContent="Settings saved.";
+  };
+  document.getElementById("push").onclick = async ()=>{
+    document.getElementById("savecfg").click();
+    try{ await pushAll(st); } catch(e){ st.textContent = "✗ " + e.message; }
+  };
+  document.getElementById("pull").onclick = async ()=>{
+    document.getElementById("savecfg").click();
+    try{ await pullAll(st); } catch(e){ st.textContent = "✗ " + e.message; }
+  };
+}
+
+
+/* ---------- sample bottle (loads only on first run) ---------- */
+const SEED = [{
+  id:"sample-santalba-2019",
+  added:"2026-07-12",
+  producer:"Santalba",
+  name:"Reserva",
+  vintage:"2019",
+  type:"Red",
+  qty:1,
+  region:"Rioja Alta (DOCa Rioja), Spain",
+  drinkFrom:"2026",
+  drinkTo:"2034",
+  pairings:"Roast meats, grilled lamb, duck à l'orange, pork, wild mushrooms, casseroles, Iberian ham, mature cheeses",
+  source:"Wine club (monthly)",
+  price:"$37.95 + HST",
+  location:"",
+  notes:"100% Tempranillo, hand-harvested (Gimileo & Haro). 18 months in medium-toast American oak, bottled unfiltered. Deep ruby with tawny highlights; black fruit, liquorice, violet, vanilla, sweet spice, toasted bread. Drinking now; will evolve gracefully for 8\u201312 years.",
+}];
+if(!localStorage.getItem(LS_WINES)) { wines = SEED; saveWines(); }
+
+/* ---------- tabs ---------- */
+function setTab(t){
+  tab = t;
+  document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("active", b.dataset.tab===t));
+  render(); window.scrollTo(0,0);
+}
+document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click", ()=>{
+  editingId = null; setTab(b.dataset.tab);
+}));
+
+/* ---------- boot: auto-load from repo if empty ---------- */
+(async ()=>{
+  render();
+  if(!wines.length && cfg.owner && cfg.repo){
+    try{
+      const r = await fetch(`https://raw.githubusercontent.com/${cfg.owner}/${cfg.repo}/${cfg.branch||"main"}/data/wines.json?t=${Date.now()}`);
+      if(r.ok){ wines = await r.json(); saveWines(); render(); }
+    }catch(e){/* offline is fine */}
+  }
+})();
+</script>
+</body>
+</html>
