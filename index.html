@@ -156,13 +156,13 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
 .photo-zone{cursor:default}
 .photo-zone img{max-width:120px; max-height:160px; border-radius:4px; display:block; margin:0 auto 10px}
 .photo-btn{
-  display:block; padding:11px; margin:8px auto 0; max-width:280px;
+  display:block; position:relative; padding:11px; margin:8px auto 0; max-width:280px;
   background:var(--panel2); border:1px solid var(--ink-faint); border-radius:5px;
-  color:var(--ink); font-size:14px; cursor:pointer; text-align:center;
+  color:var(--ink); font-size:14px; cursor:pointer; text-align:center; overflow:hidden;
 }
 .photo-btn.ghost{background:none; color:var(--ink-dim); border-color:var(--line)}
 .photo-btn input{
-  position:absolute; width:1px; height:1px; opacity:0; overflow:hidden; clip:rect(0 0 0 0);
+  position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; font-size:0;
 }
 
 .btn{
@@ -356,7 +356,6 @@ function renderList(soonMode){
   bindCards();
 }
 function renderListOnly(soonMode){
-  // re-render without resetting focus on search box
   const q = document.getElementById("q");
   const pos = q ? q.selectionStart : 0;
   renderList(soonMode);
@@ -369,7 +368,6 @@ function bindCards(){
   }));
 }
 
-/* ---------- detail ---------- */
 function renderDetail(){
   const w = wines.find(x=>x.id===detailId);
   if(!w){ tab="cellar"; return render(); }
@@ -410,7 +408,6 @@ function renderDetail(){
   };
 }
 
-/* ---------- add / edit form ---------- */
 let pendingImage = null;
 function renderForm(){
   const w = editingId ? wines.find(x=>x.id===editingId) : {};
@@ -426,6 +423,8 @@ function renderForm(){
       <label class="photo-btn ghost">🖼 Choose from gallery
         <input type="file" id="gal" accept="image/*">
       </label>
+      <button type="button" class="photo-btn" id="identify" style="border-color:var(--gold); color:var(--gold)">✨ Identify from label</button>
+      <div class="note" id="ai-st"></div>
     </div>
     <div class="row2">
       <div class="field"><label>Producer</label><input id="f-producer" value="${esc(w.producer)}" placeholder="Domaine Tempier"></div>
@@ -462,6 +461,33 @@ function renderForm(){
   };
   document.getElementById("cam").addEventListener("change", e=>handlePhoto(e.target));
   document.getElementById("gal").addEventListener("change", e=>handlePhoto(e.target));
+  const AI_PROMPT = "You are a sommelier's assistant. Read this wine label photo and return ONLY a JSON object (no markdown fences, no prose) with these string fields: producer, name (the cuvee or wine name, not the producer), vintage (4-digit year), type (one of: Red, White, Rose, Sparkling, Dessert), region (appellation and country), drinkFrom (4-digit year the wine enters its drinking window), drinkTo (4-digit year to drink by), pairings (comma-separated food pairings), notes (grape varieties plus a one-line style summary). Base drinkFrom, drinkTo and pairings on your knowledge of this producer, region and vintage; if the exact bottling is unknown, use typical ranges for the style and say so in notes. Use an empty string for anything unreadable.";
+  document.getElementById("identify").onclick = async ()=>{
+    const st = document.getElementById("ai-st");
+    if(!cfg.gkey){ st.textContent = "Add a free Gemini API key in the Sync tab first (aistudio.google.com)."; return; }
+    if(!pendingImage){ st.textContent = "Take or choose a label photo first."; return; }
+    st.textContent = "Reading label\u2026";
+    try{
+      const body = {contents:[{parts:[
+        {inline_data:{mime_type:"image/jpeg", data:pendingImage.split(",")[1]}},
+        {text: AI_PROMPT}
+      ]}]};
+      const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="+encodeURIComponent(cfg.gkey), {
+        method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)
+      });
+      if(!r.ok) throw new Error("Gemini "+r.status+": "+(await r.text()).slice(0,140));
+      const j = await r.json();
+      const text = ((j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts)||[]).map(p=>p.text||"").join("");
+      const rec = JSON.parse(text.replace(/```json|```/g,"").trim());
+      const set = (id,v)=>{ if(v) document.getElementById(id).value = v; };
+      set("f-producer", rec.producer); set("f-name", rec.name); set("f-vintage", rec.vintage);
+      if(rec.type){ const t = rec.type==="Rose" ? "Ros\u00e9" : rec.type; document.getElementById("f-type").value = t; }
+      set("f-region", rec.region); set("f-from", rec.drinkFrom); set("f-to", rec.drinkTo);
+      set("f-pair", rec.pairings);
+      const n = document.getElementById("f-notes"); if(rec.notes && !n.value.trim()) n.value = rec.notes;
+      st.textContent = "\u2713 " + [rec.producer, rec.name, rec.vintage].filter(Boolean).join(" ") + " \u2014 check the fields; if it misread, retake the photo or tap Identify again.";
+    }catch(e){ st.textContent = "\u2717 " + e.message + " \u2014 tap Identify to try again."; }
+  };
   document.getElementById("save").onclick = ()=>{
     const g = id => document.getElementById(id).value.trim();
     const rec = editingId ? wines.find(x=>x.id===editingId) : {id:uid(), added:new Date().toISOString().slice(0,10)};
@@ -480,7 +506,6 @@ function renderForm(){
   if(c) c.onclick = ()=>{ editingId=null; tab="detail"; render(); };
 }
 
-/* ---------- GitHub sync ---------- */
 const GH = "https://api.github.com";
 function ghHeaders(){ return {"Authorization":"Bearer "+cfg.token, "Accept":"application/vnd.github+json"}; }
 async function ghGetSha(path){
@@ -503,7 +528,6 @@ function b64EncodeUnicode(str){
 }
 async function pushAll(statusEl){
   if(!cfg.owner||!cfg.repo||!cfg.token) throw new Error("Fill in owner, repo, and token first.");
-  // 1. upload any new/changed photos
   const dirty = wines.filter(w=>w.imageData && w.imageDirty!==false);
   let i=0;
   for(const w of dirty){
@@ -514,11 +538,9 @@ async function pushAll(statusEl){
     await ghPut(path, b64, `Add label photo ${w.producer||""} ${w.vintage||""}`.trim());
     w.imagePath = path; w.imageDirty = false;
   }
-  // 2. write wines.json without embedded image data
   statusEl.textContent = "Writing wines.json…";
   const clean = wines.map(({imageData, imageDirty, ...rest})=>rest);
   await ghPut("data/wines.json", b64EncodeUnicode(JSON.stringify(clean,null,2)), `Update cellar (${clean.length} wines)`);
-  // 3. now safe to drop local image blobs (they'll load from the repo)
   wines.forEach(w=>{ if(w.imagePath){ delete w.imageData; delete w.imageDirty; } });
   saveWines();
   cfg.lastSync = new Date().toLocaleString(); saveCfg();
@@ -551,11 +573,14 @@ function renderSync(){
     <div class="field"><label>Personal access token</label><input id="c-token" type="password" value="${esc(cfg.token)}" autocapitalize="off">
       <div class="note">Fine-grained token with <b>Contents: read &amp; write</b> on this one repo. Stored only in this browser.</div>
     </div>
+    <div class="field"><label>Gemini API key (label scanning)</label><input id="c-gkey" type="password" value="${esc(cfg.gkey)}" autocapitalize="off">
+      <div class="note">Free key from <b>aistudio.google.com</b>. Enables the &#x2728; Identify button on the add-bottle form.</div>
+    </div>
     <button class="btn btn-ghost" id="savecfg">Save settings</button>
     <hr class="section-rule">
     <button class="btn btn-primary" id="push">Push cellar to GitHub</button>
     <button class="btn btn-ghost" id="pull">Pull cellar from GitHub</button>
-    <div class="note">Push uploads new label photos and writes <span class="mono">data/wines.json</span>. Pull replaces this device's list with the repo copy — use it when opening the site on a new device.</div>
+    <div class="note">Push uploads new label photos and writes <span class="mono">data/wines.json</span>. Pull replaces this device's list with the repo copy -- use it when opening the site on a new device.</div>
   </div>`;
   const st = document.getElementById("st");
   document.getElementById("savecfg").onclick = ()=>{
@@ -563,20 +588,19 @@ function renderSync(){
     cfg.repo=document.getElementById("c-repo").value.trim();
     cfg.branch=document.getElementById("c-branch").value.trim()||"main";
     cfg.token=document.getElementById("c-token").value.trim();
+    cfg.gkey=document.getElementById("c-gkey").value.trim();
     saveCfg(); st.textContent="Settings saved.";
   };
   document.getElementById("push").onclick = async ()=>{
     document.getElementById("savecfg").click();
-    try{ await pushAll(st); } catch(e){ st.textContent = "✗ " + e.message; }
+    try{ await pushAll(st); } catch(e){ st.textContent = "X " + e.message; }
   };
   document.getElementById("pull").onclick = async ()=>{
     document.getElementById("savecfg").click();
-    try{ await pullAll(st); } catch(e){ st.textContent = "✗ " + e.message; }
+    try{ await pullAll(st); } catch(e){ st.textContent = "X " + e.message; }
   };
 }
 
-
-/* ---------- sample bottle (loads only on first run) ---------- */
 const SEED = [{
   id:"sample-santalba-2019",
   added:"2026-07-12",
@@ -588,15 +612,14 @@ const SEED = [{
   region:"Rioja Alta (DOCa Rioja), Spain",
   drinkFrom:"2026",
   drinkTo:"2034",
-  pairings:"Roast meats, grilled lamb, duck à l'orange, pork, wild mushrooms, casseroles, Iberian ham, mature cheeses",
+  pairings:"Roast meats, grilled lamb, duck \u00e0 l'orange, pork, wild mushrooms, casseroles, Iberian ham, mature cheeses",
   source:"Wine club (monthly)",
   price:"$37.95 + HST",
   location:"",
-  notes:"100% Tempranillo, hand-harvested (Gimileo & Haro). 18 months in medium-toast American oak, bottled unfiltered. Deep ruby with tawny highlights; black fruit, liquorice, violet, vanilla, sweet spice, toasted bread. Drinking now; will evolve gracefully for 8\u201312 years.",
+  notes:"100% Tempranillo, hand-harvested (Gimileo & Haro). 18 months in medium-toast American oak, bottled unfiltered. Drinking now; will evolve gracefully for 8-12 years."
 }];
 if(!localStorage.getItem(LS_WINES)) { wines = SEED; saveWines(); }
 
-/* ---------- tabs ---------- */
 function setTab(t){
   tab = t;
   document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("active", b.dataset.tab===t));
@@ -606,14 +629,13 @@ document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click", (
   editingId = null; setTab(b.dataset.tab);
 }));
 
-/* ---------- boot: auto-load from repo if empty ---------- */
 (async ()=>{
   render();
   if(!wines.length && cfg.owner && cfg.repo){
     try{
       const r = await fetch(`https://raw.githubusercontent.com/${cfg.owner}/${cfg.repo}/${cfg.branch||"main"}/data/wines.json?t=${Date.now()}`);
       if(r.ok){ wines = await r.json(); saveWines(); render(); }
-    }catch(e){/* offline is fine */}
+    }catch(e){}
   }
 })();
 </script>
