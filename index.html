@@ -472,7 +472,7 @@ function renderForm(){
         {inline_data:{mime_type:"image/jpeg", data:pendingImage.split(",")[1]}},
         {text: AI_PROMPT}
       ]}]};
-      const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="+encodeURIComponent(cfg.gkey), {
+      const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-latest:generateConten?key="+encodeURIComponent(cfg.gkey), {
         method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)
       });
       if(!r.ok) throw new Error("Gemini "+r.status+": "+(await r.text()).slice(0,140));
