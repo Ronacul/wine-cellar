@@ -51,5 +51,26 @@
     "location": "",
     "notes": "100% Shiraz. A medium-bodied, approachable wine with ripe plum, blackberry, and subtle spice notes. The drinking window is based on typical ranges for entry-level commercial Australian Shiraz, which is designed for early consumption.",
     "imagePath": "images/ms2ph24mnsfzz.jpg"
+  },
+  {
+    "id": "ms2pzkigeux4z",
+    "added": "2026-07-27",
+    "producer": "Félix Magnien & Fils",
+    "name": "Bourgogne Passetoutgrains",
+    "vintage": "1983",
+    "type": "Red",
+    "qty": 1,
+    "region": "Bourgogne Passetoutgrains AOC, Burgundy, France",
+    "drinkFrom": "1985",
+    "drinkTo": "1990",
+    "shelfSection": "",
+    "binCode": "",
+    "titi": true,
+    "pairings": "Charcuterie, cold cuts, roasted poultry, simple pork dishes",
+    "source": "",
+    "price": "",
+    "location": "",
+    "notes": "A traditional blend of Pinot Noir and Gamay. As a light Bourgogne Passetoutgrains intended for youthful consumption, this 1983 vintage is now well past its prime drinking window.",
+    "imagePath": "images/ms2pzkigeux4z.jpg"
   }
 ]
