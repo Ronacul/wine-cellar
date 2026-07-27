@@ -33,5 +33,23 @@
     "location": "",
     "notes": "100% Dolcetto. A vibrant, fruit-forward red with bright acidity, dark cherry notes, and a classic bitter almond finish; typical drinking window used for young Dolcetto.",
     "imagePath": "images/ms2ih3pfhr19j.jpg"
+  },
+  {
+    "id": "ms2ph24mnsfzz",
+    "added": "2026-07-27",
+    "producer": "Jacob's Creek",
+    "name": "Shiraz",
+    "vintage": "2009",
+    "type": "Red",
+    "qty": 1,
+    "region": "South Eastern Australia, Australia",
+    "drinkFrom": "2010",
+    "drinkTo": "2014",
+    "pairings": "grilled steaks, barbecue ribs, burgers, pepperoni pizza, mature cheddar",
+    "source": "",
+    "price": "",
+    "location": "",
+    "notes": "100% Shiraz. A medium-bodied, approachable wine with ripe plum, blackberry, and subtle spice notes. The drinking window is based on typical ranges for entry-level commercial Australian Shiraz, which is designed for early consumption.",
+    "imagePath": "images/ms2ph24mnsfzz.jpg"
   }
 ]
