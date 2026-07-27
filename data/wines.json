@@ -1,0 +1,37 @@
+[
+  {
+    "id": "sample-santalba-2019",
+    "added": "2026-07-12",
+    "producer": "Santalba",
+    "name": "Reserva",
+    "vintage": "2019",
+    "type": "Red",
+    "qty": 1,
+    "region": "Rioja Alta (DOCa Rioja), Spain",
+    "drinkFrom": "2026",
+    "drinkTo": "2034",
+    "pairings": "Roast meats, grilled lamb, duck à l'orange, pork, wild mushrooms, casseroles, Iberian ham, mature cheeses",
+    "source": "Wine club (monthly)",
+    "price": "$37.95 + HST",
+    "location": "",
+    "notes": "100% Tempranillo, hand-harvested (Gimileo & Haro). 18 months in medium-toast American oak, bottled unfiltered. Deep ruby with tawny highlights; black fruit, liquorice, violet, vanilla, sweet spice, toasted bread. Drinking now; will evolve gracefully for 8–12 years."
+  },
+  {
+    "id": "ms2ih3pfhr19j",
+    "added": "2026-07-27",
+    "producer": "Pelissero",
+    "name": "Munfrina",
+    "vintage": "2024",
+    "type": "Red",
+    "qty": 1,
+    "region": "Dolcetto d'Alba, Piedmont, Italy",
+    "drinkFrom": "2025",
+    "drinkTo": "2028",
+    "pairings": "Charcuterie, pasta with meat sauce, wood-fired pizza, roasted chicken, grilled pork chops",
+    "source": "",
+    "price": "",
+    "location": "",
+    "notes": "100% Dolcetto. A vibrant, fruit-forward red with bright acidity, dark cherry notes, and a classic bitter almond finish; typical drinking window used for young Dolcetto.",
+    "imagePath": "images/ms2ih3pfhr19j.jpg"
+  }
+]
