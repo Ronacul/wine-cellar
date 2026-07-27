@@ -14,6 +14,7 @@
   --gold:#c9a227; --rose:#c98a8a;
   --line:rgba(239,230,216,.14);
   --ok:#7da87b; --warn:#c9a227; --urgent:#c05060;
+  --titi:#8a7dc9;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-text-size-adjust:100%}
@@ -25,6 +26,7 @@ body{
 }
 .mono{font-family:"IBM Plex Mono",monospace}
 .serif{font-family:"Cormorant Garamond",Georgia,serif}
+.tbd{color:var(--ink-faint); font-style:italic}
 
 /* ---------- header ---------- */
 header{
@@ -54,21 +56,32 @@ nav button.active span{border-bottom:2px solid var(--claret); padding-bottom:4px
 nav button:focus-visible{outline:2px solid var(--claret); outline-offset:-2px}
 
 /* ---------- controls ---------- */
-.toolbar{padding:12px 16px; display:flex; gap:8px}
+.toolbar{padding:12px 16px; display:flex; gap:8px; flex-wrap:wrap}
 .toolbar input[type=search]{
-  flex:1; background:var(--panel); border:1px solid var(--line); border-radius:4px;
+  flex:1 1 100%; background:var(--panel); border:1px solid var(--line); border-radius:4px;
   color:var(--ink); padding:9px 12px; font-size:15px;
 }
 .toolbar select{
-  background:var(--panel); border:1px solid var(--line); border-radius:4px;
-  color:var(--ink-dim); padding:9px 8px; font-size:13px;
+  flex:1; background:var(--panel); border:1px solid var(--line); border-radius:4px;
+  color:var(--ink-dim); padding:9px 8px; font-size:13px; min-width:0;
 }
+.toolbar .toggle-btn{
+  flex:none; background:var(--panel); border:1px solid var(--line); border-radius:4px;
+  color:var(--ink-dim); padding:9px 12px; font-size:12.5px; font-family:"IBM Plex Mono",monospace;
+  cursor:pointer;
+}
+.toolbar .toggle-btn.on{color:var(--titi); border-color:var(--titi)}
 input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{
   outline:2px solid var(--claret); outline-offset:1px;
 }
 
 /* ---------- wine cards ---------- */
 .list{padding:0 16px}
+.list-heading{
+  font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--ink-faint); padding:14px 0 8px;
+}
+.list-heading.overdue{color:var(--urgent)}
 .card{
   background:var(--panel); border:1px solid var(--line); border-radius:6px;
   margin-bottom:12px; overflow:hidden; cursor:pointer;
@@ -97,6 +110,8 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
 .chip.white{color:var(--gold)}
 .chip.rose{color:var(--rose)}
 .chip.sparkling{color:#a8c0c9}
+.chip.bin{color:var(--ink)}
+.chip.titi{color:var(--titi); border-color:var(--titi)}
 
 /* ---------- maturity band (the signature) ---------- */
 .band-wrap{padding:0 12px 11px}
@@ -145,8 +160,17 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
   color:var(--ink); padding:10px 12px; font-size:15px; font-family:inherit;
 }
 .field textarea{min-height:64px; resize:vertical}
+.field.checkrow{display:flex; align-items:center; gap:8px}
+.field.checkrow input{width:auto}
+.field.checkrow label{margin:0; text-transform:none; font-size:14px; color:var(--ink)}
 .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
 .row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px}
+.bincode-row{display:flex; gap:8px; align-items:flex-end}
+.bincode-row .field{flex:1; margin-bottom:0}
+.bincode-row button{
+  flex:none; background:var(--panel2); border:1px solid var(--ink-faint); border-radius:4px;
+  color:var(--ink-dim); padding:10px 12px; font-size:12.5px; cursor:pointer;
+}
 
 .photo-zone{
   border:1px dashed var(--ink-faint); border-radius:6px; padding:18px;
@@ -226,13 +250,27 @@ let cfg   = JSON.parse(localStorage.getItem(LS_CFG)   || "{}");
 let tab = "cellar";
 let editingId = null;
 let detailId = null;
-let searchQ = "", typeFilter = "";
+let searchQ = "", typeFilter = "", shelfFilter = "", titiOnly = false;
 
 const saveWines = () => localStorage.setItem(LS_WINES, JSON.stringify(wines));
 const saveCfg   = () => localStorage.setItem(LS_CFG, JSON.stringify(cfg));
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 const esc = s => (s??"").toString().replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const YEAR = new Date().getFullYear();
+const tbd = v => (v===undefined||v===null||v==="") ? `<span class="tbd">TBD</span>` : esc(v);
+
+/* ================= shelf sections ================= */
+const SHELF_SECTIONS = ["Keep","Soon","White","Sparkling"];
+const SHELF_PREFIX = {Keep:"K", Soon:"S", White:"W", Sparkling:"B"};
+function suggestBinCode(section){
+  const prefix = SHELF_PREFIX[section] || "X";
+  const used = wines
+    .filter(w => (w.binCode||"").toUpperCase().startsWith(prefix))
+    .map(w => parseInt((w.binCode||"").slice(1),10))
+    .filter(n => !isNaN(n));
+  const next = (used.length ? Math.max(...used) : 0) + 1;
+  return prefix + String(next).padStart(2,"0");
+}
 
 /* ================= drink-window logic ================= */
 function windowStatus(w){
@@ -244,6 +282,7 @@ function windowStatus(w){
   if(to && to - YEAR <= 3) return {cls:"soon",label:"Approaching peak"};
   return {cls:"window", label:"In window"};
 }
+function isOverdue(w){ const to = parseInt(w.drinkTo); return !!to && YEAR > to; }
 function bandHTML(w){
   const from = parseInt(w.drinkFrom), to = parseInt(w.drinkTo);
   if(!from || !to || to <= from) return "";
@@ -303,17 +342,19 @@ function cardHTML(w){
   const thumb = src ? `<img class="thumb" src="${esc(src)}" alt="" loading="lazy">`
                     : `<div class="thumb empty">?</div>`;
   const tcls = (w.type||"").toLowerCase();
+  const subLine = [w.region, w.source].filter(Boolean).join(" · ");
   return `<div class="card" data-id="${w.id}">
     <div class="card-top">
       ${thumb}
       <div class="card-info">
         <div class="wine-name serif">${esc(w.producer||"")} ${esc(w.name||"")}</div>
-        <div class="wine-sub">${esc([w.region, w.source].filter(Boolean).join(" · "))}</div>
+        <div class="wine-sub">${subLine ? esc(subLine) : `<span class="tbd">TBD</span>`}</div>
         <div class="chips">
           ${w.vintage?`<span class="chip vintage">${esc(w.vintage)}</span>`:""}
           ${w.type?`<span class="chip ${tcls}">${esc(w.type)}</span>`:""}
           ${w.qty>1?`<span class="chip">×${esc(w.qty)}</span>`:""}
-          ${w.location?`<span class="chip">bin ${esc(w.location)}</span>`:""}
+          ${w.binCode?`<span class="chip bin">${esc(w.binCode)}</span>`:""}
+          ${w.titi?`<span class="chip titi">Titi</span>`:""}
         </div>
       </div>
     </div>
@@ -323,36 +364,55 @@ function cardHTML(w){
 
 function renderList(soonMode){
   let items = wines.slice();
-  if(soonMode){
-    items = items.filter(w => w.drinkTo).sort((a,b)=>(a.drinkTo||9999)-(b.drinkTo||9999));
-  } else {
-    items.sort((a,b)=>(a.producer||"").localeCompare(b.producer||""));
-  }
   if(searchQ){
     const q = searchQ.toLowerCase();
-    items = items.filter(w => [w.producer,w.name,w.region,w.vintage,w.source,w.pairings,w.location]
+    items = items.filter(w => [w.producer,w.name,w.region,w.vintage,w.source,w.pairings,w.location,w.binCode]
       .some(f => (f||"").toString().toLowerCase().includes(q)));
   }
   if(typeFilter) items = items.filter(w => w.type===typeFilter);
+  if(shelfFilter) items = items.filter(w => w.shelfSection===shelfFilter);
+  if(titiOnly) items = items.filter(w => !!w.titi);
 
   const toolbar = `<div class="toolbar">
     <input type="search" id="q" placeholder="Search the cellar…" value="${esc(searchQ)}">
     <select id="tf">
-      <option value="">All</option>
+      <option value="">All types</option>
       ${["Red","White","Rosé","Sparkling","Dessert"].map(t=>`<option ${typeFilter===t?"selected":""}>${t}</option>`).join("")}
     </select>
+    <select id="sf">
+      <option value="">All shelves</option>
+      ${SHELF_SECTIONS.map(s=>`<option ${shelfFilter===s?"selected":""}>${s}</option>`).join("")}
+    </select>
+    <button type="button" class="toggle-btn ${titiOnly?"on":""}" id="titi-toggle">Titi ${titiOnly?"✓":""}</button>
   </div>`;
 
-  const body = items.length
-    ? `<div class="list">${items.map(cardHTML).join("")}</div>`
-    : `<div class="empty-state"><div class="serif">The cellar book is empty.</div>
-       ${soonMode ? "Bottles with a drink-by window will appear here, soonest first."
-                  : "Tap <b>+ Bottle</b> below and photograph your first label."}</div>`;
+  let body;
+  if(soonMode){
+    const withWindow = items.filter(w => w.drinkTo);
+    const overdue = withWindow.filter(isOverdue).sort((a,b)=>(a.drinkTo||9999)-(b.drinkTo||9999));
+    const approaching = withWindow.filter(w=>!isOverdue(w)).sort((a,b)=>(a.drinkTo||9999)-(b.drinkTo||9999));
+    if(!withWindow.length){
+      body = `<div class="empty-state"><div class="serif">Nothing with a drink-by window yet.</div>
+        Set a "Drink by" year on a bottle and it will show up here.</div>`;
+    } else {
+      body = "";
+      if(overdue.length) body += `<div class="list"><div class="list-heading overdue">Overdue — drink these first (${overdue.length})</div>${overdue.map(cardHTML).join("")}</div>`;
+      if(approaching.length) body += `<div class="list"><div class="list-heading">Approaching / in window (${approaching.length})</div>${approaching.map(cardHTML).join("")}</div>`;
+    }
+  } else {
+    items.sort((a,b)=>(a.producer||"").localeCompare(b.producer||""));
+    body = items.length
+      ? `<div class="list">${items.map(cardHTML).join("")}</div>`
+      : `<div class="empty-state"><div class="serif">The cellar book is empty.</div>
+         Tap <b>+ Bottle</b> below and photograph your first label.</div>`;
+  }
 
   view.innerHTML = toolbar + body;
 
   document.getElementById("q").addEventListener("input", e=>{ searchQ=e.target.value; renderListOnly(soonMode); });
   document.getElementById("tf").addEventListener("change", e=>{ typeFilter=e.target.value; renderListOnly(soonMode); });
+  document.getElementById("sf").addEventListener("change", e=>{ shelfFilter=e.target.value; renderListOnly(soonMode); });
+  document.getElementById("titi-toggle").addEventListener("click", ()=>{ titiOnly=!titiOnly; renderListOnly(soonMode); });
   bindCards();
 }
 function renderListOnly(soonMode){
@@ -373,19 +433,25 @@ function renderDetail(){
   if(!w){ tab="cellar"; return render(); }
   const src = imgSrc(w);
   const st = windowStatus(w);
+  const drinkVal = (w.drinkFrom||w.drinkTo)
+    ? `${w.drinkFrom||"—"} – ${w.drinkTo||"—"}${st.label?` <span class="band-status ${st.cls} mono" style="font-size:10px">· ${st.label}</span>`:""}`
+    : null;
   view.innerHTML = `<div class="sheet">
     ${src?`<img class="detail-photo" src="${esc(src)}" alt="Label photo">`:""}
     <div class="detail-name serif">${esc(w.producer||"")} ${esc(w.name||"")}</div>
     <div class="detail-sub">${esc([w.vintage,w.type,w.region].filter(Boolean).join(" · "))}</div>
     ${bandHTML(w)}
     <dl class="spec">
-      ${w.drinkFrom||w.drinkTo?`<dt>Drink</dt><dd>${esc(w.drinkFrom||"—")} – ${esc(w.drinkTo||"—")}${st.label?` <span class="band-status ${st.cls} mono" style="font-size:10px">· ${st.label}</span>`:""}</dd>`:""}
-      ${w.pairings?`<dt>Serve with</dt><dd>${esc(w.pairings)}</dd>`:""}
-      ${w.source?`<dt>Source</dt><dd>${esc(w.source)}</dd>`:""}
-      ${w.price?`<dt>Price</dt><dd>${esc(w.price)}</dd>`:""}
-      ${w.qty?`<dt>Quantity</dt><dd>${esc(w.qty)}</dd>`:""}
-      ${w.location?`<dt>Bin</dt><dd>${esc(w.location)}</dd>`:""}
-      ${w.notes?`<dt>Notes</dt><dd>${esc(w.notes)}</dd>`:""}
+      <dt>Drink</dt><dd>${drinkVal ?? `<span class="tbd">TBD</span>`}</dd>
+      <dt>Shelf</dt><dd>${tbd(w.shelfSection)}</dd>
+      <dt>Bin code</dt><dd>${tbd(w.binCode)}</dd>
+      <dt>Titi</dt><dd>${w.titi ? "Yes — Dad's cellar" : "No"}</dd>
+      <dt>Serve with</dt><dd>${tbd(w.pairings)}</dd>
+      <dt>Source</dt><dd>${tbd(w.source)}</dd>
+      <dt>Price</dt><dd>${tbd(w.price)}</dd>
+      <dt>Quantity</dt><dd>${esc(w.qty||1)}</dd>
+      <dt>Bin/rack</dt><dd>${tbd(w.location)}</dd>
+      <dt>Notes</dt><dd>${tbd(w.notes)}</dd>
     </dl>
     <button class="btn btn-ghost" id="edit">Edit bottle</button>
     <button class="btn btn-ghost" id="drank">Drank one — reduce quantity</button>
@@ -427,31 +493,48 @@ function renderForm(){
       <div class="note" id="ai-st"></div>
     </div>
     <div class="row2">
-      <div class="field"><label>Producer</label><input id="f-producer" value="${esc(w.producer)}" placeholder="Domaine Tempier"></div>
-      <div class="field"><label>Wine / cuvée</label><input id="f-name" value="${esc(w.name)}" placeholder="Bandol Rouge"></div>
+      <div class="field"><label>Producer</label><input id="f-producer" value="${esc(w.producer)}" placeholder="e.g. Domaine Tempier"></div>
+      <div class="field"><label>Wine / cuvée</label><input id="f-name" value="${esc(w.name)}" placeholder="e.g. Bandol Rouge"></div>
     </div>
     <div class="row3">
-      <div class="field"><label>Vintage</label><input id="f-vintage" inputmode="numeric" value="${esc(w.vintage)}" placeholder="2019"></div>
+      <div class="field"><label>Vintage</label><input id="f-vintage" inputmode="numeric" value="${esc(w.vintage)}" placeholder="e.g. 2019"></div>
       <div class="field"><label>Type</label><select id="f-type">
         ${["","Red","White","Rosé","Sparkling","Dessert"].map(t=>`<option ${w.type===t?"selected":""}>${t}</option>`).join("")}
       </select></div>
       <div class="field"><label>Qty</label><input id="f-qty" inputmode="numeric" value="${esc(w.qty||1)}"></div>
     </div>
-    <div class="field"><label>Region / appellation</label><input id="f-region" value="${esc(w.region)}" placeholder="Bandol, Provence"></div>
+    <div class="field"><label>Region / appellation</label><input id="f-region" value="${esc(w.region)}" placeholder="e.g. Bandol, Provence"></div>
     <div class="row2">
-      <div class="field"><label>Drink from (year)</label><input id="f-from" inputmode="numeric" value="${esc(w.drinkFrom)}" placeholder="2026"></div>
-      <div class="field"><label>Drink by (year)</label><input id="f-to" inputmode="numeric" value="${esc(w.drinkTo)}" placeholder="2034"></div>
+      <div class="field"><label>Drink from (year)</label><input id="f-from" inputmode="numeric" value="${esc(w.drinkFrom)}" placeholder="e.g. 2026"></div>
+      <div class="field"><label>Drink by (year)</label><input id="f-to" inputmode="numeric" value="${esc(w.drinkTo)}" placeholder="e.g. 2034"></div>
     </div>
-    <div class="field"><label>Serve with</label><input id="f-pair" value="${esc(w.pairings)}" placeholder="Braised lamb, hard cheeses"></div>
     <div class="row2">
-      <div class="field"><label>Source</label><input id="f-source" value="${esc(w.source)}" placeholder="SAQ / winery / gift"></div>
-      <div class="field"><label>Price</label><input id="f-price" value="${esc(w.price)}" placeholder="$42"></div>
+      <div class="field"><label>Shelf section</label><select id="f-shelf">
+        <option value="">— none —</option>
+        ${SHELF_SECTIONS.map(s=>`<option ${w.shelfSection===s?"selected":""}>${s}</option>`).join("")}
+      </select></div>
+      <div class="bincode-row">
+        <div class="field"><label>Bin code</label><input id="f-bincode" value="${esc(w.binCode)}" placeholder="e.g. K03"></div>
+        <button type="button" id="suggest-bin">Suggest</button>
+      </div>
     </div>
-    <div class="field"><label>Bin / rack location</label><input id="f-loc" value="${esc(w.location)}" placeholder="A3"></div>
+    <div class="field checkrow"><input type="checkbox" id="f-titi" ${w.titi?"checked":""}><label for="f-titi">From Dad's cellar (Titi)</label></div>
+    <div class="field"><label>Serve with</label><input id="f-pair" value="${esc(w.pairings)}" placeholder="e.g. Braised lamb, hard cheeses"></div>
+    <div class="row2">
+      <div class="field"><label>Source</label><input id="f-source" value="${esc(w.source)}" placeholder="e.g. SAQ / winery / gift"></div>
+      <div class="field"><label>Price</label><input id="f-price" value="${esc(w.price)}" placeholder="e.g. $42"></div>
+    </div>
+    <div class="field"><label>Bin / rack location</label><input id="f-loc" value="${esc(w.location)}" placeholder="e.g. A3"></div>
     <div class="field"><label>Notes</label><textarea id="f-notes" placeholder="Tasting notes, occasion, who recommended it…">${esc(w.notes)}</textarea></div>
     <button class="btn btn-primary" id="save">${editingId?"Save changes":"Add to cellar"}</button>
     ${editingId?`<button class="btn btn-ghost" id="cancel">Cancel</button>`:""}
   </div>`;
+
+  document.getElementById("suggest-bin").onclick = ()=>{
+    const section = document.getElementById("f-shelf").value;
+    if(!section){ document.getElementById("ai-st").textContent = ""; return; }
+    document.getElementById("f-bincode").value = suggestBinCode(section);
+  };
 
   const pv = document.getElementById("pv");
   const handlePhoto = async (input)=>{
@@ -495,6 +578,8 @@ function renderForm(){
       producer:g("f-producer"), name:g("f-name"), vintage:g("f-vintage"),
       type:document.getElementById("f-type").value, qty:parseInt(g("f-qty"))||1,
       region:g("f-region"), drinkFrom:g("f-from"), drinkTo:g("f-to"),
+      shelfSection:document.getElementById("f-shelf").value, binCode:g("f-bincode"),
+      titi:document.getElementById("f-titi").checked,
       pairings:g("f-pair"), source:g("f-source"), price:g("f-price"),
       location:g("f-loc"), notes:g("f-notes")
     });
@@ -564,17 +649,21 @@ async function pullAll(statusEl){
 }
 
 function renderSync(){
+  const notSet = `<span class="tbd">not set</span>`;
   view.innerHTML = `<div class="sheet">
     <h2>Sync with GitHub</h2>
     <div class="sync-status" id="st">${cfg.lastSync? "Last sync: "+esc(cfg.lastSync) : "Not synced yet. Wines are saved on this device either way."}</div>
-    <div class="field"><label>GitHub username (owner)</label><input id="c-owner" value="${esc(cfg.owner)}" autocapitalize="off"></div>
-    <div class="field"><label>Repository name</label><input id="c-repo" value="${esc(cfg.repo)}" placeholder="wine-cellar" autocapitalize="off"></div>
-    <div class="field"><label>Branch</label><input id="c-branch" value="${esc(cfg.branch||"main")}" autocapitalize="off"></div>
+    <div class="field"><label>GitHub username (owner)</label><input id="c-owner" value="${esc(cfg.owner)}" placeholder="e.g. ronacul" autocapitalize="off">
+      <div class="note">Currently: ${cfg.owner?esc(cfg.owner):notSet}</div></div>
+    <div class="field"><label>Repository name</label><input id="c-repo" value="${esc(cfg.repo)}" placeholder="e.g. wine-cellar" autocapitalize="off">
+      <div class="note">Currently: ${cfg.repo?esc(cfg.repo):notSet}</div></div>
+    <div class="field"><label>Branch</label><input id="c-branch" value="${esc(cfg.branch||"main")}" placeholder="e.g. main" autocapitalize="off">
+      <div class="note">Currently: ${esc(cfg.branch||"main")}</div></div>
     <div class="field"><label>Personal access token</label><input id="c-token" type="password" value="${esc(cfg.token)}" autocapitalize="off">
-      <div class="note">Fine-grained token with <b>Contents: read &amp; write</b> on this one repo. Stored only in this browser.</div>
+      <div class="note">Fine-grained token with <b>Contents: read &amp; write</b> on this one repo. Stored only in this browser. Currently: ${cfg.token?"a token is saved":notSet}</div>
     </div>
     <div class="field"><label>Gemini API key (label scanning)</label><input id="c-gkey" type="password" value="${esc(cfg.gkey)}" autocapitalize="off">
-      <div class="note">Free key from <b>aistudio.google.com</b>. Enables the &#x2728; Identify button on the add-bottle form.</div>
+      <div class="note">Free key from <b>aistudio.google.com</b>. Enables the &#x2728; Identify button on the add-bottle form. Currently: ${cfg.gkey?"a key is saved":notSet}</div>
     </div>
     <button class="btn btn-ghost" id="savecfg">Save settings</button>
     <hr class="section-rule">
@@ -589,15 +678,15 @@ function renderSync(){
     cfg.branch=document.getElementById("c-branch").value.trim()||"main";
     cfg.token=document.getElementById("c-token").value.trim();
     cfg.gkey=document.getElementById("c-gkey").value.trim();
-    saveCfg(); st.textContent="Settings saved.";
+    saveCfg(); st.textContent="Settings saved."; renderSync();
   };
   document.getElementById("push").onclick = async ()=>{
     document.getElementById("savecfg").click();
-    try{ await pushAll(st); } catch(e){ st.textContent = "X " + e.message; }
+    try{ await pushAll(document.getElementById("st")); } catch(e){ document.getElementById("st").textContent = "X " + e.message; }
   };
   document.getElementById("pull").onclick = async ()=>{
     document.getElementById("savecfg").click();
-    try{ await pullAll(st); } catch(e){ st.textContent = "X " + e.message; }
+    try{ await pullAll(document.getElementById("st")); } catch(e){ document.getElementById("st").textContent = "X " + e.message; }
   };
 }
 
@@ -612,6 +701,9 @@ const SEED = [{
   region:"Rioja Alta (DOCa Rioja), Spain",
   drinkFrom:"2026",
   drinkTo:"2034",
+  shelfSection:"Keep",
+  binCode:"K01",
+  titi:false,
   pairings:"Roast meats, grilled lamb, duck \u00e0 l'orange, pork, wild mushrooms, casseroles, Iberian ham, mature cheeses",
   source:"Wine club (monthly)",
   price:"$37.95 + HST",
