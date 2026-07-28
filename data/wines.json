@@ -72,5 +72,26 @@
     "location": "",
     "notes": "A traditional blend of Pinot Noir and Gamay. As a light Bourgogne Passetoutgrains intended for youthful consumption, this 1983 vintage is now well past its prime drinking window.",
     "imagePath": "images/ms2pzkigeux4z.jpg"
+  },
+  {
+    "id": "6a693529e829da8f",
+    "added": "2026-07-28",
+    "producer": "Allée Bleue",
+    "name": "L'Amour Toujours",
+    "vintage": "2019",
+    "type": "Red",
+    "qty": 1,
+    "region": "Stellenbosch, South Africa",
+    "drinkFrom": "2024",
+    "drinkTo": "2032",
+    "shelfSection": "",
+    "binCode": "",
+    "titi": false,
+    "pairings": "Grilled steak, roast lamb, aged cheddar, venison, hearty stews",
+    "source": "",
+    "price": "",
+    "location": "",
+    "notes": "Bordeaux-style red blend from the Allée Bleue estate (founded 1690), Stellenbosch. Award-winning bottling (Double Platinum, National Wine Challenge Champion, Top 100 SA Wines). Drink window is an estimate for a premium Cape Bordeaux blend of this vintage, not a producer-published figure.",
+    "imagePath": "images/6a693529e829da8f.jpg"
   }
 ]
