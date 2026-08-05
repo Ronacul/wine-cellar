@@ -159,6 +159,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
   width:100%; background:var(--panel); border:1px solid var(--line); border-radius:4px;
   color:var(--ink); padding:10px 12px; font-size:15px; font-family:inherit;
 }
+.field select+input{margin-top:6px}
 .field textarea{min-height:64px; resize:vertical}
 .field.checkrow{display:flex; align-items:center; gap:8px}
 .field.checkrow input{width:auto}
@@ -525,7 +526,18 @@ function renderForm(){
     <div class="field checkrow"><input type="checkbox" id="f-titi" ${w.titi?"checked":""}><label for="f-titi">From Dad's cellar (Titi)</label></div>
     <div class="field"><label>Serve with</label><input id="f-pair" value="${esc(w.pairings)}" placeholder="e.g. Braised lamb, hard cheeses"></div>
     <div class="row2">
-      <div class="field"><label>Source</label><input id="f-source" value="${esc(w.source)}" placeholder="e.g. SAQ / winery / gift"></div>
+      <div class="field"><label>Source</label>
+        <select id="f-source-pick">
+          <option value="">— pick or type below —</option>
+          <option value="charlies">Charlie's Burgers (monthly)</option>
+          <option value="wineclub">Wine club (monthly)</option>
+          <option value="saq">SAQ</option>
+          <option value="lcbo">LCBO</option>
+          <option value="gift">Gift</option>
+          <option value="winery">Winery / cellar door</option>
+        </select>
+        <input id="f-source" value="${esc(w.source)}" placeholder="e.g. SAQ / winery / gift">
+      </div>
       <div class="field"><label>Price</label><input id="f-price" value="${esc(w.price)}" placeholder="e.g. $42"></div>
     </div>
     <div class="field"><label>Bin / rack location</label><input id="f-loc" value="${esc(w.location)}" placeholder="e.g. A3"></div>
@@ -539,6 +551,21 @@ function renderForm(){
     if(!section){ document.getElementById("ai-st").textContent = ""; return; }
     document.getElementById("f-bincode").value = suggestBinCode(section);
   };
+
+  document.getElementById("f-source-pick").addEventListener("change", (e)=>{
+    const v = e.target.value;
+    const src = document.getElementById("f-source");
+    const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const now = new Date();
+    const monthYear = MONTHS[now.getMonth()] + " " + now.getFullYear();
+    const map = {
+      charlies: "Charlie's Burgers (" + monthYear + ")",
+      wineclub: "Wine club (" + monthYear + ")",
+      saq: "SAQ", lcbo: "LCBO", gift: "Gift", winery: "Winery"
+    };
+    if(map[v]) src.value = map[v];
+    e.target.selectedIndex = 0;
+  });
 
   const pv = document.getElementById("pv");
   const handlePhoto = async (input)=>{
