@@ -544,7 +544,7 @@ function renderForm(){
   };
   document.getElementById("cam").addEventListener("change", e=>handlePhoto(e.target));
   document.getElementById("gal").addEventListener("change", e=>handlePhoto(e.target));
-  const AI_PROMPT = "You are a sommelier's assistant. Read this wine label photo and return ONLY a JSON object (no markdown fences, no prose) with these string fields: producer, name (the cuvee or wine name, not the producer), vintage (4-digit year), type (one of: Red, White, Rose, Sparkling, Dessert), region (appellation and country), drinkFrom (4-digit year the wine enters its drinking window), drinkTo (4-digit year to drink by), pairings (comma-separated food pairings), notes (grape varieties plus a one-line style summary). Base drinkFrom, drinkTo and pairings on your knowledge of this producer, region and vintage; if the exact bottling is unknown, use typical ranges for the style and say so in notes. Use an empty string for anything unreadable.";
+  const AI_PROMPT = "You are a sommelier's assistant. Read this wine label photo and return ONLY a JSON object (no markdown fences, no prose) with these string fields: producer, name (the cuvee or wine name, not the producer), vintage (4-digit year), type (one of: Red, White, Rose, Sparkling, Dessert), region (appellation and country), drinkFrom (4-digit year the wine enters its drinking window), drinkTo (4-digit year to drink by), pairings (comma-separated food pairings), price (estimated current market value in USD, formatted like '~$XX (est.)' — research-grade estimate based on producer, region, vintage, and classification; for icon/collectible wines use secondary-market pricing), notes (grape varieties plus a one-line style summary). Base drinkFrom, drinkTo, pairings and price on your knowledge of this producer, region and vintage; if the exact bottling is unknown, use typical ranges for the style and say so in notes. Use an empty string for anything unreadable.";
   document.getElementById("identify").onclick = async ()=>{
     const st = document.getElementById("ai-st");
     if(!cfg.gkey){ st.textContent = "Add a free Gemini API key in the Sync tab first (aistudio.google.com)."; return; }
@@ -566,7 +566,7 @@ function renderForm(){
       set("f-producer", rec.producer); set("f-name", rec.name); set("f-vintage", rec.vintage);
       if(rec.type){ const t = rec.type==="Rose" ? "Ros\u00e9" : rec.type; document.getElementById("f-type").value = t; }
       set("f-region", rec.region); set("f-from", rec.drinkFrom); set("f-to", rec.drinkTo);
-      set("f-pair", rec.pairings);
+      set("f-pair", rec.pairings); set("f-price", rec.price);
       const n = document.getElementById("f-notes"); if(rec.notes && !n.value.trim()) n.value = rec.notes;
       st.textContent = "\u2713 " + [rec.producer, rec.name, rec.vintage].filter(Boolean).join(" ") + " \u2014 check the fields; if it misread, retake the photo or tap Identify again.";
     }catch(e){ st.textContent = "\u2717 " + e.message + " \u2014 tap Identify to try again."; }
