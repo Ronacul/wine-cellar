@@ -683,10 +683,12 @@ function renderSync(){
   const notSet = `<span class="tbd">not set</span>`;
   view.innerHTML = `<div class="sheet">
     <h2>Sync with GitHub</h2>
+    <button class="btn btn-primary" id="pull">Pull cellar from GitHub</button>
+    <div class="note">Pull replaces this device's list with the repo copy — use it when opening the site on a new device or to get the latest data.</div>
     <div class="sync-status" id="st">${cfg.lastSync? "Last sync: "+esc(cfg.lastSync) : "Not synced yet. Wines are saved on this device either way."}</div>
-    <button class="btn btn-primary" id="push">Push cellar to GitHub</button>
-    <button class="btn btn-ghost" id="pull">Pull cellar from GitHub</button>
-    <div class="note">Push uploads new label photos and writes <span class="mono">data/wines.json</span>. Pull replaces this device's list with the repo copy -- use it when opening the site on a new device.</div>
+    <hr class="section-rule">
+    <button class="btn btn-ghost" id="push">Push cellar to GitHub</button>
+    <div class="note">Push uploads new label photos and writes <span class="mono">data/wines.json</span> — overwrites the repo with what's on this device.</div>
     <hr class="section-rule">
     <div class="field"><label>GitHub username (owner)</label><input id="c-owner" value="${esc(cfg.owner)}" placeholder="e.g. ronacul" autocapitalize="off">
       <div class="note">Currently: ${cfg.owner?esc(cfg.owner):notSet}</div></div>
