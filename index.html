@@ -160,6 +160,18 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
   color:var(--ink); padding:10px 12px; font-size:15px; font-family:inherit;
 }
 .field select+input{margin-top:6px}
+@keyframes needs-attention{
+  0%,100%{border-color:var(--gold); box-shadow:0 0 0 0 rgba(201,162,39,.0)}
+  50%{border-color:var(--gold); box-shadow:0 0 8px 2px rgba(201,162,39,.25)}
+}
+.field input.needs-att,.field select.needs-att,.field textarea.needs-att{
+  animation:needs-attention 2s ease-in-out 3;
+  border-color:var(--gold);
+}
+.field .att-dot{
+  display:inline-block; width:6px; height:6px; border-radius:50%;
+  background:var(--gold); margin-left:6px; vertical-align:middle;
+}
 .field textarea{min-height:64px; resize:vertical}
 .field.checkrow{display:flex; align-items:center; gap:8px}
 .field.checkrow input{width:auto}
@@ -620,7 +632,29 @@ function renderForm(){
       set("f-region", rec.region); set("f-from", rec.drinkFrom); set("f-to", rec.drinkTo);
       set("f-pair", rec.pairings); set("f-price", rec.price);
       const n = document.getElementById("f-notes"); if(rec.notes && !n.value.trim()) n.value = rec.notes;
-      st.textContent = "\u2713 " + [rec.producer, rec.name, rec.vintage].filter(Boolean).join(" ") + " \u2014 check the fields; if it misread, retake the photo or tap Identify again.";
+
+      /* highlight fields the AI couldn't fill */
+      document.querySelectorAll(".needs-att").forEach(el=>el.classList.remove("needs-att"));
+      document.querySelectorAll(".att-dot").forEach(el=>el.remove());
+      const check = [
+        ["f-producer",rec.producer], ["f-name",rec.name], ["f-vintage",rec.vintage],
+        ["f-region",rec.region], ["f-from",rec.drinkFrom], ["f-to",rec.drinkTo],
+        ["f-price",rec.price]
+      ];
+      let missing = 0;
+      check.forEach(([id, val])=>{
+        const el = document.getElementById(id);
+        if(!val || !val.trim()){
+          el.classList.add("needs-att");
+          const lbl = el.closest(".field")?.querySelector("label");
+          if(lbl && !lbl.querySelector(".att-dot")) lbl.insertAdjacentHTML("beforeend",'<span class="att-dot"></span>');
+          missing++;
+          el.addEventListener("input", function once(){ el.classList.remove("needs-att"); const dot = el.closest(".field")?.querySelector(".att-dot"); if(dot) dot.remove(); el.removeEventListener("input", once); }, {once:true});
+        }
+      });
+
+      const missMsg = missing ? ` (${missing} field${missing>1?"s":""} need${missing>1?"":"s"} attention)` : "";
+      st.textContent = "\u2713 " + [rec.producer, rec.name, rec.vintage].filter(Boolean).join(" ") + missMsg + " \u2014 check the fields; if it misread, retake the photo or tap Identify again.";
     }catch(e){ st.textContent = "\u2717 " + e.message + " \u2014 tap Identify to try again."; }
   };
   document.getElementById("save").onclick = ()=>{
