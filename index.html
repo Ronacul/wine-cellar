@@ -576,7 +576,7 @@ function renderForm(){
   document.getElementById("cam").addEventListener("change", e=>handlePhoto(e.target));
   document.getElementById("gal").addEventListener("change", e=>handlePhoto(e.target));
   const AI_PROMPT = "You are a sommelier's assistant. Read this wine label photo and return ONLY a JSON object (no markdown fences, no prose) with these string fields: producer, name (the cuvee or wine name, not the producer), vintage (4-digit year), type (one of: Red, White, Rose, Sparkling, Dessert), region (appellation and country), drinkFrom (4-digit year the wine enters its drinking window), drinkTo (4-digit year to drink by), pairings (comma-separated food pairings), price (estimated current market value in USD, formatted like '~$XX (est.)' — research-grade estimate based on producer, region, vintage, and classification; for icon/collectible wines use secondary-market pricing), notes (grape varieties plus a one-line style summary). Base drinkFrom, drinkTo, pairings and price on your knowledge of this producer, region and vintage; if the exact bottling is unknown, use typical ranges for the style and say so in notes. Use an empty string for anything unreadable.";
-  const GEMINI_MODELS = ["gemini-2.5-flash","gemini-2.0-flash","gemini-2.0-flash-lite"];
+  const GEMINI_MODELS = ["gemini-3.5-flash","gemini-2.5-flash","gemini-3.1-flash-lite-preview"];
   async function callGemini(body, key){
     for(let m = 0; m < GEMINI_MODELS.length; m++){
       const model = GEMINI_MODELS[m];
