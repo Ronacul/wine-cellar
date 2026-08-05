@@ -230,6 +230,32 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
 }
 .section-rule{border:none; border-top:1px solid var(--line); margin:22px 0}
 
+details.collapse{margin:18px 0}
+details.collapse summary{
+  font-family:"IBM Plex Mono",monospace; font-size:11px; text-transform:uppercase;
+  letter-spacing:.08em; color:var(--ink-faint); cursor:pointer; padding:10px 0;
+  list-style:none; display:flex; align-items:center; gap:6px;
+}
+details.collapse summary::-webkit-details-marker{display:none}
+details.collapse summary::before{content:"▸"; font-size:10px; transition:transform .15s}
+details.collapse[open] summary::before{transform:rotate(90deg)}
+details.collapse .collapse-body{padding:12px 0 0}
+
+.history-list{list-style:none; padding:0; margin:0}
+.history-list li{
+  display:flex; justify-content:space-between; align-items:baseline; gap:10px;
+  padding:8px 0; border-bottom:1px solid var(--line); font-size:13px;
+}
+.history-list li:last-child{border-bottom:none}
+.hist-type{
+  font-family:"IBM Plex Mono",monospace; font-size:10px; text-transform:uppercase;
+  letter-spacing:.06em; padding:2px 6px; border-radius:3px; flex:none;
+}
+.hist-type.pull{background:rgba(125,168,123,.15); color:var(--ok)}
+.hist-type.push{background:rgba(192,80,96,.15); color:var(--urgent)}
+.hist-detail{color:var(--ink-dim); flex:1; min-width:0}
+.hist-time{color:var(--ink-faint); font-size:11px; font-family:"IBM Plex Mono",monospace; flex:none; text-align:right}
+
 @media (prefers-reduced-motion: no-preference){
   .card{transition:border-color .15s}
   .card:active{border-color:var(--claret)}
@@ -258,6 +284,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
 /* ================= state ================= */
 const LS_WINES = "cave.wines.v1";
 const LS_CFG   = "cave.config.v1";
+const LS_HIST  = "cave.synchistory.v1";
 let wines = JSON.parse(localStorage.getItem(LS_WINES) || "[]");
 let cfg   = JSON.parse(localStorage.getItem(LS_CFG)   || "{}");
 let tab = "cellar";
@@ -267,6 +294,12 @@ let cellarScrollY = 0;
 let searchQ = "", typeFilter = "", shelfFilter = "", titiOnly = false;
 
 const saveWines = () => localStorage.setItem(LS_WINES, JSON.stringify(wines));
+let syncHistory = JSON.parse(localStorage.getItem(LS_HIST) || "[]");
+function logSync(type, detail){
+  syncHistory.unshift({type, detail, time: new Date().toLocaleString()});
+  if(syncHistory.length > 30) syncHistory.length = 30;
+  localStorage.setItem(LS_HIST, JSON.stringify(syncHistory));
+}
 const saveCfg   = () => localStorage.setItem(LS_CFG, JSON.stringify(cfg));
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 const esc = s => (s??"").toString().replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -715,6 +748,7 @@ async function pushAll(statusEl){
   wines.forEach(w=>{ if(w.imagePath){ delete w.imageData; delete w.imageDirty; } });
   saveWines();
   cfg.lastSync = new Date().toLocaleString(); saveCfg();
+  logSync("push", `${clean.length} wines, ${dirty.length} photo${dirty.length!==1?"s":""}`);
   statusEl.textContent = `✓ Synced ${clean.length} wines at ${cfg.lastSync}`;
 }
 async function pullAll(statusEl){
@@ -730,12 +764,19 @@ async function pullAll(statusEl){
   }
   wines = remote; saveWines();
   cfg.lastSync = new Date().toLocaleString(); saveCfg();
+  logSync("pull", `${wines.length} wines loaded`);
   statusEl.textContent = `✓ Loaded ${wines.length} wines from GitHub.`;
   render();
 }
 
 function renderSync(){
   const notSet = `<span class="tbd">not set</span>`;
+  const histHTML = syncHistory.length
+    ? `<ul class="history-list">${syncHistory.map(h =>
+        `<li><span class="hist-type ${esc(h.type)}">${esc(h.type)}</span><span class="hist-detail">${esc(h.detail)}</span><span class="hist-time">${esc(h.time)}</span></li>`
+      ).join("")}</ul>`
+    : `<div class="note">No sync activity yet.</div>`;
+
   view.innerHTML = `<div class="sheet">
     <h2>Sync with GitHub</h2>
     <button class="btn btn-primary" id="pull">Pull cellar from GitHub</button>
@@ -744,20 +785,30 @@ function renderSync(){
     <hr class="section-rule">
     <button class="btn btn-ghost" id="push">Push cellar to GitHub</button>
     <div class="note">Push uploads new label photos and writes <span class="mono">data/wines.json</span> — overwrites the repo with what's on this device.</div>
-    <hr class="section-rule">
-    <div class="field"><label>GitHub username (owner)</label><input id="c-owner" value="${esc(cfg.owner)}" placeholder="e.g. ronacul" autocapitalize="off">
-      <div class="note">Currently: ${cfg.owner?esc(cfg.owner):notSet}</div></div>
-    <div class="field"><label>Repository name</label><input id="c-repo" value="${esc(cfg.repo)}" placeholder="e.g. wine-cellar" autocapitalize="off">
-      <div class="note">Currently: ${cfg.repo?esc(cfg.repo):notSet}</div></div>
-    <div class="field"><label>Branch</label><input id="c-branch" value="${esc(cfg.branch||"main")}" placeholder="e.g. main" autocapitalize="off">
-      <div class="note">Currently: ${esc(cfg.branch||"main")}</div></div>
-    <div class="field"><label>Personal access token</label><input id="c-token" type="password" value="${esc(cfg.token)}" autocapitalize="off">
-      <div class="note">Fine-grained token with <b>Contents: read &amp; write</b> on this one repo. Stored only in this browser. Currently: ${cfg.token?"a token is saved":notSet}</div>
-    </div>
-    <div class="field"><label>Gemini API key (label scanning)</label><input id="c-gkey" type="password" value="${esc(cfg.gkey)}" autocapitalize="off">
-      <div class="note">Free key from <b>aistudio.google.com</b>. Enables the &#x2728; Identify button on the add-bottle form. Currently: ${cfg.gkey?"a key is saved":notSet}</div>
-    </div>
-    <button class="btn btn-ghost" id="savecfg">Save settings</button>
+
+    <details class="collapse"${syncHistory.length?" open":""}>
+      <summary>Sync history</summary>
+      <div class="collapse-body">${histHTML}</div>
+    </details>
+
+    <details class="collapse">
+      <summary>Settings &amp; API keys</summary>
+      <div class="collapse-body">
+        <div class="field"><label>GitHub username (owner)</label><input id="c-owner" value="${esc(cfg.owner)}" placeholder="e.g. ronacul" autocapitalize="off">
+          <div class="note">Currently: ${cfg.owner?esc(cfg.owner):notSet}</div></div>
+        <div class="field"><label>Repository name</label><input id="c-repo" value="${esc(cfg.repo)}" placeholder="e.g. wine-cellar" autocapitalize="off">
+          <div class="note">Currently: ${cfg.repo?esc(cfg.repo):notSet}</div></div>
+        <div class="field"><label>Branch</label><input id="c-branch" value="${esc(cfg.branch||"main")}" placeholder="e.g. main" autocapitalize="off">
+          <div class="note">Currently: ${esc(cfg.branch||"main")}</div></div>
+        <div class="field"><label>Personal access token</label><input id="c-token" type="password" value="${esc(cfg.token)}" autocapitalize="off">
+          <div class="note">Fine-grained token with <b>Contents: read &amp; write</b> on this one repo. Stored only in this browser. Currently: ${cfg.token?"a token is saved":notSet}</div>
+        </div>
+        <div class="field"><label>Gemini API key (label scanning)</label><input id="c-gkey" type="password" value="${esc(cfg.gkey)}" autocapitalize="off">
+          <div class="note">Free key from <b>aistudio.google.com</b>. Enables the &#x2728; Identify button on the add-bottle form. Currently: ${cfg.gkey?"a key is saved":notSet}</div>
+        </div>
+        <button class="btn btn-ghost" id="savecfg">Save settings</button>
+      </div>
+    </details>
   </div>`;
   const st = document.getElementById("st");
   document.getElementById("savecfg").onclick = ()=>{
