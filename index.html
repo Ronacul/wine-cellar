@@ -256,6 +256,13 @@ details.collapse .collapse-body{padding:12px 0 0}
 .hist-detail{color:var(--ink-dim); flex:1; min-width:0}
 .hist-time{color:var(--ink-faint); font-size:11px; font-family:"IBM Plex Mono",monospace; flex:none; text-align:right}
 
+.changelog{list-style:none; padding:0; margin:0}
+.changelog li{padding:10px 0; border-bottom:1px solid var(--line); font-size:13px; line-height:1.5}
+.changelog li:last-child{border-bottom:none}
+.cl-ver{font-family:"IBM Plex Mono",monospace; font-size:10px; color:var(--gold); text-transform:uppercase; letter-spacing:.06em; display:block; margin-bottom:3px}
+.cl-title{color:var(--ink); font-weight:600}
+.cl-desc{color:var(--ink-dim); font-size:12.5px}
+
 @media (prefers-reduced-motion: no-preference){
   .card{transition:border-color .15s}
   .card:active{border-color:var(--claret)}
@@ -789,6 +796,35 @@ function renderSync(){
     <details class="collapse"${syncHistory.length?" open":""}>
       <summary>Sync history</summary>
       <div class="collapse-body">${histHTML}</div>
+    </details>
+
+    <details class="collapse">
+      <summary>What's new</summary>
+      <div class="collapse-body">
+        <ul class="changelog">
+          <li><span class="cl-ver">Aug 5, 2026</span>
+            <span class="cl-title">Sync history &amp; collapsible settings</span><br>
+            <span class="cl-desc">Push/pull activity is now logged with timestamps. API keys and settings tucked behind a collapsible section to prevent accidental edits.</span></li>
+          <li><span class="cl-ver">Aug 5, 2026</span>
+            <span class="cl-title">Empty field highlighting</span><br>
+            <span class="cl-desc">After AI label identification, fields the model couldn't read get a gold pulse and dot so you know what to fill in manually.</span></li>
+          <li><span class="cl-ver">Aug 5, 2026</span>
+            <span class="cl-title">Gemini model retry &amp; fallback</span><br>
+            <span class="cl-desc">Label scanning now retries on busy errors and falls back through gemini-3.5-flash → 2.5-flash → 3.1-flash-lite. Same free API key.</span></li>
+          <li><span class="cl-ver">Aug 5, 2026</span>
+            <span class="cl-title">Charlie's Burgers &amp; source quick-pick</span><br>
+            <span class="cl-desc">New dropdown on the add/edit form with common sources: Charlie's Burgers (auto-stamps month/year), Wine club, SAQ, LCBO, Gift, Winery.</span></li>
+          <li><span class="cl-ver">Aug 5, 2026</span>
+            <span class="cl-title">Browser back button &amp; scroll restore</span><br>
+            <span class="cl-desc">Tapping a wine pushes browser history — phone back button returns to the cellar. Scroll position is restored so you land where you left off.</span></li>
+          <li><span class="cl-ver">Aug 5, 2026</span>
+            <span class="cl-title">Sync page reordered</span><br>
+            <span class="cl-desc">Pull button at the top, Push further down to prevent accidental overwrites.</span></li>
+          <li><span class="cl-ver">Aug 5, 2026</span>
+            <span class="cl-title">Price estimates for all wines</span><br>
+            <span class="cl-desc">Estimated market prices added to all 39 wines that were missing them, from web research. Label scanning now returns a price estimate too.</span></li>
+        </ul>
+      </div>
     </details>
 
     <details class="collapse">
