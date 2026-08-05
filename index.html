@@ -250,6 +250,7 @@ let cfg   = JSON.parse(localStorage.getItem(LS_CFG)   || "{}");
 let tab = "cellar";
 let editingId = null;
 let detailId = null;
+let cellarScrollY = 0;
 let searchQ = "", typeFilter = "", shelfFilter = "", titiOnly = false;
 
 const saveWines = () => localStorage.setItem(LS_WINES, JSON.stringify(wines));
@@ -424,7 +425,10 @@ function renderListOnly(soonMode){
 }
 function bindCards(){
   view.querySelectorAll(".card").forEach(c => c.addEventListener("click", ()=>{
-    detailId = c.dataset.id; tab="detail"; render(); window.scrollTo(0,0);
+    cellarScrollY = window.scrollY;
+    detailId = c.dataset.id; tab="detail";
+    history.pushState({tab:"detail", id:detailId}, "");
+    render(); window.scrollTo(0,0);
   }));
 }
 
@@ -459,17 +463,17 @@ function renderDetail(){
     <button class="btn btn-ghost" id="back">Back to cellar</button>
   </div>`;
   document.getElementById("edit").onclick = ()=>{ editingId=w.id; tab="add"; render(); };
-  document.getElementById("back").onclick = ()=>{ tab="cellar"; setTab("cellar"); };
+  document.getElementById("back").onclick = ()=>{ history.back(); };
   document.getElementById("drank").onclick = ()=>{
     w.qty = Math.max(0,(parseInt(w.qty)||1)-1);
     if(w.qty===0 && confirm("Last bottle. Remove it from the cellar?")){
-      wines = wines.filter(x=>x.id!==w.id); tab="cellar"; setTab("cellar");
+      wines = wines.filter(x=>x.id!==w.id); history.back();
     }
     saveWines(); render();
   };
   document.getElementById("del").onclick = ()=>{
     if(confirm("Remove this wine entirely?")){
-      wines = wines.filter(x=>x.id!==w.id); saveWines(); tab="cellar"; setTab("cellar");
+      wines = wines.filter(x=>x.id!==w.id); saveWines(); history.back();
     }
   };
 }
@@ -653,6 +657,10 @@ function renderSync(){
   view.innerHTML = `<div class="sheet">
     <h2>Sync with GitHub</h2>
     <div class="sync-status" id="st">${cfg.lastSync? "Last sync: "+esc(cfg.lastSync) : "Not synced yet. Wines are saved on this device either way."}</div>
+    <button class="btn btn-primary" id="push">Push cellar to GitHub</button>
+    <button class="btn btn-ghost" id="pull">Pull cellar from GitHub</button>
+    <div class="note">Push uploads new label photos and writes <span class="mono">data/wines.json</span>. Pull replaces this device's list with the repo copy -- use it when opening the site on a new device.</div>
+    <hr class="section-rule">
     <div class="field"><label>GitHub username (owner)</label><input id="c-owner" value="${esc(cfg.owner)}" placeholder="e.g. ronacul" autocapitalize="off">
       <div class="note">Currently: ${cfg.owner?esc(cfg.owner):notSet}</div></div>
     <div class="field"><label>Repository name</label><input id="c-repo" value="${esc(cfg.repo)}" placeholder="e.g. wine-cellar" autocapitalize="off">
@@ -666,10 +674,6 @@ function renderSync(){
       <div class="note">Free key from <b>aistudio.google.com</b>. Enables the &#x2728; Identify button on the add-bottle form. Currently: ${cfg.gkey?"a key is saved":notSet}</div>
     </div>
     <button class="btn btn-ghost" id="savecfg">Save settings</button>
-    <hr class="section-rule">
-    <button class="btn btn-primary" id="push">Push cellar to GitHub</button>
-    <button class="btn btn-ghost" id="pull">Pull cellar from GitHub</button>
-    <div class="note">Push uploads new label photos and writes <span class="mono">data/wines.json</span>. Pull replaces this device's list with the repo copy -- use it when opening the site on a new device.</div>
   </div>`;
   const st = document.getElementById("st");
   document.getElementById("savecfg").onclick = ()=>{
@@ -712,14 +716,25 @@ const SEED = [{
 }];
 if(!localStorage.getItem(LS_WINES)) { wines = SEED; saveWines(); }
 
-function setTab(t){
+function setTab(t, restoreScroll){
   tab = t;
   document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("active", b.dataset.tab===t));
-  render(); window.scrollTo(0,0);
+  render();
+  if(restoreScroll !== undefined) window.scrollTo(0, restoreScroll);
+  else window.scrollTo(0, 0);
 }
 document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click", ()=>{
   editingId = null; setTab(b.dataset.tab);
 }));
+
+/* browser back/forward button support */
+window.addEventListener("popstate", (e)=>{
+  if(e.state && e.state.tab==="detail"){
+    detailId = e.state.id; tab="detail"; render(); window.scrollTo(0,0);
+  } else {
+    tab="cellar"; setTab("cellar", cellarScrollY);
+  }
+});
 
 (async ()=>{
   render();
