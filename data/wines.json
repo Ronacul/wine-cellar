@@ -29,7 +29,7 @@
     "drinkTo": "2028",
     "pairings": "Charcuterie, pasta with meat sauce, wood-fired pizza, roasted chicken, grilled pork chops",
     "source": "",
-    "price": "",
+    "price": "~$18 (est.)",
     "location": "",
     "notes": "100% Dolcetto. A vibrant, fruit-forward red with bright acidity, dark cherry notes, and a classic bitter almond finish; typical drinking window used for young Dolcetto.",
     "imagePath": "images/ms2ih3pfhr19j.jpg"
@@ -47,7 +47,7 @@
     "drinkTo": "2014",
     "pairings": "grilled steaks, barbecue ribs, burgers, pepperoni pizza, mature cheddar",
     "source": "",
-    "price": "",
+    "price": "~$12 (est.)",
     "location": "",
     "notes": "100% Shiraz. A medium-bodied, approachable wine with ripe plum, blackberry, and subtle spice notes. The drinking window is based on typical ranges for entry-level commercial Australian Shiraz, which is designed for early consumption.",
     "imagePath": "images/ms2ph24mnsfzz.jpg"
@@ -68,7 +68,7 @@
     "titi": true,
     "pairings": "Charcuterie, cold cuts, roasted poultry, simple pork dishes",
     "source": "",
-    "price": "",
+    "price": "~$20 (est.)",
     "location": "",
     "notes": "A traditional blend of Pinot Noir and Gamay. As a light Bourgogne Passetoutgrains intended for youthful consumption, this 1983 vintage is now well past its prime drinking window.",
     "imagePath": "images/ms2pzkigeux4z.jpg"
@@ -89,7 +89,7 @@
     "titi": false,
     "pairings": "Grilled steak, roast lamb, aged cheddar, venison, hearty stews",
     "source": "",
-    "price": "",
+    "price": "~$30 (est.)",
     "location": "",
     "notes": "Bordeaux-style red blend from the Allée Bleue estate (founded 1690), Stellenbosch. Award-winning bottling (Double Platinum, National Wine Challenge Champion, Top 100 SA Wines). Drink window is an estimate for a premium Cape Bordeaux blend of this vintage, not a producer-published figure.",
     "imagePath": "images/6a693529e829da8f.jpg"
@@ -110,7 +110,7 @@
     "titi": true,
     "pairings": "Grilled beef, lamb chops, hearty stews, aged cheeses",
     "source": "",
-    "price": "",
+    "price": "~$12 (est.)",
     "location": "",
     "notes": "100% Cabernet Sauvignon. Produced by Viña Caliterra Ltda., Santiago. Well past typical drinking window for this tier of Chilean Cab.",
     "imagePath": "images/95b523b8caab9a52.jpg"
@@ -131,7 +131,7 @@
     "titi": true,
     "pairings": "Oysters, mussels, grilled fish, shrimp, goat cheese",
     "source": "",
-    "price": "",
+    "price": "~$14 (est.)",
     "location": "",
     "notes": "100% Melon de Bourgogne. Sur lie ageing adds richness. Le Cleray, 12% alc. Past typical window but top Muscadet can surprise with age.",
     "imagePath": "images/5ffb7f93a917f65e.jpg"
@@ -152,7 +152,7 @@
     "titi": true,
     "pairings": "Prime rib, roast lamb, venison, truffled dishes, aged Gruyère",
     "source": "",
-    "price": "",
+    "price": "~$200 (est.)",
     "location": "",
     "notes": "Flagship icon Cabernet Sauvignon from Concha y Toro. One of Chile's most celebrated wines. Well-cellared bottles may still drink, though past optimal window.",
     "imagePath": "images/b0233c4337061f7a.jpg"
@@ -173,7 +173,7 @@
     "titi": true,
     "pairings": "Roast duck, filet mignon, truffled risotto, soft-ripened cheeses",
     "source": "",
-    "price": "",
+    "price": "~$115 (est.)",
     "location": "",
     "notes": "Merlot-dominant Pomerol. JP Moueix. 1989 is a legendary Bordeaux vintage. At or past peak but could still offer pleasure if well stored.",
     "imagePath": "images/d9574b382c9003f3.jpg"
@@ -194,7 +194,7 @@
     "titi": true,
     "pairings": "Roast lamb, braised beef, duck confit, mature Comté",
     "source": "",
-    "price": "",
+    "price": "~$50 (est.)",
     "location": "",
     "notes": "Moueix proprietor. Merlot/Cabernet Franc blend. Past peak drinking window.",
     "imagePath": "images/ff6ef5f32a65dd5e.jpg"
@@ -215,7 +215,7 @@
     "titi": true,
     "pairings": "Roast beef, lamb, game birds, aged hard cheeses",
     "source": "",
-    "price": "",
+    "price": "~$55 (est.)",
     "location": "",
     "notes": "Vicomte P. de Lesquen, proprietor. St-Émilion Grand Cru Classé. Past typical drinking window.",
     "imagePath": "images/9ef34128625ad8c6.jpg"
@@ -236,7 +236,7 @@
     "titi": false,
     "pairings": "BBQ ribs, burgers, pulled pork, pizza, cheddar",
     "source": "",
-    "price": "",
+    "price": "~$16 (est.)",
     "location": "",
     "notes": "100% Baco Noir. 12.5% alc. A fruity, medium-bodied Canadian red best enjoyed young.",
     "imagePath": "images/9d32e2748b004632.jpg"
@@ -257,7 +257,7 @@
     "titi": false,
     "pairings": "Grilled chicken, creamy pasta, lobster, brie",
     "source": "",
-    "price": "",
+    "price": "~$16 (est.)",
     "location": "",
     "notes": "100% Chardonnay. 13.0% alc. Best enjoyed young.",
     "imagePath": "images/d84a8942cacded79.jpg"
@@ -278,7 +278,7 @@
     "titi": true,
     "pairings": "Grilled sausages, pasta alla Norma, braised lamb, pecorino",
     "source": "",
-    "price": "",
+    "price": "~$60 (est.)",
     "location": "",
     "notes": "100% Nero d'Avola. Premium single-vineyard Sicilian red from a top producer. Past peak but could still surprise.",
     "imagePath": "images/0ca9b66601b1cd56.jpg"
@@ -299,7 +299,7 @@
     "titi": false,
     "pairings": "Seafood, grilled fish, light salads, fresh mozzarella",
     "source": "",
-    "price": "",
+    "price": "~$18 (est.)",
     "location": "",
     "notes": "Siracusa DOC Bianco. Named after the nymph Cyane. From Pupillo estate in Syracuse, Sicily.",
     "imagePath": "images/2f152a39e0568fb9.jpg"
@@ -320,7 +320,7 @@
     "titi": true,
     "pairings": "Grilled steak, roast beef, lamb chops, semi-hard cheeses",
     "source": "",
-    "price": "",
+    "price": "~$15 (est.)",
     "location": "",
     "notes": "Grand Vin de Bordeaux. Véronique Barthe, vigneronne. Mis en bouteille au château. HVE certified.",
     "imagePath": "images/5728958bc7987dc4.jpg"
@@ -341,7 +341,7 @@
     "titi": false,
     "pairings": "Foie gras, Munster cheese, spicy Asian cuisine, fruit tarts",
     "source": "",
-    "price": "",
+    "price": "~$22 (est.)",
     "location": "",
     "notes": "100% Gewurztraminer. Réserve. Scherwiller. Aromatic Alsatian white with lychee, rose petal, and spice notes.",
     "imagePath": "images/569abc4fe401ee9f.jpg"
@@ -362,7 +362,7 @@
     "titi": false,
     "pairings": "Grilled meats, pasta with ragù, aubergine parmigiana, aged pecorino",
     "source": "",
-    "price": "",
+    "price": "~$20 (est.)",
     "location": "",
     "notes": "Siracusa DOC Rosso. Likely Nero d'Avola-based. From Pupillo estate in Syracuse, Sicily.",
     "imagePath": "images/2baff62733c8b251.jpg"
@@ -383,7 +383,7 @@
     "titi": true,
     "pairings": "Grilled meats, roast chicken, charcuterie, mild cheeses",
     "source": "",
-    "price": "",
+    "price": "~$12 (est.)",
     "location": "",
     "notes": "Appellation Bordeaux Contrôlée. Caves de Rauzan. Bouteille à la Propriété.",
     "imagePath": "images/2a35e46e0ef61c07.jpg"
@@ -404,7 +404,7 @@
     "titi": true,
     "pairings": "Goat cheese (Crottin de Chavignol), oysters, grilled white fish, asparagus",
     "source": "",
-    "price": "",
+    "price": "~$30 (est.)",
     "location": "",
     "notes": "100% Sauvignon Blanc. Chavignol. Mis en bouteille au Domaine. Well past typical window.",
     "imagePath": "images/9f884716dc75ea4f.jpg"
@@ -425,7 +425,7 @@
     "titi": true,
     "pairings": "Prime rib, slow-braised short ribs, venison, aged cheddar, dark chocolate",
     "source": "",
-    "price": "",
+    "price": "~$670 (est.)",
     "location": "",
     "notes": "Australia's most iconic wine. Predominantly Shiraz. Dedicated to Max Schubert (1915–1994). Bottle No. AV762. Developed from observations of Bordeaux first-growth techniques, matured in new American oak hogsheads. Will age for decades.",
     "imagePath": "images/6f58fd22452331a4.jpg"
@@ -446,7 +446,7 @@
     "titi": true,
     "pairings": "Grilled ribeye, braised short ribs, roast lamb, aged Gouda",
     "source": "",
-    "price": "",
+    "price": "~$160 (est.)",
     "location": "",
     "notes": "Premium Napa Valley Cabernet Sauvignon. 14.4% alc. Should still be drinking well if properly cellared.",
     "imagePath": "images/238f3e2524117f45.jpg"
@@ -467,7 +467,7 @@
     "titi": true,
     "pairings": "Roast duck, filet mignon, lamb, truffled dishes, Époisses",
     "source": "",
-    "price": "",
+    "price": "~$55 (est.)",
     "location": "",
     "notes": "Vauthier, viticulteur à St-Émilion. 1989 is a legendary Bordeaux vintage. At or past peak.",
     "imagePath": "images/6159b421ca3f0561.jpg"
@@ -488,7 +488,7 @@
     "titi": true,
     "pairings": "Lobster thermidor, roast chicken with cream sauce, Comté, scallops",
     "source": "",
-    "price": "",
+    "price": "~$70 (est.)",
     "location": "",
     "notes": "100% Chardonnay. Domaine Faiveley, Nuits-Saint-Georges. Négociant-éleveur. Well past typical window but great Meursault can age.",
     "imagePath": "images/1983ed0096e39282.jpg"
@@ -509,7 +509,7 @@
     "titi": true,
     "pairings": "Braised beef, risotto with truffles, game, aged Parmigiano-Reggiano",
     "source": "",
-    "price": "",
+    "price": "~$50 (est.)",
     "location": "",
     "notes": "100% Nebbiolo. La Morra. 13.5% alc. Estate bottled. Past peak but Barolo can surprise with long life.",
     "imagePath": "images/f16894fdfc01caf8.jpg"
@@ -530,7 +530,7 @@
     "titi": true,
     "pairings": "Grilled lamb, beef empanadas, slow-cooked stews, smoked Gouda",
     "source": "",
-    "price": "",
+    "price": "~$48 (est.)",
     "location": "",
     "notes": "Entre Cordilleras, Peumo Vineyard. Premium single-vineyard Carmenere. Block 27 designates specific terroir within the estate.",
     "imagePath": "images/388795e01d4aae01.jpg"
@@ -551,7 +551,7 @@
     "titi": true,
     "pairings": "Roast lamb, duck confit, beef bourguignon, mature cheeses",
     "source": "",
-    "price": "",
+    "price": "~$55 (est.)",
     "location": "",
     "notes": "Grand Vin de Bordeaux. Mestreguilhem proprietaire, St Laurent des Combes. Mis en bouteille au château. 2016 is an excellent Bordeaux vintage.",
     "imagePath": "images/5f27bb95e49d933d.jpg"
@@ -572,7 +572,7 @@
     "titi": false,
     "pairings": "Braai (SA barbecue), bobotie, grilled sausages, smoked meats",
     "source": "",
-    "price": "",
+    "price": "~$22 (est.)",
     "location": "",
     "notes": "Old vine Pinotage from Piekenierskloof. Allée Bleue estate founded 1690. Eike Daasen.",
     "imagePath": "images/7b27721cfa8883a7.jpg"
@@ -593,7 +593,7 @@
     "titi": true,
     "pairings": "Bistecca alla fiorentina, roast lamb, wild boar ragù, aged Pecorino Toscano",
     "source": "",
-    "price": "",
+    "price": "~$250 (est.)",
     "location": "",
     "notes": "Marchesi Incisa della Rocchetta. Cabernet Sauvignon/Cabernet Franc blend. Italy's original Super Tuscan, Bolgheri's most iconic wine.",
     "imagePath": "images/895c979c43ed0f7e.jpg"
@@ -614,7 +614,7 @@
     "titi": true,
     "pairings": "Braised beef, truffle risotto, osso buco, aged Parmigiano-Reggiano",
     "source": "",
-    "price": "",
+    "price": "~$50 (est.)",
     "location": "",
     "notes": "100% Nebbiolo. La Morra. Estate bottled. Should still be in a fine drinking window.",
     "imagePath": "images/cae16f7862cd15df.jpg"
@@ -635,7 +635,7 @@
     "titi": true,
     "pairings": "Bistecca alla fiorentina, roast lamb, wild boar ragù, aged Pecorino Toscano",
     "source": "",
-    "price": "",
+    "price": "~$475 (est.)",
     "location": "",
     "notes": "Marchesi Incisa della Rocchetta. Cabernet Sauvignon/Cabernet Franc blend. Tenuta San Guido, Bolgheri. Should still be drinking beautifully.",
     "imagePath": "images/32cbf187325b7fbf.jpg"
@@ -656,7 +656,7 @@
     "titi": true,
     "pairings": "Roast lamb, filet mignon, truffle dishes, foie gras, aged Comté",
     "source": "",
-    "price": "",
+    "price": "~$600 (est.)",
     "location": "",
     "notes": "1er Grand Cru Classé A. Héritiers Fourcaud-Laussac. One of Bordeaux's most legendary estates. Predominantly Cabernet Franc and Merlot. At or past peak but iconic bottles can endure.",
     "imagePath": "images/8e2e18cefd800c59.jpg"
@@ -677,7 +677,7 @@
     "titi": true,
     "pairings": "Grilled meats, duck, cassoulet, semi-hard cheeses",
     "source": "",
-    "price": "",
+    "price": "~$18 (est.)",
     "location": "",
     "notes": "Francs Côtes de Bordeaux. Charming label featuring a stag in a beret and marinière. Right Bank Bordeaux blend.",
     "imagePath": "images/fcb35c6f45e19164.jpg"
@@ -698,7 +698,7 @@
     "titi": true,
     "pairings": "Braised beef, risotto with porcini, roast veal, tajarin pasta, aged cheeses",
     "source": "",
-    "price": "",
+    "price": "~$45 (est.)",
     "location": "",
     "notes": "100% Nebbiolo. Pelissero Giorgio, Treiso. Single-vineyard Barbaresco. Young — will benefit from cellaring.",
     "imagePath": "images/534d8dbdf36816c8.jpg"
@@ -719,7 +719,7 @@
     "titi": true,
     "pairings": "Pizza, pasta with tomato sauce, grilled vegetables, light meats",
     "source": "",
-    "price": "",
+    "price": "~$14 (est.)",
     "location": "",
     "notes": "Corvina, Rondinella, Molinara blend. Historic label edition. Drink young.",
     "imagePath": "images/0dcf5924d4fdb4e5.jpg"
@@ -740,7 +740,7 @@
     "titi": true,
     "pairings": "Grilled red meats, pasta with meat ragù, hard cheeses, risotto",
     "source": "",
-    "price": "",
+    "price": "~$32 (est.)",
     "location": "",
     "notes": "Azienda Agricola. Ripasso method — re-fermented on Amarone grape skins for added body and complexity.",
     "imagePath": "images/e959a2d140a137a3.jpg"
@@ -761,7 +761,7 @@
     "titi": false,
     "pairings": "Braised meats, game, polenta taragna, bresaola, aged Bitto cheese",
     "source": "",
-    "price": "",
+    "price": "~$40 (est.)",
     "location": "",
     "notes": "100% Nebbiolo (locally called Chiavennasca). Appassimento method — grapes partially dried before pressing. Rich, complex alpine Nebbiolo.",
     "imagePath": "images/36a52ea408bc2be1.jpg"
@@ -782,7 +782,7 @@
     "titi": true,
     "pairings": "Grilled lamb, orecchiette with sausage, eggplant parmigiana, aged provolone",
     "source": "",
-    "price": "",
+    "price": "~$20 (est.)",
     "location": "",
     "notes": "100% Primitivo. Riserva. Sava, Italy. Full-bodied, rich southern Italian red.",
     "imagePath": "images/de9fdeeada171f7f.jpg"
@@ -803,7 +803,7 @@
     "titi": true,
     "pairings": "Roast pork, goulash, grilled meats, paprika dishes, aged cheeses",
     "source": "",
-    "price": "",
+    "price": "~$25 (est.)",
     "location": "",
     "notes": "100% Cabernet Franc Reserve. Hungarian producer. Label text in Hungarian describes the wine's character.",
     "imagePath": "images/feee35a7da291816.jpg"
@@ -824,7 +824,7 @@
     "titi": true,
     "pairings": "Bistecca alla fiorentina, roast lamb, wild boar, aged Pecorino, truffled dishes",
     "source": "",
-    "price": "",
+    "price": "~$170 (est.)",
     "location": "",
     "notes": "Tenuta Guado al Tasso. Cabernet Sauvignon, Merlot, Cabernet Franc, Petit Verdot blend. Antinori's flagship Bolgheri Super Tuscan.",
     "imagePath": "images/d96c105cdb20ca5c.jpg"
