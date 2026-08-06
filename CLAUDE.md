@@ -37,6 +37,10 @@ Each wine object in `wines.json`:
   "location": "",
   "notes": "Tasting notes, grape varieties",
   "drankDate": null,
+  "rating": null,
+  "drinkNotes": null,
+  "buyAgain": null,
+  "giftedTo": null,
   "imagePath": "images/{id}.jpg"
 }
 ```
@@ -45,7 +49,11 @@ Each wine object in `wines.json`:
 
 - `titi: true` = from Dad's cellar (origin flag + filter in the UI)
 - `fire: true` = icon/prestige/collectible wine (Sassicaia, Cheval Blanc, Penfolds Grange, Grand Cru Burgundy, cult Napa, etc.). Manual toggle + AI auto-detect on label scan.
-- `qty: 0` + `drankDate` = consumed bottle — kept in history, hidden from default cellar view
+- `qty: 0` + `drankDate` = consumed or gifted bottle — kept in history, hidden from default cellar view
+- `rating` (1–5 or null) = user's star rating after drinking. Shown as ★/☆ on cards and detail view.
+- `drinkNotes` (string or null) = tasting notes recorded when the bottle was drunk
+- `buyAgain` (boolean or null) = would buy again toggle, recorded during drink review
+- `giftedTo` (string or null) = if set, bottle was given as a gift rather than drunk. Value is the recipient/occasion. Gifts get 🎁 badge instead of drank styling.
 - `price` uses `~$XX CAD (est.)` for AI-estimated prices vs actual purchase prices (always CAD)
 - `source` uses `CB (mm/yy)` format for Charlie's Burgers shipments. The form splits this into a "CB" text input + separate mm/yy date fields, then recombines on save.
 
@@ -84,19 +92,50 @@ Origins are computed from `source` + `titi` fields by `getOrigin(w)`:
 ### Display helpers (top-level functions)
 - `fmtSource(s)` — formats "CB (02/23)" → "CB · Feb '23" for display
 - `isFire(w)` — checks `w.fire` boolean (prestige/collectible)
-- `isPeak(w)` — checks if wine is approaching or past drink window (urgency)
+- `isPeak(w)` — checks if wine is approaching or past drink window (urgency): `overdue`, `urgent`, or `soon`
 - `isCB(w)` — checks if source starts with "CB"
 - `isDrank(w)` — checks if qty <= 0
+- `isGifted(w)` — checks if `giftedTo` is set (bottle was a gift, not drunk)
 - `getOrigin(w)` — derives origin label from source + titi fields
+- `monthsRemaining(w)` — calculates approximate months until `drinkTo` for countdown
+- `countdownText(mo)` — formats months into "X yr left", "X mo left", "X mo over", "X yr over"
+- `starsHTML(rating, size)` — renders ★/☆ star display for a given 1–5 rating
+- `peakChipHTML(w)` — renders the graduated peak chip(s) with countdown text
+- `windowStatus(w)` — returns `{cls, label, countdown}` with graduated statuses
+
+### Drink-window graduation (peak countdown)
+The `windowStatus()` function returns graduated statuses based on months remaining:
+- **`hold`** — before `drinkFrom` year (grey, "Hold · from YYYY")
+- **`window`** — in window, >12 months left (green, "In window", countdown)
+- **`soon`** — 3–12 months left (gold/amber, "Drink soon", countdown)
+- **`urgent`** — 1–3 months left (orange `--orange:#d4842a`, "Last call", countdown)
+- **`overdue`** — past `drinkTo` (red/urgent, "Past peak", countdown)
+- Countdown text: "X yr left" if >24 months, "X mo left" if 1–24, "X mo/yr over" if past
+- Drink Soon tab sorts by urgency (most urgent first) and groups into sections
+
+### Drink review flow
+When qty hits 0 via the minus button, a review sheet appears:
+- **Choice**: "🍷 Drank it" or "🎁 Gave as gift"
+- **Drank it**: 5-star rating (tappable ★/☆), tasting notes textarea, "Would buy again?" yes/no
+- **Gave as gift**: optional "To whom / occasion" input
+- Both options have "Skip — just mark as gone" to bypass review
+- Review data stored in `rating`, `drinkNotes`, `buyAgain`, `giftedTo` fields
+
+### Unrated bottles nudge
+- Appears as a collapsible `<details>` section at the top of the Drank view
+- Shows bottles with `drankDate` set + no `rating` + no `giftedTo` (drunk but not reviewed)
+- Sorted most-recently-drunk first; tapping opens the detail view
+- Auto-hides when all drunk bottles are rated
+- Gold border to draw attention
 
 ### Cellar view features
 - **Filters**: search, type, shelf, Titi toggle, 🔥 fire toggle
 - **View toggle**: In cave (default, hides drank) / Drank (only qty=0) / All
 - **Sort**: producer, vintage (asc/desc), recently added, drink window
-- **Cards show**: fire 🔥 emoji + chip, peak ⛰️ chip, CB badge, Titi chip, drank styling (faded/greyscale)
+- **Cards show**: fire 🔥 emoji + chip, graduated peak chips with countdown, CB badge, Titi chip, drank styling (faded/greyscale), gift 🎁 chip, star rating on drank cards
 
 ### Stats page
-- Summary pills: wines, bottles, estimated value (CAD), fire count, peak count, drank count + consumed value
+- Summary pills: wines, bottles, estimated value (CAD), fire count, peak count, drank count + consumed value, gifted count
 - 🎲 Random bottle picker ("What should I drink tonight?") — picks from in-cave wines, tappable to detail
 - Bottle-shaped SVG charts by wine type (proportional height)
 - Origin breakdown bar chart (CB, Titi, SAQ, LCBO, etc.)
@@ -143,6 +182,10 @@ For flagging existing wines or when AI identifies from labels:
 - CB source split into text + mm/yy date fields to avoid manual date formatting
 - Segmented toggle (In cave / Drank / All) only appears when drank wines exist
 - Fire toggle on detail view for quick flagging without opening edit form
+- Review sheet on last-bottle removal — captures rating data at the natural moment
+- Gift vs drank choice — different paths for different outcomes, no rating needed for gifts
+- Unrated bottles nudge with gold border — draws eye to bottles awaiting review
+- Graduated peak countdown — color escalation (green → gold → orange → red) communicates urgency at a glance
 
 ### Template literal gotcha
 - `\d{2}` regex inside template `${}` — the `}` is interpreted as closing the template expression
@@ -159,13 +202,15 @@ For flagging existing wines or when AI identifies from labels:
 
 - Dark theme with wine-cellar aesthetic (`--bg:#1c1518`, `--claret:#a03040`, `--gold:#c9a227`)
 - Fire color: `#e8a020` (warm amber gold, distinct from urgent red)
-- Peak color: `var(--warn)` / `#c9a227`
+- Peak color graduated: `var(--ok)` green (in window) → `var(--warn)` gold (drink soon) → `var(--orange)` / `#d4842a` (last call) → `var(--urgent)` red (past peak)
 - Titi color: `var(--titi)` / `#8a7dc9` (purple)
 - CB color: `var(--ok)` / `#7da87b` (green)
+- Gift color: `var(--rose)` / `#c98a8a` (rose)
 - Fonts: Cormorant Garamond (headings), IBM Plex Mono (labels/data), system sans-serif (body)
 - Mobile-first, bottom tab nav with safe-area-inset padding
 - Status messages in mono font, bordered boxes (`.sync-status`)
 - Drank wines: faded opacity (0.45) + greyscale thumbnails
+- Gifted wines: slightly less faded (0.55) + subtle sepia filter instead of full greyscale
 
 ## Changelog location
 
