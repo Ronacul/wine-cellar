@@ -19,6 +19,7 @@
   --line:rgba(239,230,216,.14);
   --ok:#7da87b; --warn:#c9a227; --urgent:#c05060;
   --titi:#8a7dc9;
+  --orange:#d4842a;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-text-size-adjust:100%}
@@ -129,6 +130,8 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
 .band-status.window{color:var(--ok)}
 .band-status.soon{color:var(--warn)}
 .band-status.now{color:var(--urgent)}
+.band-status.urgent{color:var(--orange)}
+.band-status.overdue{color:var(--urgent)}
 .band{
   position:relative; height:6px; border-radius:3px; background:var(--panel2);
   overflow:visible;
@@ -317,6 +320,66 @@ details.collapse .collapse-body{padding:12px 0 0}
 .random-card{background:var(--panel);border:1px solid var(--gold);border-radius:6px;padding:14px;margin:10px 0;cursor:pointer}
 .random-card:active{border-color:var(--claret)}
 
+/* ---------- graduated peak countdown chips ---------- */
+.chip.overdue{color:var(--urgent);border-color:var(--urgent)}
+.chip.last-call{color:var(--orange);border-color:var(--orange)}
+.chip.countdown{font-size:9.5px;color:var(--ink-faint);border:none;padding:2px 4px}
+
+/* ---------- review sheet ---------- */
+.review-sheet{
+  background:var(--panel2);border:1px solid var(--line);border-radius:8px;
+  padding:18px;margin:16px 0;
+}
+.review-sheet h3{
+  font-family:"Cormorant Garamond",serif;font-weight:600;font-size:20px;margin-bottom:14px;
+}
+.review-choice{display:flex;gap:10px;margin-bottom:16px}
+.review-choice button{
+  flex:1;background:var(--panel);border:1px solid var(--line);border-radius:6px;
+  color:var(--ink-dim);padding:14px 10px;font-size:14px;cursor:pointer;text-align:center;
+  transition:border-color .15s,color .15s;
+}
+.review-choice button.selected{color:var(--ink);border-color:var(--claret)}
+.review-choice button:hover{border-color:var(--ink-faint)}
+.star-rating{display:flex;gap:6px;margin:8px 0 12px}
+.star-rating .star{
+  font-size:28px;cursor:pointer;color:var(--ink-faint);transition:color .1s;
+  background:none;border:none;padding:2px;line-height:1;
+}
+.star-rating .star.active{color:var(--gold)}
+.star-rating .star:hover{color:var(--gold)}
+.buy-again-row{display:flex;gap:8px;margin:8px 0 12px}
+.buy-again-row button{
+  flex:1;background:var(--panel);border:1px solid var(--line);border-radius:5px;
+  color:var(--ink-dim);padding:10px;font-size:14px;cursor:pointer;
+}
+.buy-again-row button.selected{color:var(--ok);border-color:var(--ok)}
+
+/* ---------- gift card styling ---------- */
+.card.gifted{opacity:.55}
+.card.gifted .thumb{filter:grayscale(.3) sepia(.15)}
+.chip.gift{color:var(--rose);border-color:var(--rose)}
+
+/* ---------- unrated nudge section ---------- */
+.unrated-section{margin:0 16px 12px}
+.unrated-section summary{
+  font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--gold);
+  cursor:pointer;padding:10px 0;list-style:none;display:flex;align-items:center;gap:6px;
+}
+.unrated-section summary::-webkit-details-marker{display:none}
+.unrated-section summary::before{content:"▸";font-size:10px;transition:transform .15s}
+.unrated-section[open] summary::before{transform:rotate(90deg)}
+.unrated-card{
+  background:var(--panel);border:1px solid var(--gold);border-radius:6px;
+  padding:10px 12px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;gap:10px;
+}
+.unrated-card:active{border-color:var(--claret)}
+.unrated-card .wine-name{font-size:15px}
+.unrated-card .wine-sub{font-size:11px;margin-top:1px}
+
+/* ---------- drank rating stars in cards ---------- */
+.card-stars{font-size:12px;color:var(--gold);margin-top:4px;letter-spacing:1px}
+
 @media (prefers-reduced-motion: no-preference){
   .card{transition:border-color .15s}
   .card:active{border-color:var(--claret)}
@@ -354,6 +417,7 @@ let editingId = null;
 let detailId = null;
 let cellarScrollY = 0;
 let searchQ = "", typeFilter = "", shelfFilter = "", titiOnly = false, fireOnly = false, sortBy = "producer", cellarView = "cave";
+let reviewPending = null; /* wine id when review sheet is open */
 
 const saveWines = () => localStorage.setItem(LS_WINES, JSON.stringify(wines));
 let syncHistory = JSON.parse(localStorage.getItem(LS_HIST) || "[]");
@@ -366,6 +430,7 @@ const saveCfg   = () => localStorage.setItem(LS_CFG, JSON.stringify(cfg));
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 const esc = s => (s??"").toString().replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const YEAR = new Date().getFullYear();
+const MONTH = new Date().getMonth() + 1; /* 1-12 */
 const tbd = v => (v===undefined||v===null||v==="") ? `<span class="tbd">TBD</span>` : esc(v);
 
 /* ================= shelf sections ================= */
@@ -381,15 +446,35 @@ function suggestBinCode(section){
   return prefix + String(next).padStart(2,"0");
 }
 
-/* ================= drink-window logic ================= */
+/* ================= drink-window logic (graduated) ================= */
+function monthsRemaining(w){
+  const to = parseInt(w.drinkTo);
+  if(!to) return null;
+  return (to - YEAR) * 12 - MONTH + 6; /* assuming mid-year for drinkTo */
+}
+function countdownText(mo){
+  if(mo === null) return "";
+  if(mo > 24) return Math.round(mo/12) + " yr left";
+  if(mo >= 1) return mo + " mo left";
+  if(mo <= -24) return Math.round(Math.abs(mo)/12) + " yr over";
+  if(mo < 0) return Math.abs(mo) + " mo over";
+  return "now";
+}
+
 function windowStatus(w){
   const from = parseInt(w.drinkFrom), to = parseInt(w.drinkTo);
-  if(!from && !to) return {cls:"", label:""};
-  if(from && YEAR < from) return {cls:"hold", label:"Hold · from " + from};
-  if(to && YEAR > to)     return {cls:"now",  label:"Past window"};
-  if(to && to - YEAR <= 1) return {cls:"now", label:"Drink now"};
-  if(to && to - YEAR <= 3) return {cls:"soon",label:"Approaching peak"};
-  return {cls:"window", label:"In window"};
+  if(!from && !to) return {cls:"", label:"", countdown:""};
+  if(from && YEAR < from) return {cls:"hold", label:"Hold · from " + from, countdown:""};
+  const mo = monthsRemaining(w);
+  if(to && mo !== null){
+    const cd = countdownText(mo);
+    if(mo < 0) return {cls:"overdue", label:"Past peak", countdown:cd};
+    if(mo <= 3) return {cls:"urgent", label:"Last call", countdown:cd};
+    if(mo <= 12) return {cls:"soon", label:"Drink soon", countdown:cd};
+    return {cls:"window", label:"In window", countdown:cd};
+  }
+  /* has from but no to, and we're past from */
+  return {cls:"window", label:"In window", countdown:""};
 }
 function isOverdue(w){ const to = parseInt(w.drinkTo); return !!to && YEAR > to; }
 function bandHTML(w){
@@ -401,7 +486,7 @@ function bandHTML(w){
   return `<div class="band-wrap">
     <div class="band-labels">
       <span>${from}</span>
-      <span class="band-status ${st.cls}">${st.label}</span>
+      <span class="band-status ${st.cls}">${st.label}${st.countdown ? " · " + st.countdown : ""}</span>
       <span>${to}</span>
     </div>
     <div class="band"><div class="band-fill" style="left:0;right:0"></div>
@@ -416,12 +501,13 @@ function fmtSource(s){
   if(!s) return s;
   const m = s.match(/^CB \((\d{2})\/(\d{2})\)$/);
   if(!m) return s;
-  return "CB · " + SMONTHS[parseInt(m[1])-1] + " ’" + m[2];
+  return "CB · " + SMONTHS[parseInt(m[1])-1] + " '" + m[2];
 }
 function isFire(w){ return !!w.fire; }
-function isPeak(w){ const st = windowStatus(w); return st.cls==="now" || st.cls==="soon"; }
+function isPeak(w){ const st = windowStatus(w); return st.cls==="overdue" || st.cls==="urgent" || st.cls==="soon"; }
 function isCB(w){ return (w.source||"").startsWith("CB"); }
 function isDrank(w){ return (parseInt(w.qty)||1) <= 0; }
+function isGifted(w){ return !!w.giftedTo; }
 function getOrigin(w){
   if(w.titi) return "Titi";
   const s = w.source||"";
@@ -433,6 +519,15 @@ function getOrigin(w){
   if(s.startsWith("Winery")) return "Winery";
   if(s) return s.split(/[( ]/)[0];
   return "Unknown";
+}
+
+/* star display helpers */
+function starsHTML(rating, size){
+  if(!rating) return "";
+  const sz = size || 12;
+  let s = "";
+  for(let i=1;i<=5;i++) s += (i<=rating) ? "★" : "☆";
+  return `<span class="card-stars" style="font-size:${sz}px">${s}</span>`;
 }
 
 /* ================= images ================= */
@@ -465,18 +560,39 @@ const countEl = document.getElementById("count");
 function render(){
   const _inCave = wines.filter(w=>!isDrank(w));
   const _wc = _inCave.length, _bc = _inCave.reduce((n,w)=>n+(parseInt(w.qty)||1),0);
-  const _drankCount = wines.length - _inCave.length;
-  countEl.textContent = (_wc === _bc ? `${_bc} bottles` : `${_wc} wines · ${_bc} bottles`) + (_drankCount ? ` · ${_drankCount} drank` : "");
-  /* update drink-soon badge */
-  const _urgent = wines.filter(w => { const to = parseInt(w.drinkTo); return to && (YEAR > to || to - YEAR <= 3); }).length;
+  const _drankCount = wines.filter(w => isDrank(w) && !isGifted(w)).length;
+  const _giftedCount = wines.filter(w => isDrank(w) && isGifted(w)).length;
+  let countParts = _wc === _bc ? `${_bc} bottles` : `${_wc} wines · ${_bc} bottles`;
+  if(_drankCount) countParts += ` · ${_drankCount} drank`;
+  if(_giftedCount) countParts += ` · ${_giftedCount} gifted`;
+  countEl.textContent = countParts;
+  /* update drink-soon badge — count wines that are urgent/soon/overdue */
+  const _urgentCount = wines.filter(w => {
+    if(isDrank(w)) return false;
+    const st = windowStatus(w);
+    return st.cls==="overdue" || st.cls==="urgent" || st.cls==="soon";
+  }).length;
   const soonBtn = document.querySelector('nav button[data-tab="soon"]');
-  if(soonBtn) soonBtn.innerHTML = `<span>Drink Soon${_urgent ? ` <span class="tab-badge">${_urgent}</span>` : ""}</span>`;
+  if(soonBtn) soonBtn.innerHTML = `<span>Drink Soon${_urgentCount ? ` <span class="tab-badge">${_urgentCount}</span>` : ""}</span>`;
   if(tab==="cellar") renderList(false);
   else if(tab==="soon") renderList(true);
   else if(tab==="add") renderForm();
   else if(tab==="detail") renderDetail();
   else if(tab==="stats") renderStats();
   else if(tab==="sync") renderSync();
+}
+
+function peakChipHTML(w){
+  const st = windowStatus(w);
+  if(!st.cls || st.cls==="hold" || st.cls==="window") {
+    /* in window with countdown */
+    if(st.cls==="window" && st.countdown) return `<span class="chip window" style="color:var(--ok);border-color:var(--ok)">In window</span><span class="chip countdown">${esc(st.countdown)}</span>`;
+    return "";
+  }
+  if(st.cls==="soon") return `<span class="chip peak">${esc(st.label)}</span><span class="chip countdown">${esc(st.countdown)}</span>`;
+  if(st.cls==="urgent") return `<span class="chip last-call">${esc(st.label)}</span><span class="chip countdown">${esc(st.countdown)}</span>`;
+  if(st.cls==="overdue") return `<span class="chip overdue">${esc(st.label)}</span><span class="chip countdown">${esc(st.countdown)}</span>`;
+  return "";
 }
 
 function cardHTML(w){
@@ -486,13 +602,17 @@ function cardHTML(w){
   const tcls = (w.type||"").toLowerCase();
   const subLine = [w.region, fmtSource(w.source)].filter(Boolean).join(" · ");
   const fire = isFire(w);
-  const peak = isPeak(w);
   const drank = isDrank(w);
-  return `<div class="card${drank?" drank":""}" data-id="${w.id}">
+  const gifted = isGifted(w);
+  const cardCls = gifted ? "gifted" : (drank ? "drank" : "");
+  const drankLabel = gifted
+    ? ` <span style="font-size:12px;color:var(--rose);font-family:var(--mono)">· 🎁 gift${w.giftedTo ? " to " + esc(w.giftedTo) : ""}</span>`
+    : (drank ? ` <span style="font-size:12px;color:var(--ink-faint);font-family:var(--mono)">· drank</span>` : "");
+  return `<div class="card${cardCls ? " "+cardCls : ""}" data-id="${w.id}">
     <div class="card-top">
       ${thumb}
       <div class="card-info">
-        <div class="wine-name serif">${fire?"🔥 ":""}${esc(w.producer||"")} ${esc(w.name||"")}${drank?" <span style=\"font-size:12px;color:var(--ink-faint);font-family:var(--mono)\">· drank</span>":""}</div>
+        <div class="wine-name serif">${fire?"🔥 ":""}${esc(w.producer||"")} ${esc(w.name||"")}${drankLabel}</div>
         <div class="wine-sub">${subLine ? esc(subLine) : `<span class="tbd">TBD</span>`}</div>
         <div class="chips">
           ${w.vintage?`<span class="chip vintage">${esc(w.vintage)}</span>`:""}
@@ -502,8 +622,10 @@ function cardHTML(w){
           ${w.titi?`<span class="chip titi">Titi</span>`:""}
           ${isCB(w)?`<span class="chip cb">CB</span>`:""}
           ${fire?`<span class="chip fire">🔥</span>`:""}
-          ${peak&&!drank?`<span class="chip peak">⛰️</span>`:""}
+          ${gifted?`<span class="chip gift">🎁 Gift</span>`:""}
+          ${!drank ? peakChipHTML(w) : ""}
         </div>
+        ${drank && !gifted && w.rating ? starsHTML(w.rating) : ""}
       </div>
     </div>
     ${drank?"":bandHTML(w)}
@@ -556,18 +678,55 @@ function renderList(soonMode){
     </select>` : ""}
   </div>`;
 
+  /* unrated bottles nudge (drank view only, not soonMode) */
+  let unratedHTML = "";
+  if(!soonMode && cellarView==="drank"){
+    const unrated = wines.filter(w => isDrank(w) && w.drankDate && !w.rating && !isGifted(w))
+      .sort((a,b) => (b.drankDate||"").localeCompare(a.drankDate||""));
+    if(unrated.length){
+      const unratedCards = unrated.map(w => {
+        const src = imgSrc(w);
+        const thumbH = src
+          ? `<img src="${esc(src)}" style="width:36px;height:48px;object-fit:cover;border-radius:3px" alt="">`
+          : `<div class="thumb empty" style="width:36px;height:48px;font-size:16px">?</div>`;
+        return `<div class="unrated-card" data-id="${w.id}">
+          ${thumbH}
+          <div style="flex:1;min-width:0">
+            <div class="wine-name serif">${esc(w.producer||"")} ${esc(w.name||"")}</div>
+            <div class="wine-sub">${esc([w.vintage, w.drankDate].filter(Boolean).join(" · "))}</div>
+          </div>
+          <span style="font-size:18px;color:var(--gold)">☆</span>
+        </div>`;
+      }).join("");
+      unratedHTML = `<details class="unrated-section" open>
+        <summary>🍷 Rate these bottles (${unrated.length})</summary>
+        ${unratedCards}
+      </details>`;
+    }
+  }
+
   let body;
   if(soonMode){
+    /* sort by urgency: most urgent (lowest monthsRemaining) first */
     const withWindow = items.filter(w => w.drinkTo);
-    const overdue = withWindow.filter(isOverdue).sort((a,b)=>(a.drinkTo||9999)-(b.drinkTo||9999));
-    const approaching = withWindow.filter(w=>!isOverdue(w)).sort((a,b)=>(a.drinkTo||9999)-(b.drinkTo||9999));
+    withWindow.sort((a,b) => {
+      const ma = monthsRemaining(a) ?? 9999;
+      const mb = monthsRemaining(b) ?? 9999;
+      return ma - mb;
+    });
+    const overdue = withWindow.filter(w => { const st = windowStatus(w); return st.cls==="overdue"; });
+    const urgent = withWindow.filter(w => { const st = windowStatus(w); return st.cls==="urgent"; });
+    const soon = withWindow.filter(w => { const st = windowStatus(w); return st.cls==="soon"; });
+    const inWindow = withWindow.filter(w => { const st = windowStatus(w); return st.cls==="window"; });
     if(!withWindow.length){
       body = `<div class="empty-state"><div class="serif">Nothing with a drink-by window yet.</div>
         Set a "Drink by" year on a bottle and it will show up here.</div>`;
     } else {
       body = "";
-      if(overdue.length) body += `<div class="list"><div class="list-heading overdue">Overdue — drink these first (${overdue.length})</div>${overdue.map(cardHTML).join("")}</div>`;
-      if(approaching.length) body += `<div class="list"><div class="list-heading">Approaching / in window (${approaching.length})</div>${approaching.map(cardHTML).join("")}</div>`;
+      if(overdue.length) body += `<div class="list"><div class="list-heading overdue">Past peak — drink or gift these (${overdue.length})</div>${overdue.map(cardHTML).join("")}</div>`;
+      if(urgent.length) body += `<div class="list"><div class="list-heading" style="color:var(--orange)">Last call — 1–3 months (${urgent.length})</div>${urgent.map(cardHTML).join("")}</div>`;
+      if(soon.length) body += `<div class="list"><div class="list-heading" style="color:var(--warn)">Drink soon — 3–12 months (${soon.length})</div>${soon.map(cardHTML).join("")}</div>`;
+      if(inWindow.length) body += `<div class="list"><div class="list-heading">In window (${inWindow.length})</div>${inWindow.map(cardHTML).join("")}</div>`;
     }
   } else {
     if(sortBy==="vintage-desc") items.sort((a,b)=>(parseInt(b.vintage)||0)-(parseInt(a.vintage)||0));
@@ -581,7 +740,7 @@ function renderList(soonMode){
          Tap <b>+ Bottle</b> below and photograph your first label.</div>`;
   }
 
-  view.innerHTML = toolbar + body;
+  view.innerHTML = toolbar + unratedHTML + body;
 
   document.getElementById("q").addEventListener("input", e=>{ searchQ=e.target.value; renderListOnly(soonMode); });
   document.getElementById("tf").addEventListener("change", e=>{ typeFilter=e.target.value; renderListOnly(soonMode); });
@@ -591,6 +750,13 @@ function renderList(soonMode){
   document.querySelectorAll(".view-toggle button").forEach(b=>b.addEventListener("click", ()=>{ cellarView=b.dataset.cv; renderListOnly(soonMode); }));
   const sortEl = document.getElementById("sort");
   if(sortEl) sortEl.addEventListener("change", e=>{ sortBy=e.target.value; renderListOnly(soonMode); });
+  /* bind unrated cards */
+  view.querySelectorAll(".unrated-card").forEach(c => c.addEventListener("click", ()=>{
+    cellarScrollY = window.scrollY;
+    detailId = c.dataset.id; tab="detail";
+    history.pushState({tab:"detail", id:detailId}, "");
+    render(); window.scrollTo(0,0);
+  }));
   bindCards();
 }
 function renderListOnly(soonMode){
@@ -609,16 +775,134 @@ function bindCards(){
   }));
 }
 
+/* ================= review sheet (drink/gift flow) ================= */
+function showReviewSheet(w){
+  reviewPending = w.id;
+  const reviewArea = document.getElementById("review-area");
+  if(!reviewArea) return;
+  reviewArea.innerHTML = `<div class="review-sheet">
+    <h3 class="serif">Last bottle — what happened?</h3>
+    <div class="review-choice">
+      <button type="button" id="rev-drank">🍷 Drank it</button>
+      <button type="button" id="rev-gift">🎁 Gave as gift</button>
+    </div>
+    <div id="rev-body"></div>
+  </div>`;
+
+  document.getElementById("rev-drank").onclick = ()=>{
+    document.getElementById("rev-drank").classList.add("selected");
+    document.getElementById("rev-gift").classList.remove("selected");
+    document.getElementById("rev-body").innerHTML = `
+      <div class="field"><label>Rating</label>
+        <div class="star-rating" id="star-row">
+          ${[1,2,3,4,5].map(i=>`<button type="button" class="star" data-v="${i}">☆</button>`).join("")}
+        </div>
+      </div>
+      <div class="field"><label>How was it?</label>
+        <textarea id="rev-notes" placeholder="Tasting notes, occasion…" style="background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--ink);padding:10px 12px;font-size:14px;min-height:56px;resize:vertical;width:100%"></textarea>
+      </div>
+      <div class="field"><label>Would buy again?</label>
+        <div class="buy-again-row">
+          <button type="button" class="ba-btn" data-v="yes">👍 Yes</button>
+          <button type="button" class="ba-btn" data-v="no">👎 No</button>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="rev-save">Save review</button>
+      <button class="btn btn-ghost" id="rev-skip">Skip — just mark as gone</button>`;
+    let rating = 0, buyAgain = null;
+    document.querySelectorAll("#star-row .star").forEach(s => {
+      s.onclick = ()=>{
+        rating = parseInt(s.dataset.v);
+        document.querySelectorAll("#star-row .star").forEach((ss,i)=>{
+          ss.textContent = i < rating ? "★" : "☆";
+          ss.classList.toggle("active", i < rating);
+        });
+      };
+    });
+    document.querySelectorAll(".ba-btn").forEach(b => {
+      b.onclick = ()=>{
+        buyAgain = b.dataset.v === "yes";
+        document.querySelectorAll(".ba-btn").forEach(bb=>bb.classList.remove("selected"));
+        b.classList.add("selected");
+      };
+    });
+    document.getElementById("rev-save").onclick = ()=>{
+      w.qty = 0;
+      w.drankDate = new Date().toISOString().slice(0,10);
+      if(rating) w.rating = rating;
+      w.drinkNotes = (document.getElementById("rev-notes").value||"").trim() || null;
+      w.buyAgain = buyAgain;
+      w.giftedTo = null;
+      reviewPending = null;
+      saveWines(); render();
+    };
+    document.getElementById("rev-skip").onclick = ()=>{
+      w.qty = 0;
+      w.drankDate = new Date().toISOString().slice(0,10);
+      reviewPending = null;
+      saveWines(); render();
+    };
+  };
+
+  document.getElementById("rev-gift").onclick = ()=>{
+    document.getElementById("rev-gift").classList.add("selected");
+    document.getElementById("rev-drank").classList.remove("selected");
+    document.getElementById("rev-body").innerHTML = `
+      <div class="field"><label>To whom / occasion (optional)</label>
+        <input id="rev-giftee" placeholder="e.g. Mom's birthday" style="background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--ink);padding:10px 12px;font-size:14px;width:100%">
+      </div>
+      <button class="btn btn-primary" id="rev-save-gift">Save</button>
+      <button class="btn btn-ghost" id="rev-skip-gift">Skip — just mark as gone</button>`;
+    document.getElementById("rev-save-gift").onclick = ()=>{
+      w.qty = 0;
+      w.drankDate = new Date().toISOString().slice(0,10);
+      w.giftedTo = (document.getElementById("rev-giftee").value||"").trim() || "someone";
+      reviewPending = null;
+      saveWines(); render();
+    };
+    document.getElementById("rev-skip-gift").onclick = ()=>{
+      w.qty = 0;
+      w.drankDate = new Date().toISOString().slice(0,10);
+      reviewPending = null;
+      saveWines(); render();
+    };
+  };
+}
+
 function renderDetail(){
   const w = wines.find(x=>x.id===detailId);
   if(!w){ tab="cellar"; return render(); }
   const src = imgSrc(w);
   const st = windowStatus(w);
   const drinkVal = (w.drinkFrom||w.drinkTo)
-    ? `${w.drinkFrom||"—"} – ${w.drinkTo||"—"}${st.label?` <span class="band-status ${st.cls} mono" style="font-size:10px">· ${st.label}</span>`:""}`
+    ? `${w.drinkFrom||"—"} – ${w.drinkTo||"—"}${st.label?` <span class="band-status ${st.cls} mono" style="font-size:10px">· ${st.label}${st.countdown ? " · "+st.countdown : ""}</span>`:""}`
     : null;
   const drank = isDrank(w);
+  const gifted = isGifted(w);
   const peak = isPeak(w);
+
+  /* gift / review info for drank bottles */
+  let drankInfoHTML = "";
+  if(drank && gifted){
+    drankInfoHTML = `<span class="chip gift">🎁 Gift${w.giftedTo && w.giftedTo !== "someone" ? " to " + esc(w.giftedTo) : ""}${w.drankDate ? " · " + w.drankDate : ""}</span>`;
+  } else if(drank){
+    drankInfoHTML = `<span class="chip" style="color:var(--ink-faint)">Drank${w.drankDate?" · "+w.drankDate:""}</span>`;
+    if(w.rating) drankInfoHTML += ` ${starsHTML(w.rating, 14)}`;
+  }
+
+  /* review details for detail view */
+  let reviewDetailHTML = "";
+  if(drank && !gifted){
+    const parts = [];
+    if(w.rating) parts.push(`<dt>Rating</dt><dd>${starsHTML(w.rating, 16)}</dd>`);
+    if(w.drinkNotes) parts.push(`<dt>Tasting notes</dt><dd>${esc(w.drinkNotes)}</dd>`);
+    if(w.buyAgain !== null && w.buyAgain !== undefined) parts.push(`<dt>Buy again?</dt><dd>${w.buyAgain ? "👍 Yes" : "👎 No"}</dd>`);
+    if(parts.length) reviewDetailHTML = `<dl class="spec">${parts.join("")}</dl>`;
+  }
+  if(drank && gifted){
+    reviewDetailHTML = `<dl class="spec"><dt>Gifted to</dt><dd>${esc(w.giftedTo || "someone")}</dd></dl>`;
+  }
+
   view.innerHTML = `<div class="sheet">
     <div class="back-row"><button id="back-top">← Back</button></div>
     ${src?`<img class="detail-photo" src="${esc(src)}" alt="Label photo" crossorigin="anonymous">`:""}
@@ -626,10 +910,11 @@ function renderDetail(){
     <div class="detail-sub">${esc([w.vintage,w.type,w.region].filter(Boolean).join(" · "))}</div>
     <div class="chips" style="margin-bottom:10px">
       ${w.fire?`<span class="chip fire">🔥 Fire</span>`:""}
-      ${peak?`<span class="chip peak">⛰️ ${st.label}</span>`:""}
-      ${drank?`<span class="chip" style="color:var(--ink-faint)">Drank${w.drankDate?" · "+w.drankDate:""}</span>`:""}
+      ${peak && !drank ? peakChipHTML(w) : ""}
+      ${drankInfoHTML}
     </div>
     ${bandHTML(w)}
+    ${reviewDetailHTML}
     <dl class="spec">
       <dt>Drink</dt><dd>${drinkVal ?? `<span class="tbd">TBD</span>`}</dd>
       <dt>Shelf</dt><dd>${tbd(w.shelfSection)}</dd>
@@ -658,6 +943,7 @@ function renderDetail(){
       <dt>Bin/rack</dt><dd>${tbd(w.location)}</dd>
       <dt>Notes</dt><dd>${tbd(w.notes)}</dd>
     </dl>
+    <div id="review-area"></div>
     <div class="recheck-bar">
       <button class="btn btn-ghost" id="recheck-price">✨ Identify / re-check price</button>
     </div>
@@ -735,12 +1021,14 @@ function renderDetail(){
   };
   document.getElementById("qty-minus").onclick = ()=>{
     const prev = parseInt(w.qty)||1;
-    w.qty = Math.max(0, prev - 1);
-    if(w.qty===0){
-      w.drankDate = new Date().toISOString().slice(0,10);
-      saveWines(); render();
+    const newQty = Math.max(0, prev - 1);
+    if(newQty === 0){
+      /* show review flow instead of immediately saving */
+      w.qty = prev; /* keep qty for now; review sheet will set to 0 */
+      showReviewSheet(w);
       return;
     }
+    w.qty = newQty;
     saveWines(); render();
   };
   document.getElementById("qty-plus").onclick = ()=>{
@@ -922,7 +1210,7 @@ function renderForm(){
     const st = document.getElementById("ai-st");
     if(!cfg.gkey){ st.textContent = "Add a free Gemini API key in the Sync tab first (aistudio.google.com)."; return; }
     if(!pendingImage){ st.textContent = "Take or choose a label photo first."; return; }
-    st.textContent = "Reading label\u2026";
+    st.textContent = "Reading label…";
     try{
       const body = {contents:[{parts:[
         {inline_data:{mime_type:"image/jpeg", data:pendingImage.split(",")[1]}},
@@ -934,7 +1222,7 @@ function renderForm(){
       const rec = JSON.parse(text.replace(/```json|```/g,"").trim());
       const set = (id,v)=>{ if(v) document.getElementById(id).value = v; };
       set("f-producer", rec.producer); set("f-name", rec.name); set("f-vintage", rec.vintage);
-      if(rec.type){ const t = rec.type==="Rose" ? "Ros\u00e9" : rec.type; document.getElementById("f-type").value = t; }
+      if(rec.type){ const t = rec.type==="Rose" ? "Rosé" : rec.type; document.getElementById("f-type").value = t; }
       set("f-region", rec.region); set("f-from", rec.drinkFrom); set("f-to", rec.drinkTo);
       set("f-pair", rec.pairings); set("f-price", rec.price);
       const n = document.getElementById("f-notes"); if(rec.notes && !n.value.trim()) n.value = rec.notes;
@@ -960,8 +1248,8 @@ function renderForm(){
       });
 
       const missMsg = missing ? ` (${missing} field${missing>1?"s":""} need${missing>1?"":"s"} attention)` : "";
-      st.textContent = "\u2713 " + [rec.producer, rec.name, rec.vintage].filter(Boolean).join(" ") + missMsg + " \u2014 check the fields; if it misread, retake the photo or tap Identify again.";
-    }catch(e){ st.textContent = "\u2717 " + e.message + " \u2014 tap Identify to try again."; }
+      st.textContent = "✓ " + [rec.producer, rec.name, rec.vintage].filter(Boolean).join(" ") + missMsg + " — check the fields; if it misread, retake the photo or tap Identify again.";
+    }catch(e){ st.textContent = "✗ " + e.message + " — tap Identify to try again."; }
   };
   document.getElementById("save").onclick = ()=>{
     const g = id => document.getElementById(id).value.trim();
@@ -995,10 +1283,12 @@ function renderForm(){
 /* ================= stats page ================= */
 function renderStats(){
   const inCave = wines.filter(w=>!isDrank(w));
-  const drankWines = wines.filter(isDrank);
+  const drankWines = wines.filter(w => isDrank(w) && !isGifted(w));
+  const giftedWines = wines.filter(w => isDrank(w) && isGifted(w));
   const totalW = inCave.length;
   const totalB = inCave.reduce((n,w)=>n+(parseInt(w.qty)||1),0);
   const drankCount = drankWines.length;
+  const giftedCount = giftedWines.length;
 
   /* estimated value — in cave only */
   let totalVal = 0, priced = 0;
@@ -1135,7 +1425,7 @@ function renderStats(){
   /* random picker — only from in-cave wines */
   const drinkable = inCave.filter(w=>{
     const st = windowStatus(w);
-    return st.cls==="window" || st.cls==="now" || st.cls==="soon" || st.cls==="" ;
+    return st.cls==="window" || st.cls==="overdue" || st.cls==="urgent" || st.cls==="soon" || st.cls==="" ;
   });
 
   view.innerHTML = `<div class="sheet">
@@ -1151,8 +1441,9 @@ function renderStats(){
       ${peakCount?`<span class="stat-pill" style="border-color:var(--warn)"><span class="n" style="color:var(--warn)">⛰️ ${peakCount}</span> peak</span>`:""}
       <span class="stat-pill"><span class="n">${priced}</span> priced</span>
     </div>
-    ${drankCount ? `<div class="stats-row" style="justify-content:center;gap:12px;margin-top:4px">
-      <span class="stat-pill"><span class="n">${drankCount}</span> drank</span>
+    ${drankCount || giftedCount ? `<div class="stats-row" style="justify-content:center;gap:12px;margin-top:4px">
+      ${drankCount?`<span class="stat-pill"><span class="n">${drankCount}</span> drank</span>`:""}
+      ${giftedCount?`<span class="stat-pill" style="border-color:var(--rose)"><span class="n" style="color:var(--rose)">🎁 ${giftedCount}</span> gifted</span>`:""}
       ${drankValStr?`<span class="stat-pill"><span class="n">${drankValStr}</span> consumed</span>`:""}
     </div>` : ""}
 
@@ -1192,7 +1483,7 @@ function renderStats(){
             <div>
               <div class="wine-name serif" style="font-size:18px">${pick.fire?"🔥 ":""}${esc(pick.producer||"")} ${esc(pick.name||"")}</div>
               <div class="wine-sub">${esc([pick.vintage,pick.type,pick.region].filter(Boolean).join(" · "))}</div>
-              ${st.label?`<div style="margin-top:4px"><span class="chip ${st.cls}" style="font-size:10px">${esc(st.label)}</span></div>`:""}
+              ${st.label?`<div style="margin-top:4px"><span class="chip ${st.cls}" style="font-size:10px">${esc(st.label)}${st.countdown ? " · " + esc(st.countdown) : ""}</span></div>`:""}
             </div>
           </div>
         </div>
@@ -1303,6 +1594,9 @@ function renderSync(){
       <summary>What's new</summary>
       <div class="collapse-body">
         <ul class="changelog">
+          <li><span class="cl-ver">Aug 7, 2026</span>
+            <span class="cl-title">🍷 Bottle lifecycle: reviews, gifts & peak countdown</span><br>
+            <span class="cl-desc">Graduated peak warnings (green → gold → orange → red) with countdown. Rate bottles when you drink them (⭐ 1–5 + notes + "buy again?"). Gift option when removing from cellar (🎁). Unrated bottles nudge in Drank view.</span></li>
           <li><span class="cl-ver">Aug 6, 2026</span>
             <span class="cl-title">🔥 Fire prestige, ⛰️ Peak window, drank history</span><br>
             <span class="cl-desc">🔥 Fire = icon/collectible wines (Sassicaia, Cheval Blanc…) — manual toggle + AI auto-detect. ⛰️ Peak chip for wines approaching or past their drink window. Drank history: bottles at qty 0 stay in your records with a date stamp; toggle In cave / Drank / All in the cellar. Stats page shows origins (CB, Titi, SAQ…), CB shipments by month, consumed value, and fire/peak counts.</span></li>
@@ -1414,7 +1708,8 @@ function renderSync(){
     const _ic = wines.filter(w=>!isDrank(w));
     const _totalW = _ic.length;
     const _totalB = _ic.reduce((n,w)=>n+(parseInt(w.qty)||1),0);
-    const _drk = wines.filter(isDrank).length;
+    const _drk = wines.filter(w => isDrank(w) && !isGifted(w)).length;
+    const _gift = wines.filter(w => isDrank(w) && isGifted(w)).length;
     const byType = {}; _ic.forEach(w=>{ const t=w.type||"Unknown"; byType[t]=(byType[t]||0)+1; });
     const titiCount = _ic.filter(w=>w.titi).length;
     const fireCount = _ic.filter(isFire).length;
@@ -1429,9 +1724,10 @@ function renderSync(){
       <div class="stats-row">
         ${Object.entries(byType).sort((a,b)=>b[1]-a[1]).map(([t,c])=>`<span class="stat-pill"><span class="n">${c}</span> ${esc(t)}</span>`).join("")}
       </div>
-      ${peakCount||_drk ? `<div class="stats-row">
+      ${peakCount||_drk||_gift ? `<div class="stats-row">
         ${peakCount?`<span class="stat-pill" style="border-color:var(--warn)"><span class="n" style="color:var(--warn)">${peakCount}</span> ⛰️ peak</span>`:""}
         ${_drk?`<span class="stat-pill"><span class="n">${_drk}</span> drank</span>`:""}
+        ${_gift?`<span class="stat-pill" style="border-color:var(--rose)"><span class="n" style="color:var(--rose)">${_gift}</span> 🎁 gifted</span>`:""}
       </div>` : ""}`;
   }
 }
@@ -1450,7 +1746,7 @@ const SEED = [{
   shelfSection:"Keep",
   binCode:"K01",
   titi:false,
-  pairings:"Roast meats, grilled lamb, duck \u00e0 l'orange, pork, wild mushrooms, casseroles, Iberian ham, mature cheeses",
+  pairings:"Roast meats, grilled lamb, duck à l'orange, pork, wild mushrooms, casseroles, Iberian ham, mature cheeses",
   source:"Wine club (monthly)",
   price:"$37.95 + HST",
   location:"",
