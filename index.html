@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>La Cave — Cellar Book</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1c1518">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -263,6 +267,20 @@ details.collapse .collapse-body{padding:12px 0 0}
 .cl-title{color:var(--ink); font-weight:600}
 .cl-desc{color:var(--ink-dim); font-size:12.5px}
 
+/* ---------- detail back & qty controls ---------- */
+.back-row{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.back-row button{background:none;border:none;color:var(--ink-faint);font-family:"IBM Plex Mono",monospace;font-size:13px;cursor:pointer;padding:4px 0}
+.back-row button:hover{color:var(--ink)}
+.qty-row{display:flex;align-items:center;gap:12px;margin:14px 0}
+.qty-btn{background:var(--panel2);border:1px solid var(--line);border-radius:4px;color:var(--ink);width:40px;height:40px;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.qty-btn:active{background:var(--claret);border-color:var(--claret)}
+.qty-display{font-family:"IBM Plex Mono",monospace;font-size:18px;min-width:32px;text-align:center}
+.stats-row{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.stat-pill{font-family:"IBM Plex Mono",monospace;font-size:11px;padding:4px 10px;border:1px solid var(--line);border-radius:12px;color:var(--ink-dim)}
+.stat-pill .n{color:var(--ink);font-weight:500}
+.tab-badge{font-size:9px;background:var(--claret);color:#fff;border-radius:8px;padding:1px 5px;margin-left:3px;vertical-align:top}
+.toolbar select.sort{flex:1 1 100%;font-size:12px;color:var(--ink-faint)}
+
 @media (prefers-reduced-motion: no-preference){
   .card{transition:border-color .15s}
   .card:active{border-color:var(--claret)}
@@ -298,7 +316,7 @@ let tab = "cellar";
 let editingId = null;
 let detailId = null;
 let cellarScrollY = 0;
-let searchQ = "", typeFilter = "", shelfFilter = "", titiOnly = false;
+let searchQ = "", typeFilter = "", shelfFilter = "", titiOnly = false, sortBy = "producer";
 
 const saveWines = () => localStorage.setItem(LS_WINES, JSON.stringify(wines));
 let syncHistory = JSON.parse(localStorage.getItem(LS_HIST) || "[]");
@@ -383,7 +401,12 @@ const view = document.getElementById("view");
 const countEl = document.getElementById("count");
 
 function render(){
-  countEl.textContent = wines.reduce((n,w)=>n+(parseInt(w.qty)||1),0) + " bottles";
+  const _wc = wines.length, _bc = wines.reduce((n,w)=>n+(parseInt(w.qty)||1),0);
+  countEl.textContent = _wc === _bc ? `${_bc} bottles` : `${_wc} wines · ${_bc} bottles`;
+  /* update drink-soon badge */
+  const _urgent = wines.filter(w => { const to = parseInt(w.drinkTo); return to && (YEAR > to || to - YEAR <= 3); }).length;
+  const soonBtn = document.querySelector('nav button[data-tab="soon"]');
+  if(soonBtn) soonBtn.innerHTML = `<span>Drink Soon${_urgent ? ` <span class="tab-badge">${_urgent}</span>` : ""}</span>`;
   if(tab==="cellar") renderList(false);
   else if(tab==="soon") renderList(true);
   else if(tab==="add") renderForm();
@@ -420,7 +443,7 @@ function renderList(soonMode){
   let items = wines.slice();
   if(searchQ){
     const q = searchQ.toLowerCase();
-    items = items.filter(w => [w.producer,w.name,w.region,w.vintage,w.source,w.pairings,w.location,w.binCode]
+    items = items.filter(w => [w.producer,w.name,w.region,w.vintage,w.source,w.pairings,w.location,w.binCode,w.notes]
       .some(f => (f||"").toString().toLowerCase().includes(q)));
   }
   if(typeFilter) items = items.filter(w => w.type===typeFilter);
@@ -438,6 +461,13 @@ function renderList(soonMode){
       ${SHELF_SECTIONS.map(s=>`<option ${shelfFilter===s?"selected":""}>${s}</option>`).join("")}
     </select>
     <button type="button" class="toggle-btn ${titiOnly?"on":""}" id="titi-toggle">Titi ${titiOnly?"✓":""}</button>
+    ${!soonMode ? `<select id="sort" class="sort">
+      <option value="producer" ${sortBy==="producer"?"selected":""}>Sort: Producer A–Z</option>
+      <option value="vintage-desc" ${sortBy==="vintage-desc"?"selected":""}>Sort: Newest vintage</option>
+      <option value="vintage-asc" ${sortBy==="vintage-asc"?"selected":""}>Sort: Oldest vintage</option>
+      <option value="added" ${sortBy==="added"?"selected":""}>Sort: Recently added</option>
+      <option value="window" ${sortBy==="window"?"selected":""}>Sort: Drink window ↑</option>
+    </select>` : ""}
   </div>`;
 
   let body;
@@ -454,7 +484,11 @@ function renderList(soonMode){
       if(approaching.length) body += `<div class="list"><div class="list-heading">Approaching / in window (${approaching.length})</div>${approaching.map(cardHTML).join("")}</div>`;
     }
   } else {
-    items.sort((a,b)=>(a.producer||"").localeCompare(b.producer||""));
+    if(sortBy==="vintage-desc") items.sort((a,b)=>(parseInt(b.vintage)||0)-(parseInt(a.vintage)||0));
+    else if(sortBy==="vintage-asc") items.sort((a,b)=>(parseInt(a.vintage)||0)-(parseInt(b.vintage)||0));
+    else if(sortBy==="added") items.sort((a,b)=>(b.added||"").localeCompare(a.added||""));
+    else if(sortBy==="window") items.sort((a,b)=>(parseInt(a.drinkTo)||9999)-(parseInt(b.drinkTo)||9999));
+    else items.sort((a,b)=>(a.producer||"").localeCompare(b.producer||""));
     body = items.length
       ? `<div class="list">${items.map(cardHTML).join("")}</div>`
       : `<div class="empty-state"><div class="serif">The cellar book is empty.</div>
@@ -467,6 +501,8 @@ function renderList(soonMode){
   document.getElementById("tf").addEventListener("change", e=>{ typeFilter=e.target.value; renderListOnly(soonMode); });
   document.getElementById("sf").addEventListener("change", e=>{ shelfFilter=e.target.value; renderListOnly(soonMode); });
   document.getElementById("titi-toggle").addEventListener("click", ()=>{ titiOnly=!titiOnly; renderListOnly(soonMode); });
+  const sortEl = document.getElementById("sort");
+  if(sortEl) sortEl.addEventListener("change", e=>{ sortBy=e.target.value; renderListOnly(soonMode); });
   bindCards();
 }
 function renderListOnly(soonMode){
@@ -494,6 +530,7 @@ function renderDetail(){
     ? `${w.drinkFrom||"—"} – ${w.drinkTo||"—"}${st.label?` <span class="band-status ${st.cls} mono" style="font-size:10px">· ${st.label}</span>`:""}`
     : null;
   view.innerHTML = `<div class="sheet">
+    <div class="back-row"><button id="back-top">← Back</button></div>
     ${src?`<img class="detail-photo" src="${esc(src)}" alt="Label photo">`:""}
     <div class="detail-name serif">${esc(w.producer||"")} ${esc(w.name||"")}</div>
     <div class="detail-sub">${esc([w.vintage,w.type,w.region].filter(Boolean).join(" · "))}</div>
@@ -506,22 +543,30 @@ function renderDetail(){
       <dt>Serve with</dt><dd>${tbd(w.pairings)}</dd>
       <dt>Source</dt><dd>${tbd(w.source)}</dd>
       <dt>Price</dt><dd>${tbd(w.price)}</dd>
-      <dt>Quantity</dt><dd>${esc(w.qty||1)}</dd>
+      <dt>Quantity</dt><dd>
+        <div class="qty-row">
+          <button class="qty-btn" id="qty-minus">−</button>
+          <span class="qty-display" id="qty-val">${esc(w.qty||1)}</span>
+          <button class="qty-btn" id="qty-plus">+</button>
+        </div>
+      </dd>
       <dt>Bin/rack</dt><dd>${tbd(w.location)}</dd>
       <dt>Notes</dt><dd>${tbd(w.notes)}</dd>
     </dl>
     <button class="btn btn-ghost" id="edit">Edit bottle</button>
-    <button class="btn btn-ghost" id="drank">Drank one — reduce quantity</button>
     <button class="btn btn-danger" id="del">Remove from cellar</button>
-    <button class="btn btn-ghost" id="back">Back to cellar</button>
   </div>`;
   document.getElementById("edit").onclick = ()=>{ editingId=w.id; tab="add"; render(); };
-  document.getElementById("back").onclick = ()=>{ history.back(); };
-  document.getElementById("drank").onclick = ()=>{
+  document.getElementById("back-top").onclick = ()=>{ history.back(); };
+  document.getElementById("qty-minus").onclick = ()=>{
     w.qty = Math.max(0,(parseInt(w.qty)||1)-1);
     if(w.qty===0 && confirm("Last bottle. Remove it from the cellar?")){
-      wines = wines.filter(x=>x.id!==w.id); history.back();
+      wines = wines.filter(x=>x.id!==w.id); saveWines(); history.back(); return;
     }
+    saveWines(); render();
+  };
+  document.getElementById("qty-plus").onclick = ()=>{
+    w.qty = (parseInt(w.qty)||1)+1;
     saveWines(); render();
   };
   document.getElementById("del").onclick = ()=>{
@@ -799,9 +844,17 @@ function renderSync(){
     </details>
 
     <details class="collapse">
+      <summary>Cellar stats</summary>
+      <div class="collapse-body" id="stats-body"></div>
+    </details>
+
+    <details class="collapse">
       <summary>What's new</summary>
       <div class="collapse-body">
         <ul class="changelog">
+          <li><span class="cl-ver">Aug 6, 2026</span>
+            <span class="cl-title">Sort, search &amp; detail-view refinements</span><br>
+            <span class="cl-desc">Cellar sort by producer, vintage, recently added, or drink window. Search now includes notes. Detail view has a back button at top, and +/− buttons for quantity. Drink-soon badge shows count. Cellar stats section added.</span></li>
           <li><span class="cl-ver">Aug 5, 2026</span>
             <span class="cl-title">Sync history &amp; collapsible settings</span><br>
             <span class="cl-desc">Push/pull activity is now logged with timestamps. API keys and settings tucked behind a collapsible section to prevent accidental edits.</span></li>
@@ -863,6 +916,29 @@ function renderSync(){
     document.getElementById("savecfg").click();
     try{ await pullAll(document.getElementById("st")); } catch(e){ document.getElementById("st").textContent = "X " + e.message; }
   };
+  /* populate stats */
+  const statsBody = document.getElementById("stats-body");
+  if(statsBody){
+    const totalW = wines.length;
+    const totalB = wines.reduce((n,w)=>n+(parseInt(w.qty)||1),0);
+    const byType = {}; wines.forEach(w=>{ const t=w.type||"Unknown"; byType[t]=(byType[t]||0)+1; });
+    const titiCount = wines.filter(w=>w.titi).length;
+    const urgentCount = wines.filter(w=>{ const to=parseInt(w.drinkTo); return to && YEAR>to; }).length;
+    const soonCount = wines.filter(w=>{ const to=parseInt(w.drinkTo); return to && !isOverdue(w) && to-YEAR<=3; }).length;
+    statsBody.innerHTML = `
+      <div class="stats-row">
+        <span class="stat-pill"><span class="n">${totalW}</span> wines</span>
+        <span class="stat-pill"><span class="n">${totalB}</span> bottles</span>
+        ${titiCount?`<span class="stat-pill" style="border-color:var(--titi)"><span class="n" style="color:var(--titi)">${titiCount}</span> Titi</span>`:""}
+      </div>
+      <div class="stats-row">
+        ${Object.entries(byType).sort((a,b)=>b[1]-a[1]).map(([t,c])=>`<span class="stat-pill"><span class="n">${c}</span> ${esc(t)}</span>`).join("")}
+      </div>
+      ${urgentCount||soonCount ? `<div class="stats-row">
+        ${urgentCount?`<span class="stat-pill" style="border-color:var(--urgent)"><span class="n" style="color:var(--urgent)">${urgentCount}</span> past window</span>`:""}
+        ${soonCount?`<span class="stat-pill" style="border-color:var(--warn)"><span class="n" style="color:var(--warn)">${soonCount}</span> drink soon</span>`:""}
+      </div>` : ""}`;
+  }
 }
 
 const SEED = [{
