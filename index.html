@@ -80,6 +80,47 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
   outline:2px solid var(--claret); outline-offset:1px;
 }
 
+/* ---------- filter chip bar ---------- */
+.filter-chips{
+  display:flex;gap:6px;flex:1 1 100%;overflow-x:auto;
+  -webkit-overflow-scrolling:touch;padding:2px 0;
+  scrollbar-width:none; /* Firefox */
+}
+.filter-chips::-webkit-scrollbar{display:none}
+.filter-chip{
+  flex:none;font-family:"IBM Plex Mono",monospace;font-size:10.5px;
+  letter-spacing:.04em;padding:5px 10px;border:1px solid var(--line);
+  border-radius:14px;color:var(--ink-faint);cursor:pointer;
+  white-space:nowrap;background:none;transition:all .15s;
+}
+.filter-chip.on{background:rgba(255,255,255,.06)}
+.filter-chip .chip-count{
+  font-size:9px;opacity:.7;margin-left:3px;
+}
+
+/* shelf letter chips */
+.shelf-chips{
+  display:flex;gap:4px;flex:1 1 100%;overflow-x:auto;
+  -webkit-overflow-scrolling:touch;padding:2px 0;
+  scrollbar-width:none;
+}
+.shelf-chips::-webkit-scrollbar{display:none}
+.shelf-chip{
+  flex:none;font-family:"IBM Plex Mono",monospace;font-size:11px;
+  width:28px;height:28px;border:1px solid var(--line);
+  border-radius:4px;color:var(--ink-faint);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  background:none;position:relative;
+}
+.shelf-chip.on{color:var(--ink);border-color:var(--ink);background:rgba(255,255,255,.08)}
+.shelf-chip .shelf-count{
+  position:absolute;top:-4px;right:-4px;
+  font-size:8px;background:var(--claret);color:#fff;
+  border-radius:6px;min-width:14px;height:14px;
+  display:flex;align-items:center;justify-content:center;
+  padding:0 3px;
+}
+
 /* ---------- wine cards ---------- */
 .list{padding:0 16px}
 .list-heading{
@@ -416,7 +457,9 @@ let tab = "cellar";
 let editingId = null;
 let detailId = null;
 let cellarScrollY = 0;
-let searchQ = "", typeFilter = "", shelfFilter = "", titiOnly = false, fireOnly = false, sortBy = "producer", cellarView = "cave";
+let searchQ = "", typeFilter = "", sortBy = "producer", cellarView = "cave";
+let filters = {fire:false, titi:false, cb:false, peak:false, soon:false, past:false};
+let shelfFilters = new Set();
 let reviewPending = null; /* wine id when review sheet is open */
 
 const saveWines = () => localStorage.setItem(LS_WINES, JSON.stringify(wines));
@@ -553,6 +596,29 @@ function imgSrc(w){
   return null;
 }
 
+/* ================= filter count helpers ================= */
+function filterCounts(baseItems){
+  /* count how many wines in baseItems match each filter */
+  return {
+    fire: baseItems.filter(w => isFire(w)).length,
+    titi: baseItems.filter(w => !!w.titi).length,
+    cb: baseItems.filter(w => isCB(w)).length,
+    peak: baseItems.filter(w => isPeak(w)).length,
+    soon: baseItems.filter(w => { const st = windowStatus(w); return st.cls==="soon" || st.cls==="urgent"; }).length,
+    past: baseItems.filter(w => { const st = windowStatus(w); return st.cls==="overdue"; }).length,
+  };
+}
+function shelfCounts(baseItems){
+  const counts = {};
+  baseItems.forEach(w => {
+    if(w.binCode){
+      const letter = w.binCode.charAt(0).toUpperCase();
+      counts[letter] = (counts[letter]||0) + 1;
+    }
+  });
+  return counts;
+}
+
 /* ================= rendering ================= */
 const view = document.getElementById("view");
 const countEl = document.getElementById("count");
@@ -647,23 +713,56 @@ function renderList(soonMode){
       .some(f => (f||"").toString().toLowerCase().includes(q)));
   }
   if(typeFilter) items = items.filter(w => w.type===typeFilter);
-  if(shelfFilter) items = items.filter(w => w.shelfSection===shelfFilter);
-  if(titiOnly) items = items.filter(w => !!w.titi);
-  if(fireOnly) items = items.filter(w => isFire(w));
+
+  /* compute counts for chips BEFORE applying chip filters (so counts reflect the base set) */
+  const fCounts = filterCounts(items);
+  const sCounts = shelfCounts(items);
+  const usedShelves = Object.keys(sCounts).sort();
+
+  /* apply chip filters */
+  if(filters.fire) items = items.filter(w => isFire(w));
+  if(filters.titi) items = items.filter(w => !!w.titi);
+  if(filters.cb) items = items.filter(w => isCB(w));
+  if(filters.peak) items = items.filter(w => isPeak(w));
+  if(filters.soon) items = items.filter(w => { const st = windowStatus(w); return st.cls==="soon" || st.cls==="urgent"; });
+  if(filters.past) items = items.filter(w => { const st = windowStatus(w); return st.cls==="overdue"; });
+  if(shelfFilters.size) items = items.filter(w => w.binCode && shelfFilters.has(w.binCode.charAt(0).toUpperCase()));
 
   const drankExists = wines.some(isDrank);
+
+  /* chip config: key, label, active color */
+  const chipDefs = [
+    {key:"fire", label:"🔥 Fire", color:"#e8a020"},
+    {key:"titi", label:"Titi", color:"var(--titi)"},
+    {key:"cb", label:"CB", color:"var(--ok)"},
+    {key:"peak", label:"⛰️ Peak", color:"var(--warn)"},
+    {key:"soon", label:"⏰ Soon", color:"var(--orange)"},
+    {key:"past", label:"🔴 Past", color:"var(--urgent)"},
+  ];
+
+  const filterChipsHTML = chipDefs.map(d => {
+    const on = filters[d.key];
+    const cnt = fCounts[d.key];
+    const style = on ? `color:${d.color};border-color:${d.color}` : "";
+    return `<button type="button" class="filter-chip${on?" on":""}" data-filter="${d.key}" style="${style}">${d.label}<span class="chip-count">${cnt}</span></button>`;
+  }).join("");
+
+  const shelfChipsHTML = usedShelves.length ? `<div class="shelf-chips">
+    <span style="font-size:10px;color:var(--ink-faint);padding:6px 4px 6px 0;white-space:nowrap">Shelf</span>
+    ${usedShelves.map(letter => {
+      const on = shelfFilters.has(letter);
+      return `<button type="button" class="shelf-chip${on?" on":""}" data-shelf="${letter}">${letter}<span class="shelf-count">${sCounts[letter]}</span></button>`;
+    }).join("")}
+  </div>` : "";
+
   const toolbar = `<div class="toolbar">
     <input type="search" id="q" placeholder="Search the cellar…" value="${esc(searchQ)}">
     <select id="tf">
       <option value="">All types</option>
       ${["Red","White","Rosé","Sparkling","Dessert"].map(t=>`<option ${typeFilter===t?"selected":""}>${t}</option>`).join("")}
     </select>
-    <select id="sf">
-      <option value="">All shelves</option>
-      ${SHELF_SECTIONS.map(s=>`<option ${shelfFilter===s?"selected":""}>${s}</option>`).join("")}
-    </select>
-    <button type="button" class="toggle-btn ${titiOnly?"on":""}" id="titi-toggle">Titi ${titiOnly?"✓":""}</button>
-    <button type="button" class="toggle-btn ${fireOnly?"on":""}" id="fire-toggle" style="${fireOnly?"color:#e8a020;border-color:#e8a020":""}">🔥 ${fireOnly?"✓":""}</button>
+    ${shelfChipsHTML}
+    <div class="filter-chips">${filterChipsHTML}</div>
     ${!soonMode && drankExists ? `<div class="view-toggle">
       <button type="button" class="${cellarView==="cave"?"on":""}" data-cv="cave">In cave</button>
       <button type="button" class="${cellarView==="drank"?"on":""}" data-cv="drank">Drank</button>
@@ -744,9 +843,22 @@ function renderList(soonMode){
 
   document.getElementById("q").addEventListener("input", e=>{ searchQ=e.target.value; renderListOnly(soonMode); });
   document.getElementById("tf").addEventListener("change", e=>{ typeFilter=e.target.value; renderListOnly(soonMode); });
-  document.getElementById("sf").addEventListener("change", e=>{ shelfFilter=e.target.value; renderListOnly(soonMode); });
-  document.getElementById("titi-toggle").addEventListener("click", ()=>{ titiOnly=!titiOnly; renderListOnly(soonMode); });
-  document.getElementById("fire-toggle").addEventListener("click", ()=>{ fireOnly=!fireOnly; renderListOnly(soonMode); });
+
+  /* filter chip bindings */
+  view.querySelectorAll(".filter-chip").forEach(btn => btn.addEventListener("click", ()=>{
+    const key = btn.dataset.filter;
+    filters[key] = !filters[key];
+    renderListOnly(soonMode);
+  }));
+
+  /* shelf chip bindings */
+  view.querySelectorAll(".shelf-chip").forEach(btn => btn.addEventListener("click", ()=>{
+    const letter = btn.dataset.shelf;
+    if(shelfFilters.has(letter)) shelfFilters.delete(letter);
+    else shelfFilters.add(letter);
+    renderListOnly(soonMode);
+  }));
+
   document.querySelectorAll(".view-toggle button").forEach(b=>b.addEventListener("click", ()=>{ cellarView=b.dataset.cv; renderListOnly(soonMode); }));
   const sortEl = document.getElementById("sort");
   if(sortEl) sortEl.addEventListener("change", e=>{ sortBy=e.target.value; renderListOnly(soonMode); });
@@ -1594,6 +1706,9 @@ function renderSync(){
       <summary>What's new</summary>
       <div class="collapse-body">
         <ul class="changelog">
+          <li><span class="cl-ver">Aug 7, 2026</span>
+            <span class="cl-title">🏷️ Unified filter bar & shelf letters</span><br>
+            <span class="cl-desc">Replaced discrete filter buttons with a scrollable chip bar — toggle Fire, Titi, CB, Peak, Soon, Past filters independently. Shelf filter now uses physical shelf letters (A–R) derived from bin codes.</span></li>
           <li><span class="cl-ver">Aug 7, 2026</span>
             <span class="cl-title">🍷 Bottle lifecycle: reviews, gifts & peak countdown</span><br>
             <span class="cl-desc">Graduated peak warnings (green → gold → orange → red) with countdown. Rate bottles when you drink them (⭐ 1–5 + notes + "buy again?"). Gift option when removing from cellar (🎁). Unrated bottles nudge in Drank view.</span></li>
