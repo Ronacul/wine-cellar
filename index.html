@@ -292,6 +292,21 @@ details.collapse .collapse-body{padding:12px 0 0}
 .inline-price button:active{background:var(--claret);color:#fff}
 .recheck-bar{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
 .recheck-bar button{flex:1;min-width:0}
+.chip.fire{color:var(--urgent);border-color:var(--urgent)}
+.chip.cb{color:var(--ok);border-color:var(--ok)}
+.stat-section{margin:24px 0 8px}
+.stat-section-label{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin:22px 0 10px;padding-top:14px;border-top:1px solid var(--line)}
+.bottles-row{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin:12px 0 8px}
+.bottle-item{text-align:center;flex:0 0 auto}
+.bottle-label{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.06em;margin-top:4px}
+.bar-row{display:flex;align-items:center;gap:8px;margin:5px 0}
+.bar-label{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-faint);width:60px;text-align:right;flex:none}
+.bar-track{flex:1;height:20px;background:var(--panel2);border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;min-width:2px}
+.bar-val{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-dim);width:28px;flex:none}
+.vbar-wrap{overflow-x:auto;margin:8px 0;-webkit-overflow-scrolling:touch}
+.random-card{background:var(--panel);border:1px solid var(--gold);border-radius:6px;padding:14px;margin:10px 0;cursor:pointer}
+.random-card:active{border-color:var(--claret)}
 
 @media (prefers-reduced-motion: no-preference){
   .card{transition:border-color .15s}
@@ -312,6 +327,7 @@ details.collapse .collapse-body{padding:12px 0 0}
   <button data-tab="cellar" class="active"><span>Cellar</span></button>
   <button data-tab="soon"><span>Drink Soon</span></button>
   <button data-tab="add"><span>+ Bottle</span></button>
+  <button data-tab="stats"><span>Stats</span></button>
   <button data-tab="sync"><span>Sync</span></button>
 </nav>
 
@@ -328,7 +344,7 @@ let tab = "cellar";
 let editingId = null;
 let detailId = null;
 let cellarScrollY = 0;
-let searchQ = "", typeFilter = "", shelfFilter = "", titiOnly = false, sortBy = "producer";
+let searchQ = "", typeFilter = "", shelfFilter = "", titiOnly = false, fireOnly = false, sortBy = "producer";
 
 const saveWines = () => localStorage.setItem(LS_WINES, JSON.stringify(wines));
 let syncHistory = JSON.parse(localStorage.getItem(LS_HIST) || "[]");
@@ -385,6 +401,17 @@ function bandHTML(w){
   </div>`;
 }
 
+/* ================= display helpers ================= */
+const SMONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function fmtSource(s){
+  if(!s) return s;
+  const m = s.match(/^CB \((\d{2})\/(\d{2})\)$/);
+  if(!m) return s;
+  return "CB · " + SMONTHS[parseInt(m[1])-1] + " ’" + m[2];
+}
+function isFire(w){ const st = windowStatus(w); return st.cls==="now" || st.cls==="soon"; }
+function isCB(w){ return (w.source||"").startsWith("CB"); }
+
 /* ================= images ================= */
 function resizeImage(file){
   return new Promise((resolve,reject)=>{
@@ -423,6 +450,7 @@ function render(){
   else if(tab==="soon") renderList(true);
   else if(tab==="add") renderForm();
   else if(tab==="detail") renderDetail();
+  else if(tab==="stats") renderStats();
   else if(tab==="sync") renderSync();
 }
 
@@ -431,12 +459,13 @@ function cardHTML(w){
   const thumb = src ? `<img class="thumb" src="${esc(src)}" alt="" loading="lazy">`
                     : `<div class="thumb empty">?</div>`;
   const tcls = (w.type||"").toLowerCase();
-  const subLine = [w.region, w.source].filter(Boolean).join(" · ");
+  const subLine = [w.region, fmtSource(w.source)].filter(Boolean).join(" · ");
+  const fire = isFire(w);
   return `<div class="card" data-id="${w.id}">
     <div class="card-top">
       ${thumb}
       <div class="card-info">
-        <div class="wine-name serif">${esc(w.producer||"")} ${esc(w.name||"")}</div>
+        <div class="wine-name serif">${fire?"🔥 ":""}${esc(w.producer||"")} ${esc(w.name||"")}</div>
         <div class="wine-sub">${subLine ? esc(subLine) : `<span class="tbd">TBD</span>`}</div>
         <div class="chips">
           ${w.vintage?`<span class="chip vintage">${esc(w.vintage)}</span>`:""}
@@ -444,6 +473,8 @@ function cardHTML(w){
           ${w.qty>1?`<span class="chip">×${esc(w.qty)}</span>`:""}
           ${w.binCode?`<span class="chip bin">${esc(w.binCode)}</span>`:""}
           ${w.titi?`<span class="chip titi">Titi</span>`:""}
+          ${isCB(w)?`<span class="chip cb">CB</span>`:""}
+          ${fire?`<span class="chip fire">🔥</span>`:""}
         </div>
       </div>
     </div>
@@ -461,6 +492,7 @@ function renderList(soonMode){
   if(typeFilter) items = items.filter(w => w.type===typeFilter);
   if(shelfFilter) items = items.filter(w => w.shelfSection===shelfFilter);
   if(titiOnly) items = items.filter(w => !!w.titi);
+  if(fireOnly) items = items.filter(w => isFire(w));
 
   const toolbar = `<div class="toolbar">
     <input type="search" id="q" placeholder="Search the cellar…" value="${esc(searchQ)}">
@@ -473,6 +505,7 @@ function renderList(soonMode){
       ${SHELF_SECTIONS.map(s=>`<option ${shelfFilter===s?"selected":""}>${s}</option>`).join("")}
     </select>
     <button type="button" class="toggle-btn ${titiOnly?"on":""}" id="titi-toggle">Titi ${titiOnly?"✓":""}</button>
+    <button type="button" class="toggle-btn ${fireOnly?"on":""}" id="fire-toggle" style="${fireOnly?"color:var(--urgent);border-color:var(--urgent)":""}">🔥 ${fireOnly?"✓":""}</button>
     ${!soonMode ? `<select id="sort" class="sort">
       <option value="producer" ${sortBy==="producer"?"selected":""}>Sort: Producer A–Z</option>
       <option value="vintage-desc" ${sortBy==="vintage-desc"?"selected":""}>Sort: Newest vintage</option>
@@ -513,6 +546,7 @@ function renderList(soonMode){
   document.getElementById("tf").addEventListener("change", e=>{ typeFilter=e.target.value; renderListOnly(soonMode); });
   document.getElementById("sf").addEventListener("change", e=>{ shelfFilter=e.target.value; renderListOnly(soonMode); });
   document.getElementById("titi-toggle").addEventListener("click", ()=>{ titiOnly=!titiOnly; renderListOnly(soonMode); });
+  document.getElementById("fire-toggle").addEventListener("click", ()=>{ fireOnly=!fireOnly; renderListOnly(soonMode); });
   const sortEl = document.getElementById("sort");
   if(sortEl) sortEl.addEventListener("change", e=>{ sortBy=e.target.value; renderListOnly(soonMode); });
   bindCards();
@@ -702,6 +736,7 @@ function renderForm(){
   const _cbParts = (w.source||"").match(/\((\d{2})\/(\d{2})\)/);
   const _cbMM = _cbParts ? _cbParts[1] : "";
   const _cbYY = _cbParts ? _cbParts[2] : "";
+  const _srcForInput = _isCB ? "CB" : (w.source||"");
   view.innerHTML = `<div class="sheet">
     <h2>${editingId? "Edit bottle" : "New bottle"}</h2>
     <div class="photo-zone">
@@ -754,7 +789,7 @@ function renderForm(){
           <option value="gift">Gift</option>
           <option value="winery">Winery / cellar door</option>
         </select>
-        <input id="f-source" value="${esc(w.source)}" placeholder="e.g. SAQ / CB / gift">
+        <input id="f-source" value="${esc(_srcForInput)}" placeholder="e.g. SAQ / CB / gift">
         <div class="cb-date-row" id="cb-date-row" style="display:${_isCB?'flex':'none'}">
           <span>CB date:</span>
           <input id="f-cb-mm" inputmode="numeric" maxlength="2" placeholder="mm" value="${_cbMM}">
@@ -894,6 +929,203 @@ function renderForm(){
   if(c) c.onclick = ()=>{ editingId=null; tab="detail"; render(); };
 }
 
+/* ================= stats page ================= */
+function renderStats(){
+  const totalW = wines.length;
+  const totalB = wines.reduce((n,w)=>n+(parseInt(w.qty)||1),0);
+
+  /* estimated value */
+  let totalVal = 0, priced = 0;
+  wines.forEach(w=>{
+    const m = (w.price||"").match(/\$(\d+(?:\.\d+)?)/);
+    if(m){ totalVal += parseFloat(m[1]) * (parseInt(w.qty)||1); priced++; }
+  });
+  const valStr = totalVal ? `~$${Math.round(totalVal).toLocaleString()} CAD` : "—";
+
+  /* by type */
+  const byType = {};
+  wines.forEach(w=>{ const t = w.type||"Unknown"; byType[t] = (byType[t]||0) + (parseInt(w.qty)||1); });
+  const typeOrder = ["Red","White","Sparkling","Rosé","Dessert","Unknown"];
+  const typeColors = {Red:"var(--claret-soft)",White:"var(--gold)",Sparkling:"#a8c0c9","Rosé":"var(--rose)",Dessert:"#c9a8e0",Unknown:"var(--ink-faint)"};
+  const typeSorted = typeOrder.filter(t=>byType[t]).map(t=>({type:t,count:byType[t]}));
+  const maxType = Math.max(...typeSorted.map(t=>t.count),1);
+
+  /* bottle SVG */
+  function bottleSVG(count, color, maxH){
+    const h = Math.max(20, Math.round((count/maxH)*100));
+    const w = 36;
+    const bodyH = h;
+    const neckH = 18;
+    const capH = 6;
+    const totalH = bodyH + neckH + capH + 4;
+    return `<svg width="${w}" height="${totalH+16}" viewBox="0 0 ${w} ${totalH+16}">
+      <rect x="13" y="0" width="10" height="${capH}" rx="2" fill="${color}" opacity=".7"/>
+      <rect x="14" y="${capH}" width="8" height="${neckH}" rx="1" fill="${color}" opacity=".5"/>
+      <path d="M14 ${capH+neckH} Q14 ${capH+neckH+6} 6 ${capH+neckH+10} L6 ${totalH-6} Q6 ${totalH} 10 ${totalH} L${w-10} ${totalH} Q${w-6} ${totalH} ${w-6} ${totalH-6} L${w-6} ${capH+neckH+10} Q${w-14} ${capH+neckH+6} ${w-14} ${capH+neckH} Z" fill="${color}"/>
+    </svg>`;
+  }
+
+  const bottlesHTML = typeSorted.map(t =>
+    `<div class="bottle-item">
+      ${bottleSVG(t.count, typeColors[t.type]||"var(--ink-faint)", maxType)}
+      <div class="bottle-label">${esc(t.type)}</div>
+      <div class="bottle-label" style="color:var(--ink)">${t.count}</div>
+    </div>`
+  ).join("");
+
+  /* vintage spread */
+  const byVintage = {};
+  wines.forEach(w=>{ if(w.vintage){ const v = w.vintage; byVintage[v] = (byVintage[v]||0) + (parseInt(w.qty)||1); } });
+  const vintages = Object.keys(byVintage).sort();
+  const maxVint = Math.max(...Object.values(byVintage),1);
+  const vintHTML = vintages.map(v=>{
+    const pct = Math.round((byVintage[v]/maxVint)*100);
+    return `<div class="bar-row">
+      <span class="bar-label">${esc(v)}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:var(--claret-soft)"></div></div>
+      <span class="bar-val">${byVintage[v]}</span>
+    </div>`;
+  }).join("");
+
+  /* price distribution */
+  const priceBuckets = {"$0–20":0,"$20–40":0,"$40–60":0,"$60–100":0,"$100+":0};
+  const bucketColors = ["var(--ok)","var(--gold)","var(--claret-soft)","var(--rose)","var(--titi)"];
+  wines.forEach(w=>{
+    const m = (w.price||"").match(/\$(\d+(?:\.\d+)?)/);
+    if(m){
+      const p = parseFloat(m[1]);
+      const qty = parseInt(w.qty)||1;
+      if(p<20) priceBuckets["$0–20"]+=qty;
+      else if(p<40) priceBuckets["$20–40"]+=qty;
+      else if(p<60) priceBuckets["$40–60"]+=qty;
+      else if(p<100) priceBuckets["$60–100"]+=qty;
+      else priceBuckets["$100+"]+=qty;
+    }
+  });
+  const maxPrice = Math.max(...Object.values(priceBuckets),1);
+  const priceHTML = Object.entries(priceBuckets).map(([label,cnt],i)=>{
+    const pct = Math.round((cnt/maxPrice)*100);
+    return `<div class="bar-row">
+      <span class="bar-label">${esc(label)}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${bucketColors[i]}"></div></div>
+      <span class="bar-val">${cnt}</span>
+    </div>`;
+  }).join("");
+
+  /* source breakdown */
+  const bySource = {};
+  wines.forEach(w=>{
+    let s = w.source||"Unknown";
+    if(s.startsWith("CB")) s = "CB";
+    else if(s.startsWith("Wine club")) s = "Wine club";
+    bySource[s] = (bySource[s]||0) + (parseInt(w.qty)||1);
+  });
+  const srcSorted = Object.entries(bySource).sort((a,b)=>b[1]-a[1]);
+  const maxSrc = Math.max(...srcSorted.map(s=>s[1]),1);
+  const srcHTML = srcSorted.map(([label,cnt])=>{
+    const pct = Math.round((cnt/maxSrc)*100);
+    const color = label==="CB"?"var(--ok)":label==="Unknown"?"var(--ink-faint)":"var(--claret-soft)";
+    return `<div class="bar-row">
+      <span class="bar-label" style="width:80px">${esc(label)}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
+      <span class="bar-val">${cnt}</span>
+    </div>`;
+  }).join("");
+
+  /* titi vs mine */
+  const titiCount = wines.filter(w=>w.titi).reduce((n,w)=>n+(parseInt(w.qty)||1),0);
+  const mineCount = totalB - titiCount;
+  const titiPct = totalB ? Math.round((titiCount/totalB)*100) : 0;
+  const minePct = 100 - titiPct;
+
+  /* fire wines */
+  const fireWines = wines.filter(isFire);
+  const fireCount = fireWines.reduce((n,w)=>n+(parseInt(w.qty)||1),0);
+
+  /* random picker */
+  const drinkable = wines.filter(w=>{
+    const st = windowStatus(w);
+    return st.cls==="window" || st.cls==="now" || st.cls==="soon" || st.cls==="" ;
+  }).filter(w=>(parseInt(w.qty)||1)>0);
+
+  view.innerHTML = `<div class="sheet">
+    <h2 class="serif">Cellar Stats</h2>
+
+    <div class="stats-row" style="justify-content:center;gap:12px">
+      <span class="stat-pill"><span class="n">${totalW}</span> wines</span>
+      <span class="stat-pill"><span class="n">${totalB}</span> bottles</span>
+      <span class="stat-pill" style="border-color:var(--gold)"><span class="n" style="color:var(--gold)">${valStr}</span></span>
+    </div>
+    <div class="stats-row" style="justify-content:center;gap:12px;margin-top:4px">
+      ${fireCount?`<span class="stat-pill" style="border-color:var(--urgent)"><span class="n" style="color:var(--urgent)">🔥 ${fireCount}</span> drink now</span>`:""}
+      ${titiCount?`<span class="stat-pill" style="border-color:var(--titi)"><span class="n" style="color:var(--titi)">${titiCount}</span> Titi</span>`:""}
+      <span class="stat-pill"><span class="n">${priced}</span> priced</span>
+    </div>
+
+    <div class="stat-section-label">🎲 What should I drink tonight?</div>
+    <div id="random-area">
+      <button class="btn btn-ghost" id="random-btn" style="border-color:var(--gold);color:var(--gold)">🎲 Pick a random bottle</button>
+    </div>
+
+    <div class="stat-section-label">Bottles by type</div>
+    <div class="bottles-row">${bottlesHTML}</div>
+
+    <div class="stat-section-label">Origin</div>
+    <div class="bar-row">
+      <span class="bar-label" style="width:50px">Mine</span>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${minePct}%;background:var(--claret-soft)"></div>
+      </div>
+      <span class="bar-val">${mineCount}</span>
+    </div>
+    <div class="bar-row">
+      <span class="bar-label" style="width:50px;color:var(--titi)">Titi</span>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${titiPct}%;background:var(--titi)"></div>
+      </div>
+      <span class="bar-val">${titiCount}</span>
+    </div>
+
+    <div class="stat-section-label">Price range (CAD)</div>
+    ${priceHTML}
+
+    <div class="stat-section-label">Vintage spread</div>
+    <div class="vbar-wrap">${vintHTML}</div>
+
+    <div class="stat-section-label">Sources</div>
+    ${srcHTML}
+  </div>`;
+
+  /* random picker handler */
+  document.getElementById("random-btn").onclick = ()=>{
+    if(!drinkable.length){ document.getElementById("random-area").innerHTML = `<div class="note">No bottles to pick from!</div>`; return; }
+    const pick = drinkable[Math.floor(Math.random()*drinkable.length)];
+    const src = imgSrc(pick);
+    const st = windowStatus(pick);
+    document.getElementById("random-area").innerHTML = `
+      <div class="random-card" id="random-card">
+        <div style="display:flex;gap:12px;align-items:center">
+          ${src?`<img src="${esc(src)}" style="width:48px;height:64px;object-fit:cover;border-radius:3px" alt="">`:`<div class="thumb empty" style="width:48px;height:64px;font-size:22px">?</div>`}
+          <div>
+            <div class="wine-name serif" style="font-size:18px">${esc(pick.producer||"")} ${esc(pick.name||"")}</div>
+            <div class="wine-sub">${esc([pick.vintage,pick.type,pick.region].filter(Boolean).join(" · "))}</div>
+            ${st.label?`<div style="margin-top:4px"><span class="chip ${st.cls}" style="font-size:10px">${esc(st.label)}</span></div>`:""}
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-ghost" id="random-btn" style="border-color:var(--gold);color:var(--gold)">🎲 Pick another</button>`;
+    document.getElementById("random-card").onclick = ()=>{
+      cellarScrollY = 0; detailId = pick.id; tab="detail";
+      history.pushState({tab:"detail", id:detailId}, "");
+      render(); window.scrollTo(0,0);
+    };
+    document.getElementById("random-btn").onclick = document.getElementById("random-btn").onclick;
+    /* re-bind the new button */
+    const newBtn = document.getElementById("random-btn");
+    newBtn.onclick = ()=>{ renderStats(); document.getElementById("random-btn").click(); };
+  };
+}
+
 const GH = "https://api.github.com";
 function ghHeaders(){ return {"Authorization":"Bearer "+cfg.token, "Accept":"application/vnd.github+json"}; }
 async function ghGetSha(path){
@@ -989,6 +1221,9 @@ function renderSync(){
       <summary>What's new</summary>
       <div class="collapse-body">
         <ul class="changelog">
+          <li><span class="cl-ver">Aug 6, 2026</span>
+            <span class="cl-title">Stats page, fire bottles &amp; CB badge</span><br>
+            <span class="cl-desc">New Stats tab with bottle-shaped type charts, vintage spread, price distribution, source breakdown, and 🎲 random bottle picker. 🔥 fire icon on wines approaching or past their drink window, plus a filter toggle. CB badge on cards. CB source input cleaned up (no more duplicate dates).</span></li>
           <li><span class="cl-ver">Aug 6, 2026</span>
             <span class="cl-title">CB shorthand, price re-check &amp; qty controls</span><br>
             <span class="cl-desc">Charlie's Burgers → CB with separate mm/yy date field. Re-check price from detail view (uses label photo when available) or bulk re-check all prices on sync page. Inline price editing on detail view. +/− qty buttons on add/edit form. All prices now in CAD.</span></li>
