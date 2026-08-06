@@ -102,6 +102,8 @@ Origins are computed from `source` + `titi` fields by `getOrigin(w)`:
 - `starsHTML(rating, size)` — renders ★/☆ star display for a given 1–5 rating
 - `peakChipHTML(w)` — renders the graduated peak chip(s) with countdown text
 - `windowStatus(w)` — returns `{cls, label, countdown}` with graduated statuses
+- `filterCounts(baseItems)` — counts how many wines match each filter chip (before chip filters applied)
+- `shelfCounts(baseItems)` — counts wines per shelf letter from `binCode` first char
 
 ### Drink-window graduation (peak countdown)
 The `windowStatus()` function returns graduated statuses based on months remaining:
@@ -128,10 +130,24 @@ When qty hits 0 via the minus button, a review sheet appears:
 - Auto-hides when all drunk bottles are rated
 - Gold border to draw attention
 
-### Cellar view features
-- **Filters**: search, type, shelf, Titi toggle, 🔥 fire toggle
+### Unified filter bar
+The toolbar uses a chip-based filter system instead of discrete toggle buttons:
+- **Search**: full-text search across producer, name, region, vintage, source, pairings, binCode, notes
+- **Type dropdown**: Red/White/Rosé/Sparkling/Dessert
+- **Shelf chips**: scrollable row of physical shelf letters (A–R) derived from first char of `binCode`. Multiple can be active. Each shows a bottle count badge. Only letters with bottles are rendered.
+- **Filter chips**: scrollable row of toggleable pill chips — each shows a match count:
+  - 🔥 Fire (`#e8a020`) — `isFire(w)`
+  - Titi (`var(--titi)`) — `w.titi`
+  - CB (`var(--ok)`) — `isCB(w)`
+  - ⛰️ Peak (`var(--warn)`) — `isPeak(w)` (overdue, urgent, or soon)
+  - ⏰ Soon (`var(--orange)`) — windowStatus soon or urgent
+  - 🔴 Past (`var(--urgent)`) — windowStatus overdue
 - **View toggle**: In cave (default, hides drank) / Drank (only qty=0) / All
 - **Sort**: producer, vintage (asc/desc), recently added, drink window
+- Counts are computed before applying chip filters so they reflect the base filtered set
+- State: `filters = {fire, titi, cb, peak, soon, past}` object + `shelfFilters = Set()` of letters
+
+### Cellar view features
 - **Cards show**: fire 🔥 emoji + chip, graduated peak chips with countdown, CB badge, Titi chip, drank styling (faded/greyscale), gift 🎁 chip, star rating on drank cards
 
 ### Stats page
