@@ -280,6 +280,18 @@ details.collapse .collapse-body{padding:12px 0 0}
 .stat-pill .n{color:var(--ink);font-weight:500}
 .tab-badge{font-size:9px;background:var(--claret);color:#fff;border-radius:8px;padding:1px 5px;margin-left:3px;vertical-align:top}
 .toolbar select.sort{flex:1 1 100%;font-size:12px;color:var(--ink-faint)}
+.cb-date-row{display:flex;gap:8px;align-items:center;margin-top:6px}
+.cb-date-row input{width:70px;text-align:center;font-family:"IBM Plex Mono",monospace;font-size:13px}
+.cb-date-row span{font-size:12px;color:var(--ink-faint)}
+.qty-mini{display:inline-flex;align-items:center;gap:4px;margin-left:8px;vertical-align:middle}
+.qty-mini button{background:var(--panel2);border:1px solid var(--line);border-radius:3px;color:var(--ink);width:28px;height:28px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+.qty-mini button:active{background:var(--claret);border-color:var(--claret)}
+.inline-price{display:flex;align-items:center;gap:8px}
+.inline-price input{background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--ink);padding:6px 10px;font-size:14px;width:140px}
+.inline-price button{background:var(--panel2);border:1px solid var(--line);border-radius:4px;color:var(--ink-dim);padding:6px 10px;font-size:12px;cursor:pointer;white-space:nowrap}
+.inline-price button:active{background:var(--claret);color:#fff}
+.recheck-bar{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+.recheck-bar button{flex:1;min-width:0}
 
 @media (prefers-reduced-motion: no-preference){
   .card{transition:border-color .15s}
@@ -542,7 +554,12 @@ function renderDetail(){
       <dt>Titi</dt><dd>${w.titi ? "Yes — Dad's cellar" : "No"}</dd>
       <dt>Serve with</dt><dd>${tbd(w.pairings)}</dd>
       <dt>Source</dt><dd>${tbd(w.source)}</dd>
-      <dt>Price</dt><dd>${tbd(w.price)}</dd>
+      <dt>Price</dt><dd>
+        <div class="inline-price">
+          <input id="price-edit" value="${esc(w.price)}" placeholder="e.g. ~$30 CAD (est.)">
+          <button id="price-save">Save</button>
+        </div>
+      </dd>
       <dt>Quantity</dt><dd>
         <div class="qty-row">
           <button class="qty-btn" id="qty-minus">−</button>
@@ -553,11 +570,56 @@ function renderDetail(){
       <dt>Bin/rack</dt><dd>${tbd(w.location)}</dd>
       <dt>Notes</dt><dd>${tbd(w.notes)}</dd>
     </dl>
+    <div class="recheck-bar">
+      <button class="btn btn-ghost" id="recheck-price">✨ Re-check price</button>
+    </div>
+    <div class="sync-status" id="recheck-st" style="display:none"></div>
     <button class="btn btn-ghost" id="edit">Edit bottle</button>
     <button class="btn btn-danger" id="del">Remove from cellar</button>
   </div>`;
   document.getElementById("edit").onclick = ()=>{ editingId=w.id; tab="add"; render(); };
   document.getElementById("back-top").onclick = ()=>{ history.back(); };
+  document.getElementById("price-save").onclick = ()=>{
+    w.price = document.getElementById("price-edit").value.trim();
+    saveWines();
+    document.getElementById("price-save").textContent = "✓ Saved";
+    setTimeout(()=>{ const b = document.getElementById("price-save"); if(b) b.textContent = "Save"; }, 1500);
+  };
+  document.getElementById("recheck-price").onclick = async ()=>{
+    const stEl = document.getElementById("recheck-st");
+    stEl.style.display = "block";
+    if(!cfg.gkey){ stEl.textContent = "Add a Gemini API key in Sync → Settings first."; return; }
+    stEl.textContent = "Checking price…";
+    try{
+      const desc = [w.producer, w.name, w.vintage, w.type, w.region].filter(Boolean).join(", ");
+      const prompt = `You are a wine pricing expert. Estimate the current retail market value in CANADIAN DOLLARS for this wine: ${desc}. Return ONLY a JSON object with one field: price (formatted like '~$XX CAD (est.)' for estimates, or '$XX CAD' if you're confident). Base on producer reputation, region, vintage quality, and current market data.`;
+      let body;
+      const photoSrc = imgSrc(w);
+      if(photoSrc && !photoSrc.startsWith("data:")){
+        /* try to fetch the label photo for a better estimate */
+        try{
+          const imgR = await fetch(photoSrc);
+          if(imgR.ok){
+            const blob = await imgR.blob();
+            const b64 = await new Promise(ok=>{const r=new FileReader();r.onload=()=>ok(r.result.split(",")[1]);r.readAsDataURL(blob);});
+            body = {contents:[{parts:[{inline_data:{mime_type:"image/jpeg",data:b64}},{text:prompt}]}]};
+            stEl.textContent = "Checking price with label photo…";
+          }
+        }catch(e){/* fall through to text-only */}
+      }
+      if(!body) body = {contents:[{parts:[{text:prompt}]}]};
+      const {r} = await callGemini(body, cfg.gkey);
+      const j = await r.json();
+      const text = ((j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts)||[]).map(p=>p.text||"").join("");
+      const rec = JSON.parse(text.replace(/\`\`\`json|\`\`\`/g,"").trim());
+      if(rec.price){
+        const oldPrice = w.price || "(none)";
+        w.price = rec.price; saveWines();
+        document.getElementById("price-edit").value = rec.price;
+        stEl.textContent = "✓ Price updated: " + oldPrice + " → " + rec.price;
+      } else { stEl.textContent = "✗ No price returned."; }
+    }catch(e){ stEl.textContent = "✗ " + e.message; }
+  };
   document.getElementById("qty-minus").onclick = ()=>{
     w.qty = Math.max(0,(parseInt(w.qty)||1)-1);
     if(w.qty===0 && confirm("Last bottle. Remove it from the cellar?")){
@@ -576,11 +638,39 @@ function renderDetail(){
   };
 }
 
+/* ================= Gemini AI ================= */
+const GEMINI_MODELS = ["gemini-3.5-flash","gemini-2.5-flash","gemini-3.1-flash-lite-preview"];
+async function callGemini(body, key, statusEl){
+  for(let m = 0; m < GEMINI_MODELS.length; m++){
+    const model = GEMINI_MODELS[m];
+    for(let attempt = 0; attempt < 3; attempt++){
+      const r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`,
+        {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)}
+      );
+      if(r.ok) return {r, model};
+      if(r.status === 429 || r.status === 503){
+        const wait = (attempt + 1) * 2;
+        if(statusEl) statusEl.textContent = `Model ${model} busy — retry ${attempt+1}/3 in ${wait}s…`;
+        await new Promise(ok => setTimeout(ok, wait * 1000));
+        continue;
+      }
+      if(r.status === 404 && m < GEMINI_MODELS.length - 1) break;
+      throw new Error("Gemini " + r.status + ": " + (await r.text()).slice(0,140));
+    }
+  }
+  throw new Error("All models busy — try again in a minute.");
+}
+
 let pendingImage = null;
 function renderForm(){
   const w = editingId ? wines.find(x=>x.id===editingId) : {};
   pendingImage = w && w.imageData ? w.imageData : null;
   const existingSrc = w ? imgSrc(w) : null;
+  const _isCB = (w.source||"").startsWith("CB");
+  const _cbParts = (w.source||"").match(/\((\d{2})\/(\d{2})\)/);
+  const _cbMM = _cbParts ? _cbParts[1] : "";
+  const _cbYY = _cbParts ? _cbParts[2] : "";
   view.innerHTML = `<div class="sheet">
     <h2>${editingId? "Edit bottle" : "New bottle"}</h2>
     <div class="photo-zone">
@@ -603,7 +693,7 @@ function renderForm(){
       <div class="field"><label>Type</label><select id="f-type">
         ${["","Red","White","Rosé","Sparkling","Dessert"].map(t=>`<option ${w.type===t?"selected":""}>${t}</option>`).join("")}
       </select></div>
-      <div class="field"><label>Qty</label><input id="f-qty" inputmode="numeric" value="${esc(w.qty||1)}"></div>
+      <div class="field"><label>Qty <span class="qty-mini"><button type="button" id="fq-minus">−</button><button type="button" id="fq-plus">+</button></span></label><input id="f-qty" inputmode="numeric" value="${esc(w.qty||1)}"></div>
     </div>
     <div class="field"><label>Region / appellation</label><input id="f-region" value="${esc(w.region)}" placeholder="e.g. Bandol, Provence"></div>
     <div class="row2">
@@ -626,16 +716,22 @@ function renderForm(){
       <div class="field"><label>Source</label>
         <select id="f-source-pick">
           <option value="">— pick or type below —</option>
-          <option value="charlies">Charlie's Burgers (monthly)</option>
+          <option value="cb">CB (Charlie's Burgers)</option>
           <option value="wineclub">Wine club (monthly)</option>
           <option value="saq">SAQ</option>
           <option value="lcbo">LCBO</option>
           <option value="gift">Gift</option>
           <option value="winery">Winery / cellar door</option>
         </select>
-        <input id="f-source" value="${esc(w.source)}" placeholder="e.g. SAQ / winery / gift">
+        <input id="f-source" value="${esc(w.source)}" placeholder="e.g. SAQ / CB / gift">
+        <div class="cb-date-row" id="cb-date-row" style="display:${_isCB?'flex':'none'}">
+          <span>CB date:</span>
+          <input id="f-cb-mm" inputmode="numeric" maxlength="2" placeholder="mm" value="${_cbMM}">
+          <span>/</span>
+          <input id="f-cb-yy" inputmode="numeric" maxlength="2" placeholder="yy" value="${_cbYY}">
+        </div>
       </div>
-      <div class="field"><label>Price</label><input id="f-price" value="${esc(w.price)}" placeholder="e.g. $42"></div>
+      <div class="field"><label>Price</label><input id="f-price" value="${esc(w.price)}" placeholder="e.g. $42 CAD"></div>
     </div>
     <div class="field"><label>Bin / rack location</label><input id="f-loc" value="${esc(w.location)}" placeholder="e.g. A3"></div>
     <div class="field"><label>Notes</label><textarea id="f-notes" placeholder="Tasting notes, occasion, who recommended it…">${esc(w.notes)}</textarea></div>
@@ -649,18 +745,40 @@ function renderForm(){
     document.getElementById("f-bincode").value = suggestBinCode(section);
   };
 
+  /* qty +/- buttons */
+  document.getElementById("fq-minus").addEventListener("click", ()=>{
+    const el = document.getElementById("f-qty");
+    el.value = Math.max(1, (parseInt(el.value)||1) - 1);
+  });
+  document.getElementById("fq-plus").addEventListener("click", ()=>{
+    const el = document.getElementById("f-qty");
+    el.value = (parseInt(el.value)||1) + 1;
+  });
+
+  /* source quick-pick */
+  const cbDateRow = document.getElementById("cb-date-row");
+  const srcInput = document.getElementById("f-source");
+  const showCbDate = () => { cbDateRow.style.display = srcInput.value.startsWith("CB") ? "flex" : "none"; };
+  srcInput.addEventListener("input", showCbDate);
+
   document.getElementById("f-source-pick").addEventListener("change", (e)=>{
     const v = e.target.value;
-    const src = document.getElementById("f-source");
-    const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
     const now = new Date();
-    const monthYear = MONTHS[now.getMonth()] + " " + now.getFullYear();
-    const map = {
-      charlies: "Charlie's Burgers (" + monthYear + ")",
-      wineclub: "Wine club (" + monthYear + ")",
-      saq: "SAQ", lcbo: "LCBO", gift: "Gift", winery: "Winery"
-    };
-    if(map[v]) src.value = map[v];
+    const mm = String(now.getMonth()+1).padStart(2,"0");
+    const yy = String(now.getFullYear()).slice(2);
+    if(v === "cb"){
+      srcInput.value = "CB";
+      document.getElementById("f-cb-mm").value = mm;
+      document.getElementById("f-cb-yy").value = yy;
+      cbDateRow.style.display = "flex";
+    } else {
+      const map = {
+        wineclub: "Wine club (" + mm + "/" + yy + ")",
+        saq: "SAQ", lcbo: "LCBO", gift: "Gift", winery: "Winery"
+      };
+      if(map[v]) srcInput.value = map[v];
+      cbDateRow.style.display = "none";
+    }
     e.target.selectedIndex = 0;
   });
 
@@ -672,31 +790,7 @@ function renderForm(){
   };
   document.getElementById("cam").addEventListener("change", e=>handlePhoto(e.target));
   document.getElementById("gal").addEventListener("change", e=>handlePhoto(e.target));
-  const AI_PROMPT = "You are a sommelier's assistant. Read this wine label photo and return ONLY a JSON object (no markdown fences, no prose) with these string fields: producer, name (the cuvee or wine name, not the producer), vintage (4-digit year), type (one of: Red, White, Rose, Sparkling, Dessert), region (appellation and country), drinkFrom (4-digit year the wine enters its drinking window), drinkTo (4-digit year to drink by), pairings (comma-separated food pairings), price (estimated current market value in USD, formatted like '~$XX (est.)' — research-grade estimate based on producer, region, vintage, and classification; for icon/collectible wines use secondary-market pricing), notes (grape varieties plus a one-line style summary). Base drinkFrom, drinkTo, pairings and price on your knowledge of this producer, region and vintage; if the exact bottling is unknown, use typical ranges for the style and say so in notes. Use an empty string for anything unreadable.";
-  const GEMINI_MODELS = ["gemini-3.5-flash","gemini-2.5-flash","gemini-3.1-flash-lite-preview"];
-  async function callGemini(body, key){
-    for(let m = 0; m < GEMINI_MODELS.length; m++){
-      const model = GEMINI_MODELS[m];
-      for(let attempt = 0; attempt < 3; attempt++){
-        const r = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`,
-          {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)}
-        );
-        if(r.ok) return {r, model};
-        if(r.status === 429 || r.status === 503){
-          const wait = (attempt + 1) * 2;
-          document.getElementById("ai-st").textContent =
-            `Model ${model} busy \u2014 retry ${attempt+1}/3 in ${wait}s\u2026`;
-          await new Promise(ok => setTimeout(ok, wait * 1000));
-          continue;
-        }
-        if(r.status === 404 && m < GEMINI_MODELS.length - 1) break; // model doesn't exist, try next
-        throw new Error("Gemini " + r.status + ": " + (await r.text()).slice(0,140));
-      }
-    }
-    throw new Error("All models busy \u2014 try again in a minute.");
-  }
-
+  const AI_PROMPT = "You are a sommelier's assistant. Read this wine label photo and return ONLY a JSON object (no markdown fences, no prose) with these string fields: producer, name (the cuvee or wine name, not the producer), vintage (4-digit year), type (one of: Red, White, Rose, Sparkling, Dessert), region (appellation and country), drinkFrom (4-digit year the wine enters its drinking window), drinkTo (4-digit year to drink by), pairings (comma-separated food pairings), price (estimated current market value in CANADIAN DOLLARS, formatted like '~$XX CAD (est.)' — research-grade estimate based on producer, region, vintage, and classification; for icon/collectible wines use secondary-market pricing), notes (grape varieties plus a one-line style summary). Base drinkFrom, drinkTo, pairings and price on your knowledge of this producer, region and vintage; if the exact bottling is unknown, use typical ranges for the style and say so in notes. Use an empty string for anything unreadable.";
   document.getElementById("identify").onclick = async ()=>{
     const st = document.getElementById("ai-st");
     if(!cfg.gkey){ st.textContent = "Add a free Gemini API key in the Sync tab first (aistudio.google.com)."; return; }
@@ -707,7 +801,7 @@ function renderForm(){
         {inline_data:{mime_type:"image/jpeg", data:pendingImage.split(",")[1]}},
         {text: AI_PROMPT}
       ]}]};
-      const {r, model} = await callGemini(body, cfg.gkey);
+      const {r, model} = await callGemini(body, cfg.gkey, st);
       const j = await r.json();
       const text = ((j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts)||[]).map(p=>p.text||"").join("");
       const rec = JSON.parse(text.replace(/```json|```/g,"").trim());
@@ -744,6 +838,14 @@ function renderForm(){
   };
   document.getElementById("save").onclick = ()=>{
     const g = id => document.getElementById(id).value.trim();
+    /* combine CB source with date fields */
+    let sourceVal = g("f-source");
+    if(sourceVal === "CB" || sourceVal.startsWith("CB (")){
+      const cbMM = g("f-cb-mm").padStart(2,"0");
+      const cbYY = g("f-cb-yy");
+      if(cbMM && cbYY) sourceVal = `CB (${cbMM}/${cbYY})`;
+      else sourceVal = "CB";
+    }
     const rec = editingId ? wines.find(x=>x.id===editingId) : {id:uid(), added:new Date().toISOString().slice(0,10)};
     Object.assign(rec, {
       producer:g("f-producer"), name:g("f-name"), vintage:g("f-vintage"),
@@ -751,7 +853,7 @@ function renderForm(){
       region:g("f-region"), drinkFrom:g("f-from"), drinkTo:g("f-to"),
       shelfSection:document.getElementById("f-shelf").value, binCode:g("f-bincode"),
       titi:document.getElementById("f-titi").checked,
-      pairings:g("f-pair"), source:g("f-source"), price:g("f-price"),
+      pairings:g("f-pair"), source:sourceVal, price:g("f-price"),
       location:g("f-loc"), notes:g("f-notes")
     });
     if(pendingImage){ rec.imageData = pendingImage; rec.imagePath = rec.imagePath || null; rec.imageDirty = true; }
@@ -838,6 +940,11 @@ function renderSync(){
     <button class="btn btn-ghost" id="push">Push cellar to GitHub</button>
     <div class="note">Push uploads new label photos and writes <span class="mono">data/wines.json</span> — overwrites the repo with what's on this device.</div>
 
+    <hr class="section-rule">
+    <button class="btn btn-ghost" id="recheck-all" style="border-color:var(--gold);color:var(--gold)">✨ Re-check all prices (AI)</button>
+    <div class="note">Uses Gemini to estimate prices in CAD for all wines. Processes ~1 wine/sec. You can stop anytime.</div>
+    <div class="sync-status" id="recheck-all-st" style="display:none"></div>
+
     <details class="collapse"${syncHistory.length?" open":""}>
       <summary>Sync history</summary>
       <div class="collapse-body">${histHTML}</div>
@@ -852,6 +959,9 @@ function renderSync(){
       <summary>What's new</summary>
       <div class="collapse-body">
         <ul class="changelog">
+          <li><span class="cl-ver">Aug 6, 2026</span>
+            <span class="cl-title">CB shorthand, price re-check &amp; qty controls</span><br>
+            <span class="cl-desc">Charlie's Burgers → CB with separate mm/yy date field. Re-check price from detail view (uses label photo when available) or bulk re-check all prices on sync page. Inline price editing on detail view. +/− qty buttons on add/edit form. All prices now in CAD.</span></li>
           <li><span class="cl-ver">Aug 6, 2026</span>
             <span class="cl-title">Sort, search &amp; detail-view refinements</span><br>
             <span class="cl-desc">Cellar sort by producer, vintage, recently added, or drink window. Search now includes notes. Detail view has a back button at top, and +/− buttons for quantity. Drink-soon badge shows count. Cellar stats section added.</span></li>
@@ -916,6 +1026,38 @@ function renderSync(){
     document.getElementById("savecfg").click();
     try{ await pullAll(document.getElementById("st")); } catch(e){ document.getElementById("st").textContent = "X " + e.message; }
   };
+  /* bulk price re-check */
+  let recheckAbort = false;
+  document.getElementById("recheck-all").onclick = async ()=>{
+    const rst = document.getElementById("recheck-all-st");
+    rst.style.display = "block";
+    if(!cfg.gkey){ rst.textContent = "Add a Gemini API key in Settings below first."; return; }
+    recheckAbort = false;
+    const btn = document.getElementById("recheck-all");
+    btn.textContent = "⏹ Stop"; btn.onclick = ()=>{ recheckAbort = true; };
+    let updated = 0;
+    for(let i = 0; i < wines.length; i++){
+      if(recheckAbort){ rst.textContent = `Stopped. Updated ${updated}/${i} wines checked.`; break; }
+      const w = wines[i];
+      const desc = [w.producer, w.name, w.vintage, w.type, w.region].filter(Boolean).join(", ");
+      if(!desc) continue;
+      rst.textContent = `Checking ${i+1}/${wines.length}: ${w.producer||""} ${w.name||""}…`;
+      try{
+        const prompt = `You are a wine pricing expert. Estimate the current retail market value in CANADIAN DOLLARS for: ${desc}. Return ONLY a JSON object: {"price":"~$XX CAD (est.)"}. Be research-grade accurate.`;
+        const body = {contents:[{parts:[{text:prompt}]}]};
+        const {r} = await callGemini(body, cfg.gkey, rst);
+        const j = await r.json();
+        const text = ((j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts)||[]).map(p=>p.text||"").join("");
+        const rec = JSON.parse(text.replace(/```json|```/g,"").trim());
+        if(rec.price && rec.price !== w.price){ w.price = rec.price; updated++; }
+      }catch(e){ rst.textContent += " ✗ " + e.message; await new Promise(ok=>setTimeout(ok,2000)); }
+    }
+    if(!recheckAbort) rst.textContent = `✓ Done. Updated ${updated} of ${wines.length} prices.`;
+    saveWines(); render();
+    btn.textContent = "✨ Re-check all prices (AI)";
+    btn.onclick = null; renderSync();
+  };
+
   /* populate stats */
   const statsBody = document.getElementById("stats-body");
   if(statsBody){
