@@ -543,7 +543,7 @@ function renderDetail(){
     : null;
   view.innerHTML = `<div class="sheet">
     <div class="back-row"><button id="back-top">← Back</button></div>
-    ${src?`<img class="detail-photo" src="${esc(src)}" alt="Label photo">`:""}
+    ${src?`<img class="detail-photo" src="${esc(src)}" alt="Label photo" crossorigin="anonymous">`:""}
     <div class="detail-name serif">${esc(w.producer||"")} ${esc(w.name||"")}</div>
     <div class="detail-sub">${esc([w.vintage,w.type,w.region].filter(Boolean).join(" · "))}</div>
     ${bandHTML(w)}
@@ -571,7 +571,7 @@ function renderDetail(){
       <dt>Notes</dt><dd>${tbd(w.notes)}</dd>
     </dl>
     <div class="recheck-bar">
-      <button class="btn btn-ghost" id="recheck-price">✨ Re-check price</button>
+      <button class="btn btn-ghost" id="recheck-price">✨ Identify / re-check price</button>
     </div>
     <div class="sync-status" id="recheck-st" style="display:none"></div>
     <button class="btn btn-ghost" id="edit">Edit bottle</button>
@@ -589,35 +589,56 @@ function renderDetail(){
     const stEl = document.getElementById("recheck-st");
     stEl.style.display = "block";
     if(!cfg.gkey){ stEl.textContent = "Add a Gemini API key in Sync → Settings first."; return; }
-    stEl.textContent = "Checking price…";
+    /* decide: full identification (missing fields) or price-only */
+    const hasData = [w.producer, w.name, w.vintage].filter(Boolean).length >= 2;
+    const photoEl = document.querySelector(".detail-photo");
+    let b64 = null;
+    if(photoEl && photoEl.naturalWidth){
+      try{ b64 = imgToBase64(photoEl); }catch(e){/* tainted canvas, skip */}
+    }
+    if(!hasData && !b64){ stEl.textContent = "✗ No label photo and no wine data — open Edit and add a photo first."; return; }
+    const fullMode = !hasData && b64;
+    stEl.textContent = fullMode ? "Identifying wine from label…" : "Checking price…";
     try{
-      const desc = [w.producer, w.name, w.vintage, w.type, w.region].filter(Boolean).join(", ");
-      const prompt = `You are a wine pricing expert. Estimate the current retail market value in CANADIAN DOLLARS for this wine: ${desc}. Return ONLY a JSON object with one field: price (formatted like '~$XX CAD (est.)' for estimates, or '$XX CAD' if you're confident). Base on producer reputation, region, vintage quality, and current market data.`;
-      let body;
-      const photoSrc = imgSrc(w);
-      if(photoSrc && !photoSrc.startsWith("data:")){
-        /* try to fetch the label photo for a better estimate */
-        try{
-          const imgR = await fetch(photoSrc);
-          if(imgR.ok){
-            const blob = await imgR.blob();
-            const b64 = await new Promise(ok=>{const r=new FileReader();r.onload=()=>ok(r.result.split(",")[1]);r.readAsDataURL(blob);});
-            body = {contents:[{parts:[{inline_data:{mime_type:"image/jpeg",data:b64}},{text:prompt}]}]};
-            stEl.textContent = "Checking price with label photo…";
-          }
-        }catch(e){/* fall through to text-only */}
+      let body, prompt;
+      if(fullMode){
+        prompt = AI_PROMPT;
+      } else {
+        const desc = [w.producer, w.name, w.vintage, w.type, w.region].filter(Boolean).join(", ");
+        prompt = `You are a wine pricing expert. Estimate the current retail market value in CANADIAN DOLLARS for this wine: ${desc}. Return ONLY a JSON object with one field: price (formatted like '~$XX CAD (est.)' for estimates, or '$XX CAD' if you're confident). Base on producer reputation, region, vintage quality, and current market data.`;
       }
-      if(!body) body = {contents:[{parts:[{text:prompt}]}]};
-      const {r} = await callGemini(body, cfg.gkey);
+      if(b64){
+        body = {contents:[{parts:[{inline_data:{mime_type:"image/jpeg",data:b64}},{text:prompt}]}]};
+        if(!fullMode) stEl.textContent = "Checking price with label photo…";
+      } else {
+        body = {contents:[{parts:[{text:prompt}]}]};
+      }
+      const {r} = await callGemini(body, cfg.gkey, stEl);
       const j = await r.json();
       const text = ((j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts)||[]).map(p=>p.text||"").join("");
-      const rec = JSON.parse(text.replace(/\`\`\`json|\`\`\`/g,"").trim());
-      if(rec.price){
-        const oldPrice = w.price || "(none)";
-        w.price = rec.price; saveWines();
-        document.getElementById("price-edit").value = rec.price;
-        stEl.textContent = "✓ Price updated: " + oldPrice + " → " + rec.price;
-      } else { stEl.textContent = "✗ No price returned."; }
+      const rec = JSON.parse(text.replace(/```json|```/g,"").trim());
+      if(fullMode){
+        /* update all empty fields */
+        const fields = ["producer","name","vintage","type","region","drinkFrom","drinkTo","pairings","price","notes"];
+        let filled = 0;
+        fields.forEach(f => {
+          if(rec[f] && !w[f]){
+            w[f] = (f==="type" && rec[f]==="Rose") ? "Rosé" : rec[f];
+            filled++;
+          }
+        });
+        if(rec.price) { w.price = rec.price; document.getElementById("price-edit").value = rec.price; }
+        saveWines();
+        stEl.textContent = "✓ Identified: " + [rec.producer,rec.name,rec.vintage].filter(Boolean).join(" ") + ` — filled ${filled} fields. Tap Edit to review.`;
+        setTimeout(()=> render(), 1500);
+      } else {
+        if(rec.price){
+          const oldPrice = w.price || "(none)";
+          w.price = rec.price; saveWines();
+          document.getElementById("price-edit").value = rec.price;
+          stEl.textContent = "✓ Price updated: " + oldPrice + " → " + rec.price;
+        } else { stEl.textContent = "✗ No price returned."; }
+      }
     }catch(e){ stEl.textContent = "✗ " + e.message; }
   };
   document.getElementById("qty-minus").onclick = ()=>{
@@ -660,6 +681,16 @@ async function callGemini(body, key, statusEl){
     }
   }
   throw new Error("All models busy — try again in a minute.");
+}
+
+const AI_PROMPT = "You are a sommelier's assistant. Read this wine label photo and return ONLY a JSON object (no markdown fences, no prose) with these string fields: producer, name (the cuvee or wine name, not the producer), vintage (4-digit year), type (one of: Red, White, Rose, Sparkling, Dessert), region (appellation and country), drinkFrom (4-digit year the wine enters its drinking window), drinkTo (4-digit year to drink by), pairings (comma-separated food pairings), price (estimated current market value in CANADIAN DOLLARS, formatted like '~$XX CAD (est.)' — research-grade estimate based on producer, region, vintage, and classification; for icon/collectible wines use secondary-market pricing), notes (grape varieties plus a one-line style summary). Base drinkFrom, drinkTo, pairings and price on your knowledge of this producer, region and vintage; if the exact bottling is unknown, use typical ranges for the style and say so in notes. Use an empty string for anything unreadable.";
+
+/* extract base64 from an <img> element via canvas */
+function imgToBase64(imgEl){
+  const c = document.createElement("canvas");
+  c.width = imgEl.naturalWidth; c.height = imgEl.naturalHeight;
+  c.getContext("2d").drawImage(imgEl, 0, 0);
+  return c.toDataURL("image/jpeg", 0.82).split(",")[1];
 }
 
 let pendingImage = null;
@@ -790,7 +821,6 @@ function renderForm(){
   };
   document.getElementById("cam").addEventListener("change", e=>handlePhoto(e.target));
   document.getElementById("gal").addEventListener("change", e=>handlePhoto(e.target));
-  const AI_PROMPT = "You are a sommelier's assistant. Read this wine label photo and return ONLY a JSON object (no markdown fences, no prose) with these string fields: producer, name (the cuvee or wine name, not the producer), vintage (4-digit year), type (one of: Red, White, Rose, Sparkling, Dessert), region (appellation and country), drinkFrom (4-digit year the wine enters its drinking window), drinkTo (4-digit year to drink by), pairings (comma-separated food pairings), price (estimated current market value in CANADIAN DOLLARS, formatted like '~$XX CAD (est.)' — research-grade estimate based on producer, region, vintage, and classification; for icon/collectible wines use secondary-market pricing), notes (grape varieties plus a one-line style summary). Base drinkFrom, drinkTo, pairings and price on your knowledge of this producer, region and vintage; if the exact bottling is unknown, use typical ranges for the style and say so in notes. Use an empty string for anything unreadable.";
   document.getElementById("identify").onclick = async ()=>{
     const st = document.getElementById("ai-st");
     if(!cfg.gkey){ st.textContent = "Add a free Gemini API key in the Sync tab first (aistudio.google.com)."; return; }
