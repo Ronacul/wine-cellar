@@ -3275,7 +3275,8 @@
     "price": "~$105 CAD (est.)",
     "location": "D",
     "notes": "Corvina, Corvinone, Rondinella, Oseleta; a rich, powerful, and full-bodied wine known for its concentrated dried fruit character, velvet tannins, and lingering spicy finish.",
-    "imagePath": "images/msi8swbb21n4e.jpg"
+    "imagePath": "images/msi8swbb21n4e.jpg",
+    "fire": 2
   },
   {
     "id": "msjl0ebjic4do",
