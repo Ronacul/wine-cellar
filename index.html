@@ -337,6 +337,13 @@ details.collapse .collapse-body{padding:12px 0 0}
 .recheck-bar{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
 .recheck-bar button{flex:1;min-width:0}
 .chip.fire{color:#e8a020;border-color:#e8a020;text-shadow:0 0 6px rgba(232,160,32,.4)}
+.fire-tier-picker{display:flex;gap:0;flex-wrap:wrap}
+.fire-tier-btn{background:var(--panel);border:1px solid var(--line);color:var(--ink-faint);font-family:"IBM Plex Mono",monospace;font-size:11px;padding:8px 10px;cursor:pointer;white-space:nowrap}
+.fire-tier-btn:first-child{border-radius:4px 0 0 4px}
+.fire-tier-btn:last-child{border-radius:0 4px 4px 0}
+.fire-tier-btn:not(:first-child){border-left:none}
+.fire-tier-btn.on{color:#e8a020;background:var(--panel2);border-color:#e8a020}
+.fire-tier-btn.on:first-child{color:var(--ink);border-color:var(--ink-faint)}
 .chip.cb{color:var(--ok);border-color:var(--ok)}
 .chip.peak{color:var(--warn);border-color:var(--warn)}
 .card.drank{opacity:.45}
@@ -546,7 +553,10 @@ function fmtSource(s){
   if(!m) return s;
   return "CB · " + SMONTHS[parseInt(m[1])-1] + " '" + m[2];
 }
-function isFire(w){ return !!w.fire; }
+function fireLevel(w){ const f = w.fire; if(f === true) return 1; return parseInt(f)||0; }
+function isFire(w){ return fireLevel(w) > 0; }
+function fireEmoji(w){ return "🔥".repeat(fireLevel(w)); }
+function fireLabel(w){ return ["","Notable","Prestige","Icon"][fireLevel(w)]||""; }
 function isPeak(w){ const st = windowStatus(w); return st.cls==="overdue" || st.cls==="urgent" || st.cls==="soon"; }
 function isCB(w){ return (w.source||"").startsWith("CB"); }
 function qtyOf(w){ const q = parseInt(w.qty); return isNaN(q) ? 1 : q; }
@@ -679,7 +689,7 @@ function cardHTML(w){
     <div class="card-top">
       ${thumb}
       <div class="card-info">
-        <div class="wine-name serif">${fire?"🔥 ":""}${esc(w.producer||"")} ${esc(w.name||"")}${drankLabel}</div>
+        <div class="wine-name serif">${fire?fireEmoji(w)+" ":""}${esc(w.producer||"")} ${esc(w.name||"")}${drankLabel}</div>
         <div class="wine-sub">${subLine ? esc(subLine) : `<span class="tbd">TBD</span>`}</div>
         <div class="chips">
           ${w.vintage?`<span class="chip vintage">${esc(w.vintage)}</span>`:""}
@@ -688,7 +698,7 @@ function cardHTML(w){
           ${w.binCode?`<span class="chip bin">${esc(w.binCode)}</span>`:""}
           ${w.titi?`<span class="chip titi">Titi</span>`:""}
           ${isCB(w)?`<span class="chip cb">CB</span>`:""}
-          ${fire?`<span class="chip fire">🔥</span>`:""}
+          ${fire?`<span class="chip fire">${fireEmoji(w)} ${fireLabel(w)}</span>`:""}
           ${gifted?`<span class="chip gift">🎁 Gift</span>`:""}
           ${!drank ? peakChipHTML(w) : ""}
         </div>
@@ -1019,10 +1029,10 @@ function renderDetail(){
   view.innerHTML = `<div class="sheet">
     <div class="back-row"><button id="back-top">← Back</button></div>
     ${src?`<img class="detail-photo" src="${esc(src)}" alt="Label photo" crossorigin="anonymous">`:""}
-    <div class="detail-name serif">${w.fire?"🔥 ":""}${esc(w.producer||"")} ${esc(w.name||"")}</div>
+    <div class="detail-name serif">${isFire(w)?fireEmoji(w)+" ":""}${esc(w.producer||"")} ${esc(w.name||"")}</div>
     <div class="detail-sub">${esc([w.vintage,w.type,w.region].filter(Boolean).join(" · "))}</div>
     <div class="chips" style="margin-bottom:10px">
-      ${w.fire?`<span class="chip fire">🔥 Fire</span>`:""}
+      ${isFire(w)?`<span class="chip fire">${fireEmoji(w)} ${fireLabel(w)}</span>`:""}
       ${peak && !drank ? peakChipHTML(w) : ""}
       ${drankInfoHTML}
     </div>
@@ -1034,9 +1044,9 @@ function renderDetail(){
       <dt>Bin code</dt><dd>${tbd(w.binCode)}</dd>
       <dt>Titi</dt><dd>${w.titi ? "Yes — Dad's cellar" : "No"}</dd>
       <dt>Fire</dt><dd>
-        <button class="btn btn-ghost" id="fire-toggle-detail" style="display:inline-block;width:auto;padding:6px 14px;margin:0;${w.fire?"color:#e8a020;border-color:#e8a020":""}">
-          ${w.fire ? "🔥 Fire wine — tap to unmark" : "Mark as 🔥 fire"}
-        </button>
+        <div class="fire-tier-picker" id="fire-tier-picker">
+          ${[0,1,2,3].map(t=>`<button type="button" class="fire-tier-btn${fireLevel(w)===t?" on":""}" data-tier="${t}">${t===0?"—":("🔥".repeat(t)+" "+["","Notable","Prestige","Icon"][t])}</button>`).join("")}
+        </div>
       </dd>
       <dt>Serve with</dt><dd>${tbd(w.pairings)}</dd>
       <dt>Source</dt><dd>${tbd(fmtSource(w.source))}</dd>
@@ -1066,9 +1076,9 @@ function renderDetail(){
   </div>`;
   document.getElementById("edit").onclick = ()=>{ editingId=w.id; tab="add"; render(); };
   document.getElementById("back-top").onclick = ()=>{ history.back(); };
-  document.getElementById("fire-toggle-detail").onclick = ()=>{
-    w.fire = !w.fire; saveWines(); render();
-  };
+  document.getElementById("fire-tier-picker").querySelectorAll(".fire-tier-btn").forEach(btn=>{
+    btn.onclick = ()=>{ w.fire = parseInt(btn.dataset.tier); saveWines(); render(); };
+  });
   document.getElementById("price-save").onclick = ()=>{
     w.price = document.getElementById("price-edit").value.trim();
     saveWines();
@@ -1118,9 +1128,10 @@ function renderDetail(){
           }
         });
         if(rec.price) { w.price = rec.price; document.getElementById("price-edit").value = rec.price; }
-        if(rec.fire === true) w.fire = true;
+        if(rec.fire) w.fire = parseInt(rec.fire)||0;
         saveWines();
-        stEl.textContent = "✓ Identified: " + [rec.producer,rec.name,rec.vintage].filter(Boolean).join(" ") + (rec.fire?" 🔥":"") + ` — filled ${filled} fields. Tap Edit to review.`;
+        const _fl = parseInt(rec.fire)||0;
+        stEl.textContent = "✓ Identified: " + [rec.producer,rec.name,rec.vintage].filter(Boolean).join(" ") + (_fl ? " " + "🔥".repeat(_fl) : "") + ` — filled ${filled} fields. Tap Edit to review.`;
         setTimeout(()=> render(), 1500);
       } else {
         if(rec.price){
@@ -1179,7 +1190,7 @@ async function callGemini(body, key, statusEl){
   throw new Error("All models busy — try again in a minute.");
 }
 
-const AI_PROMPT = "You are a sommelier's assistant. Read this wine label photo and return ONLY a JSON object (no markdown fences, no prose) with these fields — all strings unless noted: producer, name (the cuvee or wine name, not the producer), vintage (4-digit year), type (one of: Red, White, Rose, Sparkling, Dessert), region (appellation and country), drinkFrom (4-digit year the wine enters its drinking window), drinkTo (4-digit year to drink by), pairings (comma-separated food pairings), price (estimated current market value in CANADIAN DOLLARS, formatted like '~$XX CAD (est.)' — research-grade estimate based on producer, region, vintage, and classification; for icon/collectible wines use secondary-market pricing), fire (boolean: true if this is an icon, prestigious, or collectible wine — e.g. classified Bordeaux, top Super Tuscans like Sassicaia, Grand Cru Burgundy, cult Napa, Penfolds Grange, etc.; false for everyday/mid-tier wines), notes (grape varieties plus a one-line style summary). Base drinkFrom, drinkTo, pairings and price on your knowledge of this producer, region and vintage; if the exact bottling is unknown, use typical ranges for the style and say so in notes. Use an empty string for anything unreadable.";
+const AI_PROMPT = "You are a sommelier's assistant. Read this wine label photo and return ONLY a JSON object (no markdown fences, no prose) with these fields — all strings unless noted: producer, name (the cuvee or wine name, not the producer), vintage (4-digit year), type (one of: Red, White, Rose, Sparkling, Dessert), region (appellation and country), drinkFrom (4-digit year the wine enters its drinking window), drinkTo (4-digit year to drink by), pairings (comma-separated food pairings), price (estimated current market value in CANADIAN DOLLARS, formatted like '~$XX CAD (est.)' — research-grade estimate based on producer, region, vintage, and classification; for icon/collectible wines use secondary-market pricing), fire (integer 0-3: 0 = everyday wine, 1 = notable/above-average quality or reputation, 2 = prestige/collectible — special-occasion wines like top cru Bordeaux or premium Super Tuscans, 3 = icon — legendary bottles like Sassicaia, Penfolds Grange, Romanée-Conti, Cheval Blanc, Ornellaia, Opus One. Be conservative: most wines are 0, only truly exceptional bottles earn 2-3), notes (grape varieties plus a one-line style summary). Base drinkFrom, drinkTo, pairings and price on your knowledge of this producer, region and vintage; if the exact bottling is unknown, use typical ranges for the style and say so in notes. Use an empty string for anything unreadable.";
 
 /* extract base64 from an <img> element via canvas */
 function imgToBase64(imgEl){
@@ -1239,7 +1250,11 @@ function renderForm(){
       </div>
     </div>
     <div class="field checkrow"><input type="checkbox" id="f-titi" ${w.titi?"checked":""}><label for="f-titi">From Dad's cellar (Titi)</label></div>
-    <div class="field checkrow"><input type="checkbox" id="f-fire" ${w.fire?"checked":""}><label for="f-fire">🔥 Fire wine (icon/collectible)</label></div>
+    <div class="field"><label>🔥 Fire tier</label>
+      <div class="fire-tier-picker" id="f-fire-picker">
+        ${[0,1,2,3].map(t=>`<button type="button" class="fire-tier-btn${fireLevel(w)===t?" on":""}" data-tier="${t}">${t===0?"— None":("🔥".repeat(t)+" "+["","Notable","Prestige","Icon"][t])}</button>`).join("")}
+      </div>
+    </div>
     <div class="field"><label>Serve with</label><input id="f-pair" value="${esc(w.pairings)}" placeholder="e.g. Braised lamb, hard cheeses"></div>
     <div class="row2">
       <div class="field"><label>Source</label>
@@ -1282,6 +1297,15 @@ function renderForm(){
   document.getElementById("fq-plus").addEventListener("click", ()=>{
     const el = document.getElementById("f-qty");
     el.value = (parseInt(el.value)||1) + 1;
+  });
+
+  /* fire tier picker */
+  let _fireTier = fireLevel(w);
+  document.getElementById("f-fire-picker").querySelectorAll(".fire-tier-btn").forEach(btn=>{
+    btn.onclick = ()=>{
+      _fireTier = parseInt(btn.dataset.tier);
+      document.getElementById("f-fire-picker").querySelectorAll(".fire-tier-btn").forEach(b=>b.classList.toggle("on", parseInt(b.dataset.tier)===_fireTier));
+    };
   });
 
   /* source quick-pick */
@@ -1381,7 +1405,7 @@ function renderForm(){
       region:g("f-region"), drinkFrom:g("f-from"), drinkTo:g("f-to"),
       shelfSection:document.getElementById("f-shelf").value, binCode:g("f-bincode"),
       titi:document.getElementById("f-titi").checked,
-      fire:document.getElementById("f-fire").checked,
+      fire:_fireTier,
       pairings:g("f-pair"), source:sourceVal, price:g("f-price"),
       location:g("f-loc"), notes:g("f-notes")
     });
@@ -1530,6 +1554,9 @@ function renderStats(){
   /* fire wines — prestige */
   const fireWines = inCave.filter(isFire);
   const fireCount = fireWines.reduce((n,w)=>n+(qtyOf(w)),0);
+  const fire3 = inCave.filter(w=>fireLevel(w)===3).length;
+  const fire2 = inCave.filter(w=>fireLevel(w)===2).length;
+  const fire1 = inCave.filter(w=>fireLevel(w)===1).length;
 
   /* peak wines — approaching/past window */
   const peakWines = inCave.filter(isPeak);
@@ -1550,7 +1577,9 @@ function renderStats(){
       <span class="stat-pill" style="border-color:var(--gold)"><span class="n" style="color:var(--gold)">${valStr}</span></span>
     </div>
     <div class="stats-row" style="justify-content:center;gap:12px;margin-top:4px">
-      ${fireCount?`<span class="stat-pill" style="border-color:#e8a020"><span class="n" style="color:#e8a020">🔥 ${fireCount}</span> fire</span>`:""}
+      ${fire3?`<span class="stat-pill" style="border-color:#e8a020"><span class="n" style="color:#e8a020">🔥🔥🔥 ${fire3}</span> icon</span>`:""}
+      ${fire2?`<span class="stat-pill" style="border-color:#e8a020"><span class="n" style="color:#e8a020">🔥🔥 ${fire2}</span> prestige</span>`:""}
+      ${fire1?`<span class="stat-pill" style="border-color:#e8a020"><span class="n" style="color:#e8a020">🔥 ${fire1}</span> notable</span>`:""}
       ${peakCount?`<span class="stat-pill" style="border-color:var(--warn)"><span class="n" style="color:var(--warn)">⛰️ ${peakCount}</span> peak</span>`:""}
       <span class="stat-pill"><span class="n">${priced}</span> priced</span>
     </div>
@@ -1594,7 +1623,7 @@ function renderStats(){
           <div style="display:flex;gap:12px;align-items:center">
             ${src?`<img src="${esc(src)}" style="width:48px;height:64px;object-fit:cover;border-radius:3px" alt="">`:`<div class="thumb empty" style="width:48px;height:64px;font-size:22px">?</div>`}
             <div>
-              <div class="wine-name serif" style="font-size:18px">${pick.fire?"🔥 ":""}${esc(pick.producer||"")} ${esc(pick.name||"")}</div>
+              <div class="wine-name serif" style="font-size:18px">${isFire(pick)?fireEmoji(pick)+" ":""}${esc(pick.producer||"")} ${esc(pick.name||"")}</div>
               <div class="wine-sub">${esc([pick.vintage,pick.type,pick.region].filter(Boolean).join(" · "))}</div>
               ${st.label?`<div style="margin-top:4px"><span class="chip ${st.cls}" style="font-size:10px">${esc(st.label)}${st.countdown ? " · " + esc(st.countdown) : ""}</span></div>`:""}
             </div>
@@ -1707,6 +1736,9 @@ function renderSync(){
       <summary>What's new</summary>
       <div class="collapse-body">
         <ul class="changelog">
+          <li><span class="cl-ver">Aug 8, 2026</span>
+            <span class="cl-title">🔥 3-tier fire system</span><br>
+            <span class="cl-desc">Fire is now a 3-tier rating: 🔥 Notable, 🔥🔥 Prestige, 🔥🔥🔥 Icon. Segmented picker in detail + edit views. AI label scan assigns tiers automatically. Stats show tier breakdown. Audited cellar — tightened to 8 fire wines (5 icon, 2 prestige, 1 notable).</span></li>
           <li><span class="cl-ver">Aug 7, 2026</span>
             <span class="cl-title">🏷️ Unified filter bar & shelf letters</span><br>
             <span class="cl-desc">Replaced discrete filter buttons with a scrollable chip bar — toggle Fire, Titi, CB, Peak, Soon, Past filters independently. Shelf filter now uses physical shelf letters (A–R) derived from bin codes.</span></li>

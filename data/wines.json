@@ -156,7 +156,7 @@
     "location": "",
     "notes": "Flagship icon Cabernet Sauvignon from Concha y Toro. One of Chile's most celebrated wines. Well-cellared bottles may still drink, though past optimal window.",
     "imagePath": "images/b0233c4337061f7a.jpg",
-    "fire": true
+    "fire": 2
   },
   {
     "id": "d9574b382c9003f3",
@@ -431,7 +431,7 @@
     "location": "",
     "notes": "Australia's most iconic wine. Predominantly Shiraz. Dedicated to Max Schubert (1915–1994). Bottle No. AV762. Developed from observations of Bordeaux first-growth techniques, matured in new American oak hogsheads. Will age for decades.",
     "imagePath": "images/6f58fd22452331a4.jpg",
-    "fire": true
+    "fire": 3
   },
   {
     "id": "238f3e2524117f45",
@@ -452,8 +452,7 @@
     "price": "~$160 CAD (est.)",
     "location": "",
     "notes": "Premium Napa Valley Cabernet Sauvignon. 14.4% alc. Should still be drinking well if properly cellared.",
-    "imagePath": "images/238f3e2524117f45.jpg",
-    "fire": true
+    "imagePath": "images/238f3e2524117f45.jpg"
   },
   {
     "id": "6159b421ca3f0561",
@@ -601,7 +600,7 @@
     "location": "",
     "notes": "Marchesi Incisa della Rocchetta. Cabernet Sauvignon/Cabernet Franc blend. Italy's original Super Tuscan, Bolgheri's most iconic wine.",
     "imagePath": "images/895c979c43ed0f7e.jpg",
-    "fire": true
+    "fire": 3
   },
   {
     "id": "cae16f7862cd15df",
@@ -644,7 +643,7 @@
     "location": "",
     "notes": "Marchesi Incisa della Rocchetta. Cabernet Sauvignon/Cabernet Franc blend. Tenuta San Guido, Bolgheri. Should still be drinking beautifully.",
     "imagePath": "images/32cbf187325b7fbf.jpg",
-    "fire": true
+    "fire": 3
   },
   {
     "id": "8e2e18cefd800c59",
@@ -666,7 +665,7 @@
     "location": "",
     "notes": "1er Grand Cru Classé A. Héritiers Fourcaud-Laussac. One of Bordeaux's most legendary estates. Predominantly Cabernet Franc and Merlot. At or past peak but iconic bottles can endure.",
     "imagePath": "images/8e2e18cefd800c59.jpg",
-    "fire": true
+    "fire": 3
   },
   {
     "id": "fcb35c6f45e19164",
@@ -835,7 +834,7 @@
     "location": "",
     "notes": "Tenuta Guado al Tasso. Cabernet Sauvignon, Merlot, Cabernet Franc, Petit Verdot blend. Antinori's flagship Bolgheri Super Tuscan.",
     "imagePath": "images/d96c105cdb20ca5c.jpg",
-    "fire": true
+    "fire": 2
   },
   {
     "id": "msgrar7e6736y",
@@ -961,8 +960,7 @@
     "price": "~$95 CAD (est.)",
     "location": "E",
     "notes": "Chardonnay and Pinot Noir (often co-fermented or blended depending on the vintage); an elegant, terroir-driven, and highly sought-after cool-climate wine known for its nuanced complexity.",
-    "imagePath": "images/msgro5y04m54l.jpg",
-    "fire": true
+    "imagePath": "images/msgro5y04m54l.jpg"
   },
   {
     "id": "msgrq8r7c8sxi",
@@ -1530,7 +1528,7 @@
     "location": "G",
     "notes": "A blend of Cabernet Sauvignon, Merlot, Cabernet Franc, and Petit Verdot; a prestigious, powerful, and structured 'Super Tuscan' with remarkable aging potential.",
     "imagePath": "images/msgt4v0lxf723.jpg",
-    "fire": true
+    "fire": 3
   },
   {
     "id": "msgt6uwqrgl2n",
@@ -2745,7 +2743,6 @@
     "shelfSection": "",
     "binCode": "",
     "titi": false,
-    "fire": true,
     "pairings": "roasted chicken, pork tenderloin, creamy pasta dishes, soft cheeses",
     "source": "CB (11/18)",
     "price": "~$55 CAD (est.)",
@@ -2811,7 +2808,6 @@
     "shelfSection": "",
     "binCode": "",
     "titi": true,
-    "fire": true,
     "pairings": "foie gras, blue cheese, fruit-based desserts, crème brûlée",
     "source": "",
     "price": "~$85 CAD (est.)",
@@ -2921,7 +2917,6 @@
     "shelfSection": "",
     "binCode": "",
     "titi": false,
-    "fire": true,
     "pairings": "lamb, roasted game, grilled beef, aged hard cheeses",
     "source": "",
     "price": "~$95 CAD (est.)",
@@ -3031,7 +3026,6 @@
     "shelfSection": "",
     "binCode": "",
     "titi": true,
-    "fire": true,
     "pairings": "coffee, dark chocolate, digestive, palate cleanser",
     "source": "",
     "price": "~$65 CAD (est.)",
@@ -3053,7 +3047,6 @@
     "shelfSection": "",
     "binCode": "",
     "titi": false,
-    "fire": true,
     "pairings": "lamb, game meats, aged hard cheeses, truffle-based dishes",
     "source": "",
     "price": "~$95 CAD (est.)",
@@ -3141,7 +3134,6 @@
     "shelfSection": "",
     "binCode": "",
     "titi": true,
-    "fire": true,
     "pairings": "roasted lamb, braised beef, game birds, hard cheeses",
     "source": "",
     "price": "~$75 CAD (est.)",
@@ -3163,7 +3155,6 @@
     "shelfSection": "",
     "binCode": "",
     "titi": true,
-    "fire": true,
     "pairings": "roasted lamb, beef bourguignon, aged hard cheeses, game meats",
     "source": "",
     "price": "~$90 CAD (est.)",
@@ -3185,7 +3176,7 @@
     "shelfSection": "",
     "binCode": "",
     "titi": true,
-    "fire": true,
+    "fire": 1,
     "pairings": "roasted lamb, beef bourguignon, aged hard cheeses, game birds",
     "source": "",
     "price": "~$180 CAD (est.)",
@@ -3273,7 +3264,6 @@
     "shelfSection": "",
     "binCode": "",
     "titi": true,
-    "fire": true,
     "pairings": "aged cheeses, braised red meats, game, roasted game birds, hearty stews",
     "source": "",
     "price": "~$105 CAD (est.)",
@@ -3295,7 +3285,7 @@
     "shelfSection": "",
     "binCode": "",
     "titi": true,
-    "fire": true,
+    "fire": 2,
     "pairings": "Florentine steak, roasted lamb shank, wild boar ragu, aged Parmigiano-Reggiano",
     "source": "",
     "price": "~$325 CAD (est.)",
@@ -3317,7 +3307,7 @@
     "shelfSection": "",
     "binCode": "",
     "titi": true,
-    "fire": true,
+    "fire": 3,
     "pairings": "roasted wild boar, prime ribeye steak, aged pecorino cheese, braised lamb shanks",
     "source": "",
     "price": "~$550 CAD (est.)",
@@ -3339,7 +3329,7 @@
     "shelfSection": "",
     "binCode": "",
     "titi": true,
-    "fire": true,
+    "fire": 1,
     "pairings": "Comté cheese, Poulet aux Morilles (chicken with morels), walnuts, curry dishes, chanterelle mushrooms",
     "source": "",
     "price": "~$160 CAD (est.)",
@@ -3361,7 +3351,6 @@
     "shelfSection": "",
     "binCode": "",
     "titi": true,
-    "fire": true,
     "pairings": "Roasted lamb, grilled ribeye steak, venison, rich beef stews, strong aged cheeses",
     "source": "",
     "price": "~$150 CAD (est.)",
@@ -3405,7 +3394,6 @@
     "shelfSection": "",
     "binCode": "",
     "titi": true,
-    "fire": true,
     "pairings": "Roasted venison, wild boar stew, braised beef cheeks, aged Parmigiano-Reggiano",
     "source": "",
     "price": "~$180 CAD (est.)",
@@ -3427,7 +3415,7 @@
     "shelfSection": "",
     "binCode": "",
     "titi": true,
-    "fire": true,
+    "fire": 1,
     "pairings": "Roast lamb, grilled ribeye, duck breast, hard aged cheeses",
     "source": "",
     "price": "~$210 CAD (est.)",
@@ -3691,7 +3679,6 @@
     "shelfSection": "",
     "binCode": "",
     "titi": true,
-    "fire": true,
     "pairings": "Roast duck, roasted chicken, mushroom risotto, pork chops, Comté cheese",
     "source": "",
     "price": "~$85 CAD (est.)",
@@ -3713,7 +3700,7 @@
     "shelfSection": "",
     "binCode": "",
     "titi": true,
-    "fire": true,
+    "fire": 2,
     "pairings": "Duck breast, roasted pheasant, beef bourguignon, wild mushroom risotto",
     "source": "",
     "price": "~$250 CAD (est.)",
@@ -3757,7 +3744,6 @@
     "shelfSection": "",
     "binCode": "",
     "titi": true,
-    "fire": true,
     "pairings": "aged cheeses, roasted game, braised beef, dark chocolate",
     "source": "",
     "price": "~$180 CAD (est.)",
@@ -3823,7 +3809,7 @@
     "shelfSection": "",
     "binCode": "",
     "titi": true,
-    "fire": true,
+    "fire": 1,
     "pairings": "grilled ribeye steak, braised short ribs, aged cheddar, dark chocolate",
     "source": "",
     "price": "~$220 CAD (est.)",
@@ -3845,7 +3831,6 @@
     "shelfSection": "",
     "binCode": "",
     "titi": true,
-    "fire": true,
     "pairings": "aged cheeses, braised red meats, game, rich stews",
     "source": "",
     "price": "~$105 CAD (est.)",
