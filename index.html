@@ -549,7 +549,8 @@ function fmtSource(s){
 function isFire(w){ return !!w.fire; }
 function isPeak(w){ const st = windowStatus(w); return st.cls==="overdue" || st.cls==="urgent" || st.cls==="soon"; }
 function isCB(w){ return (w.source||"").startsWith("CB"); }
-function isDrank(w){ return (parseInt(w.qty)||1) <= 0; }
+function qtyOf(w){ const q = parseInt(w.qty); return isNaN(q) ? 1 : q; }
+function isDrank(w){ return qtyOf(w) <= 0; }
 function isGifted(w){ return !!w.giftedTo; }
 function getOrigin(w){
   if(w.titi) return "Titi";
@@ -625,7 +626,7 @@ const countEl = document.getElementById("count");
 
 function render(){
   const _inCave = wines.filter(w=>!isDrank(w));
-  const _wc = _inCave.length, _bc = _inCave.reduce((n,w)=>n+(parseInt(w.qty)||1),0);
+  const _wc = _inCave.length, _bc = _inCave.reduce((n,w)=>n+(qtyOf(w)),0);
   const _drankCount = wines.filter(w => isDrank(w) && !isGifted(w)).length;
   const _giftedCount = wines.filter(w => isDrank(w) && isGifted(w)).length;
   let countParts = _wc === _bc ? `${_bc} bottles` : `${_wc} wines · ${_bc} bottles`;
@@ -1048,7 +1049,7 @@ function renderDetail(){
       <dt>Quantity</dt><dd>
         <div class="qty-row">
           <button class="qty-btn" id="qty-minus">−</button>
-          <span class="qty-display" id="qty-val">${esc(w.qty||1)}</span>
+          <span class="qty-display" id="qty-val">${esc(qtyOf(w))}</span>
           <button class="qty-btn" id="qty-plus">+</button>
         </div>
       </dd>
@@ -1132,7 +1133,7 @@ function renderDetail(){
     }catch(e){ stEl.textContent = "✗ " + e.message; }
   };
   document.getElementById("qty-minus").onclick = ()=>{
-    const prev = parseInt(w.qty)||1;
+    const prev = qtyOf(w);
     const newQty = Math.max(0, prev - 1);
     if(newQty === 0){
       /* show review flow instead of immediately saving */
@@ -1144,7 +1145,7 @@ function renderDetail(){
     saveWines(); render();
   };
   document.getElementById("qty-plus").onclick = ()=>{
-    w.qty = (parseInt(w.qty)||1)+1;
+    w.qty = (qtyOf(w))+1;
     saveWines(); render();
   };
   document.getElementById("del").onclick = ()=>{
@@ -1220,7 +1221,7 @@ function renderForm(){
       <div class="field"><label>Type</label><select id="f-type">
         ${["","Red","White","Rosé","Sparkling","Dessert"].map(t=>`<option ${w.type===t?"selected":""}>${t}</option>`).join("")}
       </select></div>
-      <div class="field"><label>Qty <span class="qty-mini"><button type="button" id="fq-minus">−</button><button type="button" id="fq-plus">+</button></span></label><input id="f-qty" inputmode="numeric" value="${esc(w.qty||1)}"></div>
+      <div class="field"><label>Qty <span class="qty-mini"><button type="button" id="fq-minus">−</button><button type="button" id="fq-plus">+</button></span></label><input id="f-qty" inputmode="numeric" value="${esc(qtyOf(w))}"></div>
     </div>
     <div class="field"><label>Region / appellation</label><input id="f-region" value="${esc(w.region)}" placeholder="e.g. Bandol, Provence"></div>
     <div class="row2">
@@ -1276,7 +1277,7 @@ function renderForm(){
   /* qty +/- buttons */
   document.getElementById("fq-minus").addEventListener("click", ()=>{
     const el = document.getElementById("f-qty");
-    el.value = Math.max(1, (parseInt(el.value)||1) - 1);
+    el.value = Math.max(0, (parseInt(el.value)||1) - 1);
   });
   document.getElementById("fq-plus").addEventListener("click", ()=>{
     const el = document.getElementById("f-qty");
@@ -1376,7 +1377,7 @@ function renderForm(){
     const rec = editingId ? wines.find(x=>x.id===editingId) : {id:uid(), added:new Date().toISOString().slice(0,10)};
     Object.assign(rec, {
       producer:g("f-producer"), name:g("f-name"), vintage:g("f-vintage"),
-      type:document.getElementById("f-type").value, qty:parseInt(g("f-qty"))||1,
+      type:document.getElementById("f-type").value, qty:(() => { const q = parseInt(g("f-qty")); return isNaN(q) ? 1 : q; })(),
       region:g("f-region"), drinkFrom:g("f-from"), drinkTo:g("f-to"),
       shelfSection:document.getElementById("f-shelf").value, binCode:g("f-bincode"),
       titi:document.getElementById("f-titi").checked,
@@ -1398,7 +1399,7 @@ function renderStats(){
   const drankWines = wines.filter(w => isDrank(w) && !isGifted(w));
   const giftedWines = wines.filter(w => isDrank(w) && isGifted(w));
   const totalW = inCave.length;
-  const totalB = inCave.reduce((n,w)=>n+(parseInt(w.qty)||1),0);
+  const totalB = inCave.reduce((n,w)=>n+(qtyOf(w)),0);
   const drankCount = drankWines.length;
   const giftedCount = giftedWines.length;
 
@@ -1406,7 +1407,7 @@ function renderStats(){
   let totalVal = 0, priced = 0;
   inCave.forEach(w=>{
     const m = (w.price||"").match(/\$(\d+(?:\.\d+)?)/);
-    if(m){ totalVal += parseFloat(m[1]) * (parseInt(w.qty)||1); priced++; }
+    if(m){ totalVal += parseFloat(m[1]) * (qtyOf(w)); priced++; }
   });
   const valStr = totalVal ? `~$${Math.round(totalVal).toLocaleString()} CAD` : "—";
 
@@ -1420,7 +1421,7 @@ function renderStats(){
 
   /* by type — in cave */
   const byType = {};
-  inCave.forEach(w=>{ const t = w.type||"Unknown"; byType[t] = (byType[t]||0) + (parseInt(w.qty)||1); });
+  inCave.forEach(w=>{ const t = w.type||"Unknown"; byType[t] = (byType[t]||0) + (qtyOf(w)); });
   const typeOrder = ["Red","White","Sparkling","Rosé","Dessert","Unknown"];
   const typeColors = {Red:"var(--claret-soft)",White:"var(--gold)",Sparkling:"#a8c0c9","Rosé":"var(--rose)",Dessert:"#c9a8e0",Unknown:"var(--ink-faint)"};
   const typeSorted = typeOrder.filter(t=>byType[t]).map(t=>({type:t,count:byType[t]}));
@@ -1451,7 +1452,7 @@ function renderStats(){
 
   /* vintage spread — in cave */
   const byVintage = {};
-  inCave.forEach(w=>{ if(w.vintage){ const v = w.vintage; byVintage[v] = (byVintage[v]||0) + (parseInt(w.qty)||1); } });
+  inCave.forEach(w=>{ if(w.vintage){ const v = w.vintage; byVintage[v] = (byVintage[v]||0) + (qtyOf(w)); } });
   const vintages = Object.keys(byVintage).sort();
   const maxVint = Math.max(...Object.values(byVintage),1);
   const vintHTML = vintages.map(v=>{
@@ -1470,7 +1471,7 @@ function renderStats(){
     const m = (w.price||"").match(/\$(\d+(?:\.\d+)?)/);
     if(m){
       const p = parseFloat(m[1]);
-      const qty = parseInt(w.qty)||1;
+      const qty = qtyOf(w);
       if(p<20) priceBuckets["$0–20"]+=qty;
       else if(p<40) priceBuckets["$20–40"]+=qty;
       else if(p<60) priceBuckets["$40–60"]+=qty;
@@ -1492,7 +1493,7 @@ function renderStats(){
   const byOrigin = {};
   wines.forEach(w=>{
     const o = getOrigin(w);
-    byOrigin[o] = (byOrigin[o]||0) + Math.max(parseInt(w.qty)||1, 1);
+    byOrigin[o] = (byOrigin[o]||0) + Math.max(qtyOf(w), 1);
   });
   const originSorted = Object.entries(byOrigin).sort((a,b)=>b[1]-a[1]);
   const maxOrigin = Math.max(...originSorted.map(s=>s[1]),1);
@@ -1513,7 +1514,7 @@ function renderStats(){
     if(!(w.source||"").startsWith("CB")) return;
     const cm = (w.source||"").match(/\((\d{2})\/(\d{2})\)/);
     const key = cm ? SMONTHS[parseInt(cm[1])-1] + " '" + cm[2] : "undated";
-    cbByMonth[key] = (cbByMonth[key]||0) + Math.max(parseInt(w.qty)||1, 1);
+    cbByMonth[key] = (cbByMonth[key]||0) + Math.max(qtyOf(w), 1);
   });
   const cbSorted = Object.entries(cbByMonth).sort((a,b)=>b[0].localeCompare(a[0]));
   const maxCb = Math.max(...cbSorted.map(s=>s[1]),1);
@@ -1528,11 +1529,11 @@ function renderStats(){
 
   /* fire wines — prestige */
   const fireWines = inCave.filter(isFire);
-  const fireCount = fireWines.reduce((n,w)=>n+(parseInt(w.qty)||1),0);
+  const fireCount = fireWines.reduce((n,w)=>n+(qtyOf(w)),0);
 
   /* peak wines — approaching/past window */
   const peakWines = inCave.filter(isPeak);
-  const peakCount = peakWines.reduce((n,w)=>n+(parseInt(w.qty)||1),0);
+  const peakCount = peakWines.reduce((n,w)=>n+(qtyOf(w)),0);
 
   /* random picker — only from in-cave wines */
   const drinkable = inCave.filter(w=>{
@@ -1822,7 +1823,7 @@ function renderSync(){
   if(statsBody){
     const _ic = wines.filter(w=>!isDrank(w));
     const _totalW = _ic.length;
-    const _totalB = _ic.reduce((n,w)=>n+(parseInt(w.qty)||1),0);
+    const _totalB = _ic.reduce((n,w)=>n+(qtyOf(w)),0);
     const _drk = wines.filter(w => isDrank(w) && !isGifted(w)).length;
     const _gift = wines.filter(w => isDrank(w) && isGifted(w)).length;
     const byType = {}; _ic.forEach(w=>{ const t=w.type||"Unknown"; byType[t]=(byType[t]||0)+1; });
