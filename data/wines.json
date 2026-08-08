@@ -3860,7 +3860,7 @@
     "name": "Amarone della Valpolicella",
     "vintage": "2012",
     "type": "Red",
-    "qty": 1,
+    "qty": 0,
     "region": "Amarone della Valpolicella, Veneto, Italy",
     "drinkFrom": "2018",
     "drinkTo": "2030",
@@ -3873,6 +3873,11 @@
     "price": "~$75 CAD (est.)",
     "location": "",
     "notes": "Corvina, Corvinone, Rondinella, and Rossignola. A powerful, full-bodied dry red made from partially dried grapes, offering complex aromas of black cherry, raisin, cocoa, and sweet spice with a velvety finish.",
-    "imagePath": "images/msjwo9a73asf2.jpg"
+    "imagePath": "images/msjwo9a73asf2.jpg",
+    "drankDate": "2026-08-08",
+    "rating": 5,
+    "drinkNotes": "Drank with Alistair, random pick by him\nDelicious",
+    "buyAgain": true,
+    "giftedTo": null
   }
 ]
