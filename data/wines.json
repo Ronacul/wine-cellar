@@ -3852,27 +3852,5 @@
     "location": "D",
     "notes": "Corvina, Corvinone, Rondinella, and Oseleta; a powerful, full-bodied, and velvety red wine made from dried grapes with intense dried fruit, chocolate, and spice notes.",
     "imagePath": "images/msjm4j7u4esfy.jpg"
-  },
-  {
-    "id": "msjpsf09icmi6",
-    "added": "2026-08-08",
-    "producer": "Tedeschi",
-    "name": "Amarone della Valpolicella",
-    "vintage": "2012",
-    "type": "Red",
-    "qty": 1,
-    "region": "Amarone della Valpolicella DOCG, Veneto, Italy",
-    "drinkFrom": "2018",
-    "drinkTo": "2032",
-    "shelfSection": "",
-    "binCode": "",
-    "titi": false,
-    "fire": false,
-    "pairings": "Braised beef, wild game, rich stews, aged Parmigiano-Reggiano",
-    "source": "Gift - Vik",
-    "price": "~$75 CAD (est.)",
-    "location": "L",
-    "notes": "Corvina, Corvinone, Rondinella, Oseleta. A bold, full-bodied red made from semi-dried grapes, featuring rich notes of dark plum, cocoa, raisins, and sweet spice with velvety tannins.",
-    "imagePath": "images/msjpsf09icmi6.jpg"
   }
 ]
