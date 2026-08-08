@@ -30,15 +30,17 @@ Each wine object in `wines.json`:
   "shelfSection": "Keep|Soon|White|Sparkling",
   "binCode": "K01",
   "titi": false,
-  "fire": false,
+  "fire": 0,
   "pairings": "comma-separated food pairings",
   "source": "CB (08/26) or SAQ or Wine club (08/26)",
   "price": "~$50 CAD (est.) or $37.95",
   "location": "",
   "notes": "Tasting notes, grape varieties",
   "drankDate": null,
-  "drankRating": null,
-  "drankNotes": null,
+  "rating": null,
+  "drinkNotes": null,
+  "buyAgain": null,
+  "giftedTo": null,
   "imagePath": "images/{id}.jpg"
 }
 ```
@@ -46,10 +48,12 @@ Each wine object in `wines.json`:
 ### Field semantics
 
 - `titi: true` = from Dad's cellar (origin flag + filter in the UI)
-- `fire: true` = icon/prestige/collectible wine (Sassicaia, Cheval Blanc, Penfolds Grange, Grand Cru Burgundy, cult Napa, etc.). Manual toggle + AI auto-detect on label scan.
+- `fire: 0–3` = fire tier (integer). `0` = no flag, `1` = Notable (above-average quality/reputation), `2` = Prestige (collectible, special-occasion — e.g. top cru Bordeaux, premium Super Tuscans), `3` = Icon (legendary bottles — Sassicaia, Penfolds Grange, Cheval Blanc, Ornellaia, Romanée-Conti, Opus One). Backward compat: `true` → 1, `false`/absent → 0. Manual picker in detail + form views; AI auto-assigns on label scan.
 - `qty: 0` + `drankDate` = consumed bottle — kept in history, hidden from default cellar view
-- `drankRating: 1–5` = star rating given when marking as drank (optional, set via drank dialog)
-- `drankNotes: string` = occasion/context when the bottle was consumed (optional, set via drank dialog)
+- `rating: 1–5` = star rating given when marking as drank (optional, set via review sheet)
+- `drinkNotes: string` = tasting notes when marking as drank (optional, set via review sheet)
+- `buyAgain: boolean|null` = would buy again? (optional, set via review sheet)
+- `giftedTo: string|null` = name of person the bottle was gifted to (alternative to drinking — marks as gifted instead)
 - `price` uses `~$XX CAD (est.)` for AI-estimated prices vs actual purchase prices (always CAD)
 - `source` uses `CB (mm/yy)` format for Charlie's Burgers shipments. The form splits this into a "CB" text input + separate mm/yy date fields, then recombines on save.
 
@@ -65,7 +69,7 @@ Origins are computed from `source` + `titi` fields by `getOrigin(w)`:
 
 ### Label identification (Gemini AI)
 - Uses Google Gemini API (free tier, key stored in browser config)
-- Prompt is in `AI_PROMPT` constant — asks for all wine fields including price estimate and `fire` boolean
+- Prompt is in `AI_PROMPT` constant — asks for all wine fields including price estimate and `fire` tier (0–3 integer)
 - **Model fallback chain**: `gemini-3.5-flash` → `gemini-2.5-flash` → `gemini-3.1-flash-lite-preview`
 - Retries 3× per model on 429/503 with 2s/4s/6s backoff
 - Skips to next model on 404 (model retired/unavailable)
@@ -87,7 +91,10 @@ Origins are computed from `source` + `titi` fields by `getOrigin(w)`:
 
 ### Display helpers (top-level functions)
 - `fmtSource(s)` — formats "CB (02/23)" → "CB · Feb '23" for display
-- `isFire(w)` — checks `w.fire` boolean (prestige/collectible)
+- `fireLevel(w)` — returns integer 0–3 from `w.fire` (handles `true` → 1 backward compat)
+- `isFire(w)` — checks `fireLevel(w) > 0`
+- `fireEmoji(w)` — returns "🔥" repeated by tier (e.g. "🔥🔥🔥" for Icon)
+- `fireLabel(w)` — returns tier name: "Notable", "Prestige", or "Icon"
 - `isPeak(w)` — checks if wine is approaching or past drink window (urgency)
 - `isCB(w)` — checks if source starts with "CB"
 - `isDrank(w)` — checks if qty <= 0
@@ -97,10 +104,10 @@ Origins are computed from `source` + `titi` fields by `getOrigin(w)`:
 - **Filters**: search, type, shelf, Titi toggle, 🔥 fire toggle
 - **View toggle**: In cave (default, hides drank) / Drank (only qty=0) / All
 - **Sort**: producer, vintage (asc/desc), recently added, drink window
-- **Cards show**: fire 🔥 emoji + chip, peak ⛰️ chip, CB badge, Titi chip, drank styling (faded/greyscale)
+- **Cards show**: fire 🔥 emoji (repeated by tier) + tier label chip, peak ⛰️ chip, CB badge, Titi chip, drank styling (faded/greyscale)
 
 ### Stats page
-- Summary pills: wines, bottles, estimated value (CAD), fire count, peak count, drank count + consumed value
+- Summary pills: wines, bottles, estimated value (CAD), fire tiers (🔥🔥🔥 icon / 🔥🔥 prestige / 🔥 notable), peak count, drank count + consumed value
 - 🎲 Random bottle picker ("What should I drink tonight?") — picks from in-cave wines, tappable to detail
 - Bottle-shaped SVG charts by wine type (proportional height)
 - Origin breakdown bar chart (CB, Titi, SAQ, LCBO, etc.)
@@ -108,12 +115,12 @@ Origins are computed from `source` + `titi` fields by `getOrigin(w)`:
 - Price distribution (CAD buckets: $0–20, $20–40, $40–60, $60–100, $100+)
 - Vintage spread bar chart
 
-### Fire wine identification criteria
-For flagging existing wines or when AI identifies from labels:
-- **Known icon producers**: Tenuta San Guido, Château Cheval Blanc, Ornellaia, Château Pétrus, Château Latour, Château Lafite, Château Margaux, Château Haut-Brion, Domaine de la Romanée-Conti, Penfolds (Grange)
-- **Prestige keywords**: Super Tuscan, 1er Grand Cru Classé, Premier Grand Cru, Sassicaia, Masseto, Solaia, Tignanello, Opus One, Screaming Eagle, Harlan
-- **Price threshold**: ~$150+ CAD typically qualifies
-- Mid-tier classified Bordeaux (e.g. St-Émilion Grand Cru at ~$50) are **not** fire — that designation is reserved for truly iconic/collectible bottles
+### Fire tier criteria
+For manual assignment or AI identification from labels:
+- **Tier 3 — Icon** 🔥🔥🔥: Legendary, globally recognized bottles — Sassicaia, Penfolds Grange, Cheval Blanc, Ornellaia, Pétrus, Latour, Lafite, Margaux, Haut-Brion, Romanée-Conti, Opus One, Screaming Eagle, Harlan. Typically $200+ CAD.
+- **Tier 2 — Prestige** 🔥🔥: Collectible, special-occasion wines — top cru Bordeaux, premium Super Tuscans (Guado al Tasso, Tignanello, Solaia), great vintages of respected producers. Typically $150–300 CAD.
+- **Tier 1 — Notable** 🔥: Above-average quality or reputation — aged classified Bordeaux, well-known single-vineyard bottlings, wines with historical significance. May be under $100 but have collector interest.
+- **Tier 0 — None**: Everything else. Most wines are tier 0. Mid-tier classified Bordeaux (e.g. St-Émilion Grand Cru at ~$50) are not fire. Be conservative — the tiers should feel earned.
 
 ## Lessons learned
 
