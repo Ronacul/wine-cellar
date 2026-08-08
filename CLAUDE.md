@@ -37,6 +37,8 @@ Each wine object in `wines.json`:
   "location": "",
   "notes": "Tasting notes, grape varieties",
   "drankDate": null,
+  "drankRating": null,
+  "drankNotes": null,
   "imagePath": "images/{id}.jpg"
 }
 ```
@@ -46,6 +48,8 @@ Each wine object in `wines.json`:
 - `titi: true` = from Dad's cellar (origin flag + filter in the UI)
 - `fire: true` = icon/prestige/collectible wine (Sassicaia, Cheval Blanc, Penfolds Grange, Grand Cru Burgundy, cult Napa, etc.). Manual toggle + AI auto-detect on label scan.
 - `qty: 0` + `drankDate` = consumed bottle — kept in history, hidden from default cellar view
+- `drankRating: 1–5` = star rating given when marking as drank (optional, set via drank dialog)
+- `drankNotes: string` = occasion/context when the bottle was consumed (optional, set via drank dialog)
 - `price` uses `~$XX CAD (est.)` for AI-estimated prices vs actual purchase prices (always CAD)
 - `source` uses `CB (mm/yy)` format for Charlie's Burgers shipments. The form splits this into a "CB" text input + separate mm/yy date fields, then recombines on save.
 

@@ -297,6 +297,25 @@ details.collapse .collapse-body{padding:12px 0 0}
 .chip.peak{color:var(--warn);border-color:var(--warn)}
 .card.drank{opacity:.45}
 .card.drank .thumb{filter:grayscale(.6)}
+
+/* ---------- drank dialog ---------- */
+.drank-overlay{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:20px;animation:drank-fade-in .2s}
+@keyframes drank-fade-in{from{opacity:0}to{opacity:1}}
+.drank-dialog{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:24px 20px;max-width:340px;width:100%;text-align:center}
+.drank-dialog h3{font-family:"Cormorant Garamond",serif;font-size:22px;margin-bottom:4px;color:var(--ink)}
+.drank-sub{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-faint);margin-bottom:16px}
+.drank-label{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-dim);margin-bottom:8px}
+.drank-stars{display:flex;gap:4px;justify-content:center;margin:8px 0 16px}
+.drank-stars button{background:none;border:none;font-size:30px;cursor:pointer;padding:2px 4px;color:var(--ink-faint);opacity:.35;transition:opacity .12s,color .12s}
+.drank-stars button.on{opacity:1;color:var(--gold)}
+.drank-occasion{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:6px;color:var(--ink);padding:10px 12px;font-size:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;margin:4px 0 18px;resize:none}
+.drank-occasion::placeholder{color:var(--ink-faint)}
+.drank-btns{display:flex;gap:8px}
+.drank-btns button{flex:1;padding:12px 10px;border-radius:6px;font-size:14px;cursor:pointer;font-weight:500}
+.drank-btns .drank-cancel{background:var(--panel2);border:1px solid var(--line);color:var(--ink-dim)}
+.drank-btns .drank-confirm{background:var(--claret);border:1px solid var(--claret);color:#fff}
+.drank-btns .drank-confirm:active{background:var(--claret-soft)}
+.drank-rating-display{color:var(--gold);letter-spacing:1px}
 .view-toggle{display:flex;gap:0;margin:0 0 0 auto;flex:none}
 .view-toggle button{background:var(--panel);border:1px solid var(--line);color:var(--ink-faint);font-family:"IBM Plex Mono",monospace;font-size:10.5px;padding:7px 10px;cursor:pointer;letter-spacing:.04em}
 .view-toggle button:first-child{border-radius:4px 0 0 4px}
@@ -435,6 +454,44 @@ function getOrigin(w){
   return "Unknown";
 }
 
+/* ================= drank dialog ================= */
+function showDrankDialog(w, onDone){
+  const overlay = document.createElement("div");
+  overlay.className = "drank-overlay";
+  let rating = 0;
+  overlay.innerHTML = `
+    <div class="drank-dialog">
+      <h3>🍷 Last bottle!</h3>
+      <div class="drank-sub">${esc(w.producer||"")} ${esc(w.name||"")} ${esc(w.vintage||"")}</div>
+      <div class="drank-label">How was it?</div>
+      <div class="drank-stars" id="drank-stars">
+        ${[1,2,3,4,5].map(n=>`<button type="button" data-r="${n}">★</button>`).join("")}
+      </div>
+      <div class="drank-label">Occasion / notes</div>
+      <textarea class="drank-occasion" id="drank-occ" rows="2" placeholder="Dinner with friends, Tuesday BBQ…"></textarea>
+      <div class="drank-btns">
+        <button type="button" class="drank-cancel" id="drank-cancel">Cancel</button>
+        <button type="button" class="drank-confirm" id="drank-confirm">🍷 Drank it!</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.querySelectorAll(".drank-stars button").forEach(btn=>{
+    btn.onclick = ()=>{
+      rating = parseInt(btn.dataset.r);
+      overlay.querySelectorAll(".drank-stars button").forEach((b,i)=>{ b.classList.toggle("on", i < rating); });
+    };
+  });
+  document.getElementById("drank-cancel").onclick = ()=> overlay.remove();
+  document.getElementById("drank-confirm").onclick = ()=>{
+    const occ = document.getElementById("drank-occ").value.trim();
+    overlay.remove();
+    onDone(rating || null, occ || null);
+  };
+  /* close on overlay click outside dialog */
+  overlay.addEventListener("click", (e)=>{ if(e.target === overlay) overlay.remove(); });
+}
+
 /* ================= images ================= */
 function resizeImage(file){
   return new Promise((resolve,reject)=>{
@@ -492,7 +549,7 @@ function cardHTML(w){
     <div class="card-top">
       ${thumb}
       <div class="card-info">
-        <div class="wine-name serif">${fire?"🔥 ":""}${esc(w.producer||"")} ${esc(w.name||"")}${drank?" <span style=\"font-size:12px;color:var(--ink-faint);font-family:var(--mono)\">· drank</span>":""}</div>
+        <div class="wine-name serif">${fire?"🔥 ":""}${esc(w.producer||"")} ${esc(w.name||"")}${drank?" <span style=\"font-size:12px;color:var(--ink-faint);font-family:var(--mono)\">· drank"+(w.drankRating?" <span class=\"drank-rating-display\">"+"★".repeat(w.drankRating)+"</span>":"")+"</span>":""}</div>
         <div class="wine-sub">${subLine ? esc(subLine) : `<span class="tbd">TBD</span>`}</div>
         <div class="chips">
           ${w.vintage?`<span class="chip vintage">${esc(w.vintage)}</span>`:""}
@@ -627,7 +684,7 @@ function renderDetail(){
     <div class="chips" style="margin-bottom:10px">
       ${w.fire?`<span class="chip fire">🔥 Fire</span>`:""}
       ${peak?`<span class="chip peak">⛰️ ${st.label}</span>`:""}
-      ${drank?`<span class="chip" style="color:var(--ink-faint)">Drank${w.drankDate?" · "+w.drankDate:""}</span>`:""}
+      ${drank?`<span class="chip" style="color:var(--ink-faint)">Drank${w.drankDate?" · "+w.drankDate:""}${w.drankRating?" · <span class=\"drank-rating-display\">"+"★".repeat(w.drankRating)+"☆".repeat(5-w.drankRating)+"</span>":""}</span>`:""}
     </div>
     ${bandHTML(w)}
     <dl class="spec">
@@ -656,6 +713,7 @@ function renderDetail(){
         </div>
       </dd>
       <dt>Bin/rack</dt><dd>${tbd(w.location)}</dd>
+      ${drank && w.drankNotes ? `<dt>Occasion</dt><dd>${esc(w.drankNotes)}</dd>` : ""}
       <dt>Notes</dt><dd>${tbd(w.notes)}</dd>
     </dl>
     <div class="recheck-bar">
@@ -735,12 +793,18 @@ function renderDetail(){
   };
   document.getElementById("qty-minus").onclick = ()=>{
     const prev = parseInt(w.qty)||1;
-    w.qty = Math.max(0, prev - 1);
-    if(w.qty===0){
-      w.drankDate = new Date().toISOString().slice(0,10);
-      saveWines(); render();
+    if(prev <= 1){
+      /* last bottle — ask for rating + occasion */
+      showDrankDialog(w, (rating, occasion)=>{
+        w.qty = 0;
+        w.drankDate = new Date().toISOString().slice(0,10);
+        if(rating) w.drankRating = rating;
+        if(occasion) w.drankNotes = occasion;
+        saveWines(); render();
+      });
       return;
     }
+    w.qty = prev - 1;
     saveWines(); render();
   };
   document.getElementById("qty-plus").onclick = ()=>{
@@ -876,7 +940,7 @@ function renderForm(){
   /* qty +/- buttons */
   document.getElementById("fq-minus").addEventListener("click", ()=>{
     const el = document.getElementById("f-qty");
-    el.value = Math.max(1, (parseInt(el.value)||1) - 1);
+    el.value = Math.max(0, (parseInt(el.value)||1) - 1);
   });
   document.getElementById("fq-plus").addEventListener("click", ()=>{
     const el = document.getElementById("f-qty");
@@ -973,20 +1037,36 @@ function renderForm(){
       if(cbMM && cbYY) sourceVal = `CB (${cbMM}/${cbYY})`;
       else sourceVal = "CB";
     }
+    const qtyVal = parseInt(g("f-qty"))||0;
     const rec = editingId ? wines.find(x=>x.id===editingId) : {id:uid(), added:new Date().toISOString().slice(0,10)};
-    Object.assign(rec, {
-      producer:g("f-producer"), name:g("f-name"), vintage:g("f-vintage"),
-      type:document.getElementById("f-type").value, qty:parseInt(g("f-qty"))||1,
-      region:g("f-region"), drinkFrom:g("f-from"), drinkTo:g("f-to"),
-      shelfSection:document.getElementById("f-shelf").value, binCode:g("f-bincode"),
-      titi:document.getElementById("f-titi").checked,
-      fire:document.getElementById("f-fire").checked,
-      pairings:g("f-pair"), source:sourceVal, price:g("f-price"),
-      location:g("f-loc"), notes:g("f-notes")
-    });
-    if(pendingImage){ rec.imageData = pendingImage; rec.imagePath = rec.imagePath || null; rec.imageDirty = true; }
-    if(!editingId) wines.push(rec);
-    saveWines(); editingId=null; tab="cellar"; setTab("cellar");
+    const prevQty = parseInt(rec.qty)||1;
+    const finishSave = (drankRating, drankOccasion) => {
+      Object.assign(rec, {
+        producer:g("f-producer"), name:g("f-name"), vintage:g("f-vintage"),
+        type:document.getElementById("f-type").value, qty:qtyVal,
+        region:g("f-region"), drinkFrom:g("f-from"), drinkTo:g("f-to"),
+        shelfSection:document.getElementById("f-shelf").value, binCode:g("f-bincode"),
+        titi:document.getElementById("f-titi").checked,
+        fire:document.getElementById("f-fire").checked,
+        pairings:g("f-pair"), source:sourceVal, price:g("f-price"),
+        location:g("f-loc"), notes:g("f-notes")
+      });
+      if(qtyVal <= 0){
+        rec.qty = 0;
+        if(!rec.drankDate) rec.drankDate = new Date().toISOString().slice(0,10);
+        if(drankRating) rec.drankRating = drankRating;
+        if(drankOccasion) rec.drankNotes = drankOccasion;
+      }
+      if(pendingImage){ rec.imageData = pendingImage; rec.imagePath = rec.imagePath || null; rec.imageDirty = true; }
+      if(!editingId) wines.push(rec);
+      saveWines(); editingId=null; tab="cellar"; setTab("cellar");
+    };
+    /* show drank dialog when qty drops to 0 for the first time */
+    if(qtyVal <= 0 && prevQty > 0){
+      showDrankDialog(rec, finishSave);
+    } else {
+      finishSave(null, null);
+    }
   };
   const c = document.getElementById("cancel");
   if(c) c.onclick = ()=>{ editingId=null; tab="detail"; render(); };
@@ -1303,6 +1383,9 @@ function renderSync(){
       <summary>What's new</summary>
       <div class="collapse-body">
         <ul class="changelog">
+          <li><span class="cl-ver">Aug 8, 2026</span>
+            <span class="cl-title">🍷 Drank dialog with rating &amp; occasion</span><br>
+            <span class="cl-desc">When you drink your last bottle (qty → 0), a dialog asks for a ★ rating and occasion notes. Stars and occasion are shown on the card and detail view. Works from both the detail view −/+ buttons and the edit form. Rating &amp; notes stored as drankRating and drankNotes.</span></li>
           <li><span class="cl-ver">Aug 6, 2026</span>
             <span class="cl-title">🔥 Fire prestige, ⛰️ Peak window, drank history</span><br>
             <span class="cl-desc">🔥 Fire = icon/collectible wines (Sassicaia, Cheval Blanc…) — manual toggle + AI auto-detect. ⛰️ Peak chip for wines approaching or past their drink window. Drank history: bottles at qty 0 stay in your records with a date stamp; toggle In cave / Drank / All in the cellar. Stats page shows origins (CB, Titi, SAQ…), CB shipments by month, consumed value, and fire/peak counts.</span></li>
