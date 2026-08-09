@@ -844,9 +844,11 @@ function renderList(soonMode){
   const activeFilterCount = chipDefs.filter(d => filters[d.key]).length;
   const activeShelfCount = shelfFilters.size;
 
+  const anyActive = activeShelfCount || activeFilterCount || typeFilter || searchQ;
   const filterBarHTML = `<div class="filter-bar">
     ${usedShelves.length ? `<button type="button" class="filter-trigger${activeShelfCount?" active":""}" id="shelf-trigger">Shelf${activeShelfCount?` <span class="ft-badge">${activeShelfCount}</span>`:""}</button>` : ""}
     <button type="button" class="filter-trigger${activeFilterCount?" active":""}" id="filter-trigger">Filters${activeFilterCount?` <span class="ft-badge">${activeFilterCount}</span>`:""}</button>
+    ${anyActive?`<button type="button" class="filter-trigger" id="clear-filters" style="color:var(--urgent);border-color:var(--urgent)">✕ Clear</button>`:""}
   </div>`;
 
   const toolbar = `<div class="toolbar">
@@ -934,9 +936,18 @@ function renderList(soonMode){
 
   view.innerHTML = toolbar + unratedHTML + body;
 
-  document.getElementById("q").addEventListener("input", e=>{ searchQ=e.target.value; renderListOnly(soonMode); });
-  document.getElementById("q").addEventListener("focus", e => e.target.select());
+  const qEl = document.getElementById("q");
+  qEl.addEventListener("input", e=>{ searchQ=e.target.value; renderListOnly(soonMode); });
+  /* select-all on focus — delay for mobile Safari which cancels immediate select() */
+  qEl.addEventListener("focus", ()=> setTimeout(()=> qEl.select(), 10));
   document.getElementById("tf").addEventListener("change", e=>{ typeFilter=e.target.value; renderListOnly(soonMode); });
+  /* clear all filters */
+  const clearBtn = document.getElementById("clear-filters");
+  if(clearBtn) clearBtn.addEventListener("click", ()=>{
+    searchQ=""; typeFilter=""; shelfFilters.clear();
+    Object.keys(filters).forEach(k=> filters[k]=false);
+    renderListOnly(soonMode);
+  });
 
   /* popup filter bindings */
   function openPopup(titleText, items, onToggle, onClose){
