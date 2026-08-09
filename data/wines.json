@@ -4575,5 +4575,27 @@
     "location": "J",
     "notes": "100% Malbec; a bold, fruit-forward Argentine red with notes of dark plum, blackberry, and subtle oak spice.",
     "imagePath": "images/msksdqf8agzlx.jpg"
+  },
+  {
+    "id": "mslee4biyvem1",
+    "added": "2026-08-09",
+    "producer": "Ruxe Ruxe",
+    "name": "Mencía",
+    "vintage": "20182018",
+    "type": "Red",
+    "qty": 1,
+    "region": "Galicia, Spain",
+    "drinkFrom": "2020",
+    "drinkTo": "2025",
+    "shelfSection": "",
+    "binCode": "",
+    "titi": false,
+    "fire": 0,
+    "pairings": "Cured meats, grilled pork, roasted chicken, mushroom tapas",
+    "source": "CB (11/20)",
+    "price": "~$28 CAD (est.)",
+    "location": "L",
+    "notes": "100% Mencía. A fresh, light-to-medium-bodied Galician red showing bright red cherry, floral aromas, and a mineral, slate-like finish.",
+    "imagePath": "images/mslee4biyvem1.jpg"
   }
 ]
