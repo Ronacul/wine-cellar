@@ -324,8 +324,9 @@ details.collapse .collapse-body{padding:12px 0 0}
 .stat-pill .n{color:var(--ink);font-weight:500}
 .tab-badge{font-size:9px;background:var(--claret);color:#fff;border-radius:8px;padding:1px 5px;margin-left:3px;vertical-align:top}
 .toolbar select.sort{flex:1 1 100%;font-size:12px;color:var(--ink-faint)}
-.cb-date-row{display:flex;gap:8px;align-items:center;margin-top:6px}
-.cb-date-row input{width:70px;text-align:center;font-family:"IBM Plex Mono",monospace;font-size:13px}
+.cb-date-row,.gift-detail-row{display:flex;gap:8px;align-items:center;margin-top:6px}
+.cb-date-row input,.gift-detail-row input{width:70px;text-align:center;font-family:"IBM Plex Mono",monospace;font-size:13px}
+.gift-detail-row input.gift-name{width:auto;flex:1;text-align:left}
 .cb-date-row span{font-size:12px;color:var(--ink-faint)}
 .qty-mini{display:inline-flex;align-items:center;gap:4px;margin-left:8px;vertical-align:middle}
 .qty-mini button{background:var(--panel2);border:1px solid var(--line);border-radius:3px;color:var(--ink);width:28px;height:28px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
@@ -550,8 +551,17 @@ const SMONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","No
 function fmtSource(s){
   if(!s) return s;
   const m = s.match(/^CB \((\d{2})\/(\d{2})\)$/);
-  if(!m) return s;
-  return "CB · " + SMONTHS[parseInt(m[1])-1] + " '" + m[2];
+  if(m) return "CB · " + SMONTHS[parseInt(m[1])-1] + " '" + m[2];
+  const gm = s.match(/^(Gift - .+?)\s*\((\d{2})\/(\d{2})\)$/);
+  if(gm) return gm[1] + " · " + SMONTHS[parseInt(gm[2])-1] + " '" + gm[3];
+  return s;
+}
+function parseGiftSource(s){
+  if(!s || !s.startsWith("Gift")) return {name:"",mm:"",yy:""};
+  let rest = s.replace(/^Gift\s*-?\s*/,"").trim();
+  const dm = rest.match(/\((\d{2})\/(\d{2})\)\s*$/);
+  if(dm) return {name:rest.replace(dm[0],"").trim(), mm:dm[1], yy:dm[2]};
+  return {name:rest, mm:"", yy:""};
 }
 function fireLevel(w){ const f = w.fire; if(f === true) return 1; return parseInt(f)||0; }
 function isFire(w){ return fireLevel(w) > 0; }
@@ -853,6 +863,7 @@ function renderList(soonMode){
   view.innerHTML = toolbar + unratedHTML + body;
 
   document.getElementById("q").addEventListener("input", e=>{ searchQ=e.target.value; renderListOnly(soonMode); });
+  document.getElementById("q").addEventListener("focus", e => e.target.select());
   document.getElementById("tf").addEventListener("change", e=>{ typeFilter=e.target.value; renderListOnly(soonMode); });
 
   /* filter chip bindings */
@@ -1209,7 +1220,9 @@ function renderForm(){
   const _cbParts = (w.source||"").match(/\((\d{2})\/(\d{2})\)/);
   const _cbMM = _cbParts ? _cbParts[1] : "";
   const _cbYY = _cbParts ? _cbParts[2] : "";
-  const _srcForInput = _isCB ? "CB" : (w.source||"");
+  const _isGift = (w.source||"").startsWith("Gift");
+  const _giftParsed = _isGift ? parseGiftSource(w.source) : {name:"",mm:"",yy:""};
+  const _srcForInput = _isCB ? "CB" : (_isGift ? "Gift" : (w.source||""));
   view.innerHTML = `<div class="sheet">
     <h2>${editingId? "Edit bottle" : "New bottle"}</h2>
     <div class="photo-zone">
@@ -1274,6 +1287,13 @@ function renderForm(){
           <span>/</span>
           <input id="f-cb-yy" inputmode="numeric" maxlength="2" placeholder="yy" value="${_cbYY}">
         </div>
+        <div class="gift-detail-row" id="gift-detail-row" style="display:${_isGift?'flex':'none'}">
+          <span>From:</span>
+          <input id="f-gift-name" class="gift-name" placeholder="Name" value="${esc(_giftParsed.name)}">
+          <input id="f-gift-mm" inputmode="numeric" maxlength="2" placeholder="mm" value="${_giftParsed.mm}">
+          <span>/</span>
+          <input id="f-gift-yy" inputmode="numeric" maxlength="2" placeholder="yy" value="${_giftParsed.yy}">
+        </div>
       </div>
       <div class="field"><label>Price</label><input id="f-price" value="${esc(w.price)}" placeholder="e.g. $42 CAD"></div>
     </div>
@@ -1310,27 +1330,44 @@ function renderForm(){
 
   /* source quick-pick */
   const cbDateRow = document.getElementById("cb-date-row");
+  const giftDetailRow = document.getElementById("gift-detail-row");
   const srcInput = document.getElementById("f-source");
-  const showCbDate = () => { cbDateRow.style.display = srcInput.value.startsWith("CB") ? "flex" : "none"; };
-  srcInput.addEventListener("input", showCbDate);
+  const showSourceRows = () => {
+    cbDateRow.style.display = srcInput.value.startsWith("CB") ? "flex" : "none";
+    giftDetailRow.style.display = srcInput.value === "Gift" ? "flex" : "none";
+  };
+  srcInput.addEventListener("input", showSourceRows);
+
+  /* auto-capitalize gift name */
+  const giftNameInput = document.getElementById("f-gift-name");
+  giftNameInput.addEventListener("input", ()=>{
+    const v = giftNameInput.value;
+    if(v.length === 1) giftNameInput.value = v.charAt(0).toUpperCase();
+  });
 
   document.getElementById("f-source-pick").addEventListener("change", (e)=>{
     const v = e.target.value;
     const now = new Date();
     const mm = String(now.getMonth()+1).padStart(2,"0");
     const yy = String(now.getFullYear()).slice(2);
+    cbDateRow.style.display = "none";
+    giftDetailRow.style.display = "none";
     if(v === "cb"){
       srcInput.value = "CB";
       document.getElementById("f-cb-mm").value = mm;
       document.getElementById("f-cb-yy").value = yy;
       cbDateRow.style.display = "flex";
+    } else if(v === "gift"){
+      srcInput.value = "Gift";
+      document.getElementById("f-gift-mm").value = mm;
+      document.getElementById("f-gift-yy").value = yy;
+      giftDetailRow.style.display = "flex";
     } else {
       const map = {
         wineclub: "Wine club (" + mm + "/" + yy + ")",
-        saq: "SAQ", lcbo: "LCBO", gift: "Gift", winery: "Winery"
+        saq: "SAQ", lcbo: "LCBO", winery: "Winery"
       };
       if(map[v]) srcInput.value = map[v];
-      cbDateRow.style.display = "none";
     }
     e.target.selectedIndex = 0;
   });
@@ -1397,6 +1434,17 @@ function renderForm(){
       const cbYY = g("f-cb-yy");
       if(cbMM && cbYY) sourceVal = `CB (${cbMM}/${cbYY})`;
       else sourceVal = "CB";
+    }
+    /* combine Gift source with name + date fields */
+    if(sourceVal === "Gift"){
+      let giftName = g("f-gift-name");
+      if(giftName) giftName = giftName.charAt(0).toUpperCase() + giftName.slice(1);
+      const giftMM = g("f-gift-mm").padStart(2,"0");
+      const giftYY = g("f-gift-yy");
+      let base = "Gift";
+      if(giftName) base = "Gift - " + giftName;
+      if(giftMM && giftYY && giftMM !== "00") base += ` (${giftMM}/${giftYY})`;
+      sourceVal = base;
     }
     const rec = editingId ? wines.find(x=>x.id===editingId) : {id:uid(), added:new Date().toISOString().slice(0,10)};
     Object.assign(rec, {
