@@ -429,6 +429,35 @@ details.collapse .collapse-body{padding:12px 0 0}
 /* ---------- drank rating stars in cards ---------- */
 .card-stars{font-size:12px;color:var(--gold);margin-top:4px;letter-spacing:1px}
 
+/* ---------- value / appreciation tab ---------- */
+.val-summary{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:12px 0}
+.val-pill{font-family:"IBM Plex Mono",monospace;font-size:12px;padding:6px 12px;border:1px solid var(--line);border-radius:12px;color:var(--ink-dim);text-align:center}
+.val-pill .n{font-weight:500;font-size:14px;display:block}
+.val-pill .n.up{color:var(--ok)}
+.val-pill .n.down{color:var(--urgent)}
+.val-pill .n.flat{color:var(--ink-faint)}
+.ticker-list{margin:12px 0}
+.ticker-row{
+  display:flex;align-items:center;gap:10px;padding:10px 12px;
+  border-bottom:1px solid var(--line);cursor:pointer;
+}
+.ticker-row:last-child{border-bottom:none}
+.ticker-row:active{background:var(--panel2)}
+.ticker-info{flex:1;min-width:0}
+.ticker-name{font-family:"Cormorant Garamond",serif;font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ticker-sub{font-size:11px;color:var(--ink-dim)}
+.ticker-vals{text-align:right;flex:none;font-family:"IBM Plex Mono",monospace;font-size:12px}
+.ticker-change{font-size:11px;font-weight:500;margin-top:1px}
+.ticker-change.up{color:var(--ok)}
+.ticker-change.down{color:var(--urgent)}
+.ticker-change.flat{color:var(--ink-faint)}
+.ticker-sort{display:flex;gap:0;margin:12px 0}
+.ticker-sort button{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--ink-faint);font-family:"IBM Plex Mono",monospace;font-size:10.5px;padding:7px 8px;cursor:pointer}
+.ticker-sort button:first-child{border-radius:4px 0 0 4px}
+.ticker-sort button:last-child{border-radius:0 4px 4px 0}
+.ticker-sort button:not(:first-child){border-left:none}
+.ticker-sort button.on{color:var(--ink);background:var(--panel2);border-color:var(--ink-faint)}
+
 @media (prefers-reduced-motion: no-preference){
   .card{transition:border-color .15s}
   .card:active{border-color:var(--claret)}
@@ -449,6 +478,7 @@ details.collapse .collapse-body{padding:12px 0 0}
   <button data-tab="soon"><span>Drink Soon</span></button>
   <button data-tab="add"><span>+ Bottle</span></button>
   <button data-tab="stats"><span>Stats</span></button>
+  <button data-tab="value"><span>📈 Value</span></button>
   <button data-tab="sync"><span>Sync</span></button>
 </nav>
 
@@ -469,6 +499,7 @@ let searchQ = "", typeFilter = "", sortBy = "producer", cellarView = "cave";
 let filters = {fire:false, titi:false, cb:false, peak:false, soon:false, past:false};
 let shelfFilters = new Set();
 let reviewPending = null; /* wine id when review sheet is open */
+let valueSort = "change-desc"; /* ticker sort: change-desc, change-asc, name, value-desc */
 
 const saveWines = () => localStorage.setItem(LS_WINES, JSON.stringify(wines));
 let syncHistory = JSON.parse(localStorage.getItem(LS_HIST) || "[]");
@@ -666,6 +697,7 @@ function render(){
   else if(tab==="add") renderForm();
   else if(tab==="detail") renderDetail();
   else if(tab==="stats") renderStats();
+  else if(tab==="value") renderValue();
   else if(tab==="sync") renderSync();
 }
 
@@ -1066,6 +1098,15 @@ function renderDetail(){
           <input id="price-edit" value="${esc(w.price)}" placeholder="e.g. ~$30 CAD (est.)">
           <button id="price-save">Save</button>
         </div>
+        ${w.marketValue ? `<div style="font-size:12px;margin-top:4px;color:var(--ink-dim)">Market: ${esc(w.marketValue)}${(() => {
+          const orig = parsePrice(w.price), cur = parsePrice(w.marketValue);
+          if(orig && cur){
+            const pct = ((cur - orig) / orig * 100);
+            const cls = pct > 0.5 ? "color:var(--ok)" : (pct < -0.5 ? "color:var(--urgent)" : "color:var(--ink-faint)");
+            return ` <span style="${cls};font-family:'IBM Plex Mono',monospace">${pct >= 0 ? "▲+" : "▼"}${pct.toFixed(0)}%</span>`;
+          }
+          return "";
+        })()}${w.lastValueCheck ? ` <span style="font-size:10px;color:var(--ink-faint)">· ${w.lastValueCheck}</span>` : ""}</div>` : ""}
       </dd>
       <dt>Quantity</dt><dd>
         <div class="qty-row">
@@ -1740,6 +1781,171 @@ function renderStats(){
     };
   };
   bindRandom();
+}
+
+/* ================= value / appreciation tab ================= */
+function parsePrice(p){
+  if(!p) return null;
+  const m = p.match(/\$(\d+(?:\.\d+)?)/);
+  return m ? parseFloat(m[1]) : null;
+}
+function renderValue(){
+  const inCave = wines.filter(w=>!isDrank(w));
+  const drankWines = wines.filter(w=>isDrank(w) && !isGifted(w));
+
+  /* calculate values */
+  let cellarOriginal = 0, cellarCurrent = 0, cellarPriced = 0;
+  let drankTotal = 0, drankCurrent = 0;
+
+  const tickerItems = [];
+  inCave.forEach(w=>{
+    const origP = parsePrice(w.price);
+    const curP = parsePrice(w.marketValue);
+    const qty = qtyOf(w);
+    if(origP) { cellarOriginal += origP * qty; cellarPriced++; }
+    if(curP) cellarCurrent += curP * qty;
+    if(origP || curP){
+      const orig = origP || 0;
+      const cur = curP || origP || 0;
+      const change = orig ? ((cur - orig) / orig * 100) : 0;
+      tickerItems.push({w, orig, cur, change, qty, drank:false});
+    }
+  });
+  drankWines.forEach(w=>{
+    const origP = parsePrice(w.price);
+    const curP = parsePrice(w.marketValue);
+    if(origP) drankTotal += origP;
+    if(curP) drankCurrent += curP;
+    if(origP || curP){
+      const orig = origP || 0;
+      const cur = curP || origP || 0;
+      const change = orig ? ((cur - orig) / orig * 100) : 0;
+      tickerItems.push({w, orig, cur, change, qty:1, drank:true});
+    }
+  });
+
+  /* sort ticker */
+  if(valueSort === "change-desc") tickerItems.sort((a,b) => b.change - a.change);
+  else if(valueSort === "change-asc") tickerItems.sort((a,b) => a.change - b.change);
+  else if(valueSort === "name") tickerItems.sort((a,b) => (a.w.producer||"").localeCompare(b.w.producer||""));
+  else if(valueSort === "value-desc") tickerItems.sort((a,b) => (b.cur*b.qty) - (a.cur*a.qty));
+
+  /* appreciation */
+  const hasCurrentVals = cellarCurrent > 0;
+  const totalAppreciation = cellarOriginal ? ((cellarCurrent - cellarOriginal) / cellarOriginal * 100) : 0;
+  const appCls = totalAppreciation > 0.5 ? "up" : (totalAppreciation < -0.5 ? "down" : "flat");
+  const appStr = (totalAppreciation >= 0 ? "+" : "") + totalAppreciation.toFixed(1) + "%";
+
+  /* ticker rows */
+  const tickerHTML = tickerItems.map(t => {
+    const chgCls = t.change > 0.5 ? "up" : (t.change < -0.5 ? "down" : "flat");
+    const arrow = t.change > 0.5 ? "▲" : (t.change < -0.5 ? "▼" : "—");
+    const chgStr = (t.change >= 0 ? "+" : "") + t.change.toFixed(0) + "%";
+    const curStr = t.cur ? "$" + Math.round(t.cur) : "—";
+    const origStr = t.orig ? "$" + Math.round(t.orig) : "—";
+    const fire = isFire(t.w);
+    return `<div class="ticker-row${t.drank?" drank":""}" data-id="${t.w.id}">
+      <div class="ticker-info">
+        <div class="ticker-name">${fire?fireEmoji(t.w)+" ":""}${esc(t.w.producer||"")} ${esc(t.w.name||"")}</div>
+        <div class="ticker-sub">${esc([t.w.vintage, t.w.type].filter(Boolean).join(" · "))}${t.qty>1?" × "+t.qty:""}${t.drank?" · <em>drank</em>":""}</div>
+      </div>
+      <div class="ticker-vals">
+        <div>${curStr} <span style="color:var(--ink-faint);font-size:10px">now</span></div>
+        <div class="ticker-change ${chgCls}">${arrow} ${chgStr} <span style="font-size:10px;font-weight:400">from ${origStr}</span></div>
+      </div>
+    </div>`;
+  }).join("");
+
+  const noMarketData = !tickerItems.some(t => parsePrice(t.w.marketValue));
+
+  view.innerHTML = `<div class="sheet">
+    <h2 class="serif">📈 Cellar Value</h2>
+
+    <div class="val-summary">
+      <div class="val-pill"><span class="n">${cellarOriginal ? "~$"+Math.round(cellarOriginal).toLocaleString()+" CAD" : "—"}</span>acquisition cost</div>
+      ${hasCurrentVals ? `<div class="val-pill"><span class="n ${appCls}">${cellarCurrent ? "~$"+Math.round(cellarCurrent).toLocaleString()+" CAD" : "—"}</span>current value</div>
+      <div class="val-pill"><span class="n ${appCls}">${appStr}</span>appreciation</div>` : ""}
+    </div>
+
+    ${drankTotal ? `<div class="val-summary" style="margin-top:4px">
+      <div class="val-pill"><span class="n">${"~$"+Math.round(drankTotal).toLocaleString()}</span>consumed (cost)</div>
+      ${drankCurrent ? `<div class="val-pill"><span class="n">${"~$"+Math.round(drankCurrent).toLocaleString()}</span>consumed (current)</div>` : ""}
+    </div>` : ""}
+
+    ${noMarketData ? `<div style="text-align:center;padding:16px;margin:12px 0;border:1px dashed var(--gold);border-radius:6px;color:var(--gold)">
+      <div style="font-size:15px;margin-bottom:6px">No market values yet</div>
+      <div style="font-size:12px;color:var(--ink-dim)">Tap the button below to run an AI value check — it estimates current retail prices and compares against what you paid.</div>
+    </div>` : ""}
+
+    <button class="btn btn-ghost" id="value-recheck" style="border-color:var(--gold);color:var(--gold)">✨ Update market values (AI)</button>
+    <div class="note">Uses Gemini to estimate current market values in CAD. Compares against your purchase prices to show appreciation.</div>
+    <div class="sync-status" id="value-st" style="display:none"></div>
+
+    ${tickerItems.length ? `
+    <div class="stat-section-label">Wine ticker</div>
+    <div class="ticker-sort">
+      <button type="button" class="${valueSort==="change-desc"?"on":""}" data-vs="change-desc">▲ Gainers</button>
+      <button type="button" class="${valueSort==="change-asc"?"on":""}" data-vs="change-asc">▼ Losers</button>
+      <button type="button" class="${valueSort==="value-desc"?"on":""}" data-vs="value-desc">$ Value</button>
+      <button type="button" class="${valueSort==="name"?"on":""}" data-vs="name">A–Z</button>
+    </div>
+    <div class="ticker-list">${tickerHTML}</div>` : ""}
+  </div>`;
+
+  /* sort toggle */
+  view.querySelectorAll(".ticker-sort button").forEach(btn=>{
+    btn.onclick = ()=>{ valueSort = btn.dataset.vs; renderValue(); };
+  });
+
+  /* tap to detail */
+  view.querySelectorAll(".ticker-row").forEach(row=>{
+    row.onclick = ()=>{
+      detailId = row.dataset.id; tab = "detail";
+      history.pushState({tab:"detail", id:detailId}, "");
+      render(); window.scrollTo(0,0);
+    };
+  });
+
+  /* AI market value recheck */
+  let valueAbort = false;
+  document.getElementById("value-recheck").onclick = async ()=>{
+    const stEl = document.getElementById("value-st");
+    stEl.style.display = "block";
+    if(!cfg.gkey){ stEl.textContent = "Add a Gemini API key in Sync → Settings first."; return; }
+    valueAbort = false;
+    const btn = document.getElementById("value-recheck");
+    btn.textContent = "⏹ Stop"; btn.onclick = ()=>{ valueAbort = true; };
+    const allWines = wines.filter(w => !isGifted(w));
+    let updated = 0;
+    for(let i = 0; i < allWines.length; i++){
+      if(valueAbort){ stEl.textContent = `Stopped. Updated ${updated}/${i} wines checked.`; break; }
+      const w = allWines[i];
+      const desc = [w.producer, w.name, w.vintage, w.type, w.region].filter(Boolean).join(", ");
+      if(!desc) continue;
+      stEl.textContent = `Checking ${i+1}/${allWines.length}: ${w.producer||""} ${w.name||""}…`;
+      try{
+        const prompt = `You are a wine market analyst. Estimate the CURRENT retail market value in CANADIAN DOLLARS for this wine: ${desc}. Consider the current vintage age, producer reputation, and market demand. Return ONLY a JSON object: {"marketValue":"~$XX CAD (est.)"}. Be accurate — use secondary-market pricing for collectible wines.`;
+        const body = {contents:[{parts:[{text:prompt}]}]};
+        const {r} = await callGemini(body, cfg.gkey, stEl);
+        const j = await r.json();
+        const text = ((j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts)||[]).map(p=>p.text||"").join("");
+        const rec = JSON.parse(text.replace(/```json|```/g,"").trim());
+        if(rec.marketValue){
+          w.marketValue = rec.marketValue;
+          w.lastValueCheck = new Date().toISOString().slice(0,10);
+          updated++;
+        }
+      }catch(e){
+        stEl.textContent += " ✗ " + e.message;
+        await new Promise(ok=>setTimeout(ok,2000));
+      }
+    }
+    if(!valueAbort) stEl.textContent = `✓ Done. Updated ${updated} of ${allWines.length} market values.`;
+    saveWines();
+    btn.textContent = "✨ Update market values (AI)";
+    btn.onclick = null;
+    renderValue();
+  };
 }
 
 const GH = "https://api.github.com";
