@@ -373,6 +373,10 @@ details.collapse .collapse-body{padding:12px 0 0}
 .chip.overdue{color:var(--urgent);border-color:var(--urgent)}
 .chip.last-call{color:var(--orange);border-color:var(--orange)}
 .chip.countdown{font-size:9.5px;color:var(--ink-faint);border:none;padding:2px 4px}
+.chip.flag{border:none;padding:1px 2px;font-size:13px;line-height:1}
+.chip.peak-icon{border:none;padding:1px 3px;line-height:1;display:inline-flex;align-items:center}
+.chip.peak-icon svg{display:block}
+.chip.price{color:var(--ink-dim);border-color:var(--line);font-size:10px}
 
 /* ---------- review sheet ---------- */
 .review-sheet{
@@ -596,9 +600,9 @@ const SMONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","No
 function fmtSource(s){
   if(!s) return s;
   const m = s.match(/^CB \((\d{2})\/(\d{2})\)$/);
-  if(m) return "CB · " + SMONTHS[parseInt(m[1])-1] + " '" + m[2];
+  if(m){ const mo=parseInt(m[1]); return "CB · " + (mo ? SMONTHS[mo-1]+" '" : "'") + m[2]; }
   const gm = s.match(/^(Gift - .+?)\s*\((\d{2})\/(\d{2})\)$/);
-  if(gm) return gm[1] + " · " + SMONTHS[parseInt(gm[2])-1] + " '" + gm[3];
+  if(gm){ const mo=parseInt(gm[2]); return gm[1] + " · " + (mo ? SMONTHS[mo-1]+" '" : "'") + gm[3]; }
   return s;
 }
 function parseGiftSource(s){
@@ -607,6 +611,15 @@ function parseGiftSource(s){
   const dm = rest.match(/\((\d{2})\/(\d{2})\)\s*$/);
   if(dm) return {name:rest.replace(dm[0],"").trim(), mm:dm[1], yy:dm[2]};
   return {name:rest, mm:"", yy:""};
+}
+const COUNTRY_FLAGS = {france:"🇫🇷",italy:"🇮🇹",spain:"🇪🇸",portugal:"🇵🇹",germany:"🇩🇪",austria:"🇦🇹",greece:"🇬🇷",hungary:"🇭🇺",georgia:"🇬🇪",usa:"🇺🇸",canada:"🇨🇦",argentina:"🇦🇷",chile:"🇨🇱",australia:"🇦🇺",southafrica:"🇿🇦"};
+function countryFlag(w){
+  const r = (w.region||"").trim();
+  if(!r) return "";
+  const parts = r.split(",");
+  let c = parts[parts.length-1].trim().toLowerCase().replace(/\s+/g,"");
+  if(c==="southaustralia") c="australia";
+  return COUNTRY_FLAGS[c]||"";
 }
 function fireLevel(w){ const f = w.fire; if(f === true) return 1; return parseInt(f)||0; }
 function isFire(w){ return fireLevel(w) > 0; }
@@ -715,10 +728,22 @@ function render(){
   else if(tab==="sync") renderSync();
 }
 
+/* mountain SVG for peak icon — colored by status */
+const PEAK_COLORS = {hold:"#7b9a7b", window:"#7da87b", soon:"#c9a227", urgent:"#d4842a", overdue:"#c05060"};
+function peakMtnSVG(cls){
+  const c = PEAK_COLORS[cls]||PEAK_COLORS.window;
+  return `<svg viewBox="0 0 16 11" width="14" height="10"><path d="M0 11L5.5 1L11 11z" fill="${c}"/><path d="M7 11L11 4L16 11z" fill="${c}" opacity=".5"/></svg>`;
+}
+function peakIconHTML(w){
+  const st = windowStatus(w);
+  if(!st.cls || st.cls==="hold") return "";
+  const tip = st.label + (st.countdown ? " · " + st.countdown : "");
+  return `<span class="chip peak-icon" title="${esc(tip)}">${peakMtnSVG(st.cls)}</span>`;
+}
+/* verbose version for detail view */
 function peakChipHTML(w){
   const st = windowStatus(w);
   if(!st.cls || st.cls==="hold" || st.cls==="window") {
-    /* in window with countdown */
     if(st.cls==="window" && st.countdown) return `<span class="chip window" style="color:var(--ok);border-color:var(--ok)">In window</span><span class="chip countdown">${esc(st.countdown)}</span>`;
     return "";
   }
@@ -733,6 +758,7 @@ function cardHTML(w){
   const thumb = src ? `<img class="thumb" src="${esc(src)}" alt="" loading="lazy">`
                     : `<div class="thumb empty">?</div>`;
   const tcls = (w.type||"").toLowerCase();
+  const flag = countryFlag(w);
   const subLine = [w.region, fmtSource(w.source)].filter(Boolean).join(" · ");
   const fire = isFire(w);
   const drank = isDrank(w);
@@ -750,13 +776,15 @@ function cardHTML(w){
         <div class="chips">
           ${w.vintage?`<span class="chip vintage">${esc(w.vintage)}</span>`:""}
           ${w.type?`<span class="chip ${tcls}">${esc(w.type)}</span>`:""}
+          ${flag?`<span class="chip flag">${flag}</span>`:""}
           ${!drank && w.qty>1?`<span class="chip">×${esc(w.qty)}</span>`:""}
           ${w.binCode?`<span class="chip bin">${esc(w.binCode)}</span>`:""}
+          ${fire?`<span class="chip fire">${fireEmoji(w)}</span>`:""}
+          ${!drank ? peakIconHTML(w) : ""}
+          ${w.price?`<span class="chip price">${fmtCardPrice(w.price)}</span>`:""}
           ${w.titi?`<span class="chip titi">Titi</span>`:""}
           ${isCB(w)?`<span class="chip cb">CB</span>`:""}
-          ${fire?`<span class="chip fire">${fireEmoji(w)} ${fireLabel(w)}</span>`:""}
-          ${gifted?`<span class="chip gift">🎁 Gift</span>`:""}
-          ${!drank ? peakChipHTML(w) : ""}
+          ${gifted?`<span class="chip gift">🎁</span>`:""}
         </div>
         ${drank && !gifted && w.rating ? starsHTML(w.rating) : ""}
       </div>
@@ -1910,6 +1938,10 @@ function parsePrice(p){
   if(!p) return null;
   const m = p.match(/\$(\d+(?:\.\d+)?)/);
   return m ? parseFloat(m[1]) : null;
+}
+function fmtCardPrice(p){
+  const v = parsePrice(p);
+  return v !== null ? "$" + Math.round(v) : "";
 }
 function renderValue(){
   const inCave = wines.filter(w=>!isDrank(w));
