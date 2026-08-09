@@ -80,46 +80,47 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
   outline:2px solid var(--claret); outline-offset:1px;
 }
 
-/* ---------- filter chip bar ---------- */
-.filter-chips{
-  display:flex;gap:6px;flex:1 1 100%;overflow-x:auto;
-  -webkit-overflow-scrolling:touch;padding:2px 0;
-  scrollbar-width:none; /* Firefox */
+/* ---------- compact filter bar ---------- */
+.filter-bar{display:flex;gap:6px;flex-wrap:wrap;padding:2px 0}
+.filter-trigger{
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.04em;
+  padding:5px 10px;border:1px solid var(--line);border-radius:14px;
+  color:var(--ink-faint);cursor:pointer;white-space:nowrap;background:none;
+  transition:all .15s;display:inline-flex;align-items:center;gap:4px;
 }
-.filter-chips::-webkit-scrollbar{display:none}
-.filter-chip{
-  flex:none;font-family:"IBM Plex Mono",monospace;font-size:10.5px;
-  letter-spacing:.04em;padding:5px 10px;border:1px solid var(--line);
-  border-radius:14px;color:var(--ink-faint);cursor:pointer;
-  white-space:nowrap;background:none;transition:all .15s;
-}
-.filter-chip.on{background:rgba(255,255,255,.06)}
-.filter-chip .chip-count{
-  font-size:9px;opacity:.7;margin-left:3px;
+.filter-trigger.active{color:var(--ink);border-color:var(--ink);background:rgba(255,255,255,.06)}
+.filter-trigger .ft-badge{
+  font-size:9px;background:var(--claret);color:#fff;border-radius:6px;
+  min-width:14px;height:14px;display:inline-flex;align-items:center;
+  justify-content:center;padding:0 3px;
 }
 
-/* shelf letter chips */
-.shelf-chips{
-  display:flex;gap:4px;flex:1 1 100%;overflow-x:auto;
-  -webkit-overflow-scrolling:touch;padding:2px 0;
-  scrollbar-width:none;
+/* ---------- filter popup ---------- */
+.filter-popup-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;
+  display:flex;align-items:flex-end;justify-content:center;
+  animation:fpFadeIn .15s ease;
 }
-.shelf-chips::-webkit-scrollbar{display:none}
-.shelf-chip{
-  flex:none;font-family:"IBM Plex Mono",monospace;font-size:11px;
-  width:28px;height:28px;border:1px solid var(--line);
-  border-radius:4px;color:var(--ink-faint);cursor:pointer;
-  display:flex;align-items:center;justify-content:center;
-  background:none;position:relative;
+@keyframes fpFadeIn{from{opacity:0}to{opacity:1}}
+.filter-popup{
+  background:var(--panel);border:1px solid var(--line);
+  border-radius:12px 12px 0 0;padding:16px 16px 24px;
+  width:100%;max-width:420px;max-height:60vh;overflow-y:auto;
 }
-.shelf-chip.on{color:var(--ink);border-color:var(--ink);background:rgba(255,255,255,.08)}
-.shelf-chip .shelf-count{
-  position:absolute;top:-4px;right:-4px;
-  font-size:8px;background:var(--claret);color:#fff;
-  border-radius:6px;min-width:14px;height:14px;
-  display:flex;align-items:center;justify-content:center;
-  padding:0 3px;
+.filter-popup h3{
+  font-family:"IBM Plex Mono",monospace;font-size:11px;
+  text-transform:uppercase;letter-spacing:.08em;color:var(--ink-faint);
+  margin:0 0 12px;
 }
+.fp-grid{display:flex;flex-wrap:wrap;gap:8px}
+.fp-opt{
+  font-family:"IBM Plex Mono",monospace;font-size:12px;
+  padding:8px 14px;border:1px solid var(--line);border-radius:6px;
+  color:var(--ink-faint);cursor:pointer;background:none;
+  transition:all .15s;white-space:nowrap;
+}
+.fp-opt.on{color:var(--ink);border-color:var(--ink);background:rgba(255,255,255,.08)}
+.fp-opt .fp-count{font-size:9px;opacity:.6;margin-left:4px}
 
 /* ---------- wine cards ---------- */
 .list{padding:0 16px}
@@ -840,20 +841,13 @@ function renderList(soonMode){
     {key:"past", label:"🔴 Past", color:"var(--urgent)"},
   ];
 
-  const filterChipsHTML = chipDefs.map(d => {
-    const on = filters[d.key];
-    const cnt = fCounts[d.key];
-    const style = on ? `color:${d.color};border-color:${d.color}` : "";
-    return `<button type="button" class="filter-chip${on?" on":""}" data-filter="${d.key}" style="${style}">${d.label}<span class="chip-count">${cnt}</span></button>`;
-  }).join("");
+  const activeFilterCount = chipDefs.filter(d => filters[d.key]).length;
+  const activeShelfCount = shelfFilters.size;
 
-  const shelfChipsHTML = usedShelves.length ? `<div class="shelf-chips">
-    <span style="font-size:10px;color:var(--ink-faint);padding:6px 4px 6px 0;white-space:nowrap">Shelf</span>
-    ${usedShelves.map(letter => {
-      const on = shelfFilters.has(letter);
-      return `<button type="button" class="shelf-chip${on?" on":""}" data-shelf="${letter}">${letter}<span class="shelf-count">${sCounts[letter]}</span></button>`;
-    }).join("")}
-  </div>` : "";
+  const filterBarHTML = `<div class="filter-bar">
+    ${usedShelves.length ? `<button type="button" class="filter-trigger${activeShelfCount?" active":""}" id="shelf-trigger">Shelf${activeShelfCount?` <span class="ft-badge">${activeShelfCount}</span>`:""}</button>` : ""}
+    <button type="button" class="filter-trigger${activeFilterCount?" active":""}" id="filter-trigger">Filters${activeFilterCount?` <span class="ft-badge">${activeFilterCount}</span>`:""}</button>
+  </div>`;
 
   const toolbar = `<div class="toolbar">
     <input type="search" id="q" placeholder="Search the cellar…" value="${esc(searchQ)}">
@@ -861,8 +855,7 @@ function renderList(soonMode){
       <option value="">All types</option>
       ${["Red","White","Rosé","Sparkling","Dessert"].map(t=>`<option ${typeFilter===t?"selected":""}>${t}</option>`).join("")}
     </select>
-    ${shelfChipsHTML}
-    <div class="filter-chips">${filterChipsHTML}</div>
+    ${filterBarHTML}
     ${!soonMode && drankExists ? `<div class="view-toggle">
       <button type="button" class="${cellarView==="cave"?"on":""}" data-cv="cave">In cave</button>
       <button type="button" class="${cellarView==="drank"?"on":""}" data-cv="drank">Drank</button>
@@ -945,20 +938,39 @@ function renderList(soonMode){
   document.getElementById("q").addEventListener("focus", e => e.target.select());
   document.getElementById("tf").addEventListener("change", e=>{ typeFilter=e.target.value; renderListOnly(soonMode); });
 
-  /* filter chip bindings */
-  view.querySelectorAll(".filter-chip").forEach(btn => btn.addEventListener("click", ()=>{
-    const key = btn.dataset.filter;
-    filters[key] = !filters[key];
-    renderListOnly(soonMode);
-  }));
-
-  /* shelf chip bindings */
-  view.querySelectorAll(".shelf-chip").forEach(btn => btn.addEventListener("click", ()=>{
-    const letter = btn.dataset.shelf;
-    if(shelfFilters.has(letter)) shelfFilters.delete(letter);
-    else shelfFilters.add(letter);
-    renderListOnly(soonMode);
-  }));
+  /* popup filter bindings */
+  function openPopup(titleText, items, onToggle, onClose){
+    const overlay = document.createElement("div");
+    overlay.className = "filter-popup-overlay";
+    const popup = document.createElement("div");
+    popup.className = "filter-popup";
+    popup.innerHTML = `<h3>${titleText}</h3><div class="fp-grid">${items.map(it =>
+      `<button type="button" class="fp-opt${it.on?" on":""}" data-key="${esc(it.key)}" ${it.style?`style="${it.style}"`:""}>` +
+      `${it.label}${it.count!=null?`<span class="fp-count">${it.count}</span>`:""}</button>`
+    ).join("")}</div>`;
+    overlay.appendChild(popup);
+    document.body.appendChild(overlay);
+    popup.querySelectorAll(".fp-opt").forEach(btn => btn.addEventListener("click", ()=>{
+      onToggle(btn.dataset.key);
+      btn.classList.toggle("on");
+    }));
+    overlay.addEventListener("click", e=>{ if(e.target===overlay){ overlay.remove(); onClose(); } });
+  }
+  const shelfTrigger = document.getElementById("shelf-trigger");
+  if(shelfTrigger) shelfTrigger.addEventListener("click", ()=>{
+    const items = usedShelves.map(l => ({key:l, label:l, count:sCounts[l], on:shelfFilters.has(l)}));
+    openPopup("Shelf", items, key=>{
+      if(shelfFilters.has(key)) shelfFilters.delete(key); else shelfFilters.add(key);
+    }, ()=> renderListOnly(soonMode));
+  });
+  const filterTrigger = document.getElementById("filter-trigger");
+  if(filterTrigger) filterTrigger.addEventListener("click", ()=>{
+    const items = chipDefs.map(d => ({key:d.key, label:d.label, count:fCounts[d.key], on:filters[d.key],
+      style:filters[d.key]?`color:${d.color};border-color:${d.color}`:""}));
+    openPopup("Filters", items, key=>{
+      filters[key] = !filters[key];
+    }, ()=> renderListOnly(soonMode));
+  });
 
   document.querySelectorAll(".view-toggle button").forEach(b=>b.addEventListener("click", ()=>{ cellarView=b.dataset.cv; renderListOnly(soonMode); }));
   const sortEl = document.getElementById("sort");
