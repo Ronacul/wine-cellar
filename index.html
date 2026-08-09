@@ -1423,6 +1423,35 @@ function renderForm(){
 
       const missMsg = missing ? ` (${missing} field${missing>1?"s":""} need${missing>1?"":"s"} attention)` : "";
       st.textContent = "✓ " + [rec.producer, rec.name, rec.vintage].filter(Boolean).join(" ") + missMsg + " — check the fields; if it misread, retake the photo or tap Identify again.";
+
+      /* duplicate detection — check if this wine already exists */
+      if(!editingId && rec.producer){
+        const _ap = (rec.producer||"").toLowerCase().trim();
+        const _an = (rec.name||"").toLowerCase().trim();
+        const _av = (rec.vintage||"").trim();
+        const dupes = wines.filter(w => {
+          const pMatch = (w.producer||"").toLowerCase().trim() === _ap;
+          const nMatch = !_an || (w.name||"").toLowerCase().trim() === _an;
+          const vMatch = !_av || (w.vintage||"").trim() === _av;
+          return pMatch && nMatch && (vMatch || !_av);
+        });
+        if(dupes.length){
+          const dupe = dupes[0];
+          const dupeLabel = [dupe.producer, dupe.name, dupe.vintage].filter(Boolean).join(" ");
+          st.innerHTML = esc(st.textContent) +
+            `<br><br>⚠️ <b>Already in cellar:</b> ${esc(dupeLabel)} (qty: ${qtyOf(dupe)})` +
+            `<br><button type="button" id="dupe-add" style="margin-top:8px;padding:8px 14px;background:var(--panel);border:1px solid var(--ok);border-radius:4px;color:var(--ok);cursor:pointer;font-size:13px">+ Add another bottle (qty → ${qtyOf(dupe)+1})</button>` +
+            `<span style="margin-left:8px;font-size:12px;color:var(--ink-faint)">or fill in the form above to add as a separate entry</span>`;
+          const dupeBtn = document.getElementById("dupe-add");
+          if(dupeBtn) dupeBtn.onclick = ()=>{
+            dupe.qty = qtyOf(dupe) + 1;
+            if(pendingImage && !dupe.imageData){ dupe.imageData = pendingImage; dupe.imageDirty = true; }
+            saveWines(); editingId = null; tab = "detail"; detailId = dupe.id;
+            history.pushState({tab:"detail", id:detailId}, "");
+            render(); window.scrollTo(0,0);
+          };
+        }
+      }
     }catch(e){ st.textContent = "✗ " + e.message + " — tap Identify to try again."; }
   };
   document.getElementById("save").onclick = ()=>{
