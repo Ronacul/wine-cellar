@@ -156,8 +156,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
 .chip.white{color:var(--gold)}
 .chip.rose{color:var(--rose)}
 .chip.sparkling{color:#a8c0c9}
-.chip.shelf{color:var(--gold);border-color:var(--gold);font-weight:600}
-.chip.bin{color:var(--ink);font-weight:600}
+.chip.bin{color:var(--gold);border-color:var(--gold);font-weight:600}
 .chip.titi{color:var(--titi); border-color:var(--titi)}
 
 /* ---------- maturity band (the signature) ---------- */
@@ -695,8 +694,10 @@ function filterCounts(baseItems){
 function shelfCounts(baseItems){
   const counts = {};
   baseItems.forEach(w => {
-    const s = w.shelfSection;
-    if(s) counts[s] = (counts[s]||0) + 1;
+    if(w.binCode){
+      const letter = w.binCode.charAt(0).toUpperCase();
+      counts[letter] = (counts[letter]||0) + 1;
+    }
   });
   return counts;
 }
@@ -778,7 +779,6 @@ function cardHTML(w){
         <div class="wine-sub">${subLine ? esc(subLine) : `<span class="tbd">TBD</span>`}</div>
         <div class="chips">
           ${w.vintage?`<span class="chip vintage">${esc(w.vintage)}</span>`:""}
-          ${w.shelfSection?`<span class="chip shelf">${esc(w.shelfSection)}</span>`:""}
           ${w.binCode?`<span class="chip bin">${esc(w.binCode)}</span>`:""}
           ${w.type?`<span class="chip ${tcls}">${esc(w.type)}</span>`:""}
           ${flag?`<span class="chip flag">${flag}</span>`:""}
@@ -809,7 +809,7 @@ function renderList(soonMode){
   }
   if(searchQ){
     const q = searchQ.toLowerCase();
-    items = items.filter(w => [w.producer,w.name,w.region,w.vintage,w.source,w.pairings,w.location,w.binCode,w.shelfSection,w.notes]
+    items = items.filter(w => [w.producer,w.name,w.region,w.vintage,w.source,w.pairings,w.location,w.binCode,w.notes]
       .some(f => (f||"").toString().toLowerCase().includes(q)));
   }
   if(typeFilter) items = items.filter(w => w.type===typeFilter);
@@ -826,7 +826,7 @@ function renderList(soonMode){
   if(filters.peak) items = items.filter(w => isPeak(w));
   if(filters.soon) items = items.filter(w => { const st = windowStatus(w); return st.cls==="soon" || st.cls==="urgent"; });
   if(filters.past) items = items.filter(w => { const st = windowStatus(w); return st.cls==="overdue"; });
-  if(shelfFilters.size) items = items.filter(w => w.shelfSection && shelfFilters.has(w.shelfSection));
+  if(shelfFilters.size) items = items.filter(w => w.binCode && shelfFilters.has(w.binCode.charAt(0).toUpperCase()));
 
   const drankExists = wines.some(isDrank);
 
@@ -849,9 +849,9 @@ function renderList(soonMode){
 
   const shelfChipsHTML = usedShelves.length ? `<div class="shelf-chips">
     <span style="font-size:10px;color:var(--ink-faint);padding:6px 4px 6px 0;white-space:nowrap">Shelf</span>
-    ${usedShelves.map(name => {
-      const on = shelfFilters.has(name);
-      return `<button type="button" class="shelf-chip${on?" on":""}" data-shelf="${name}">${name}<span class="shelf-count">${sCounts[name]}</span></button>`;
+    ${usedShelves.map(letter => {
+      const on = shelfFilters.has(letter);
+      return `<button type="button" class="shelf-chip${on?" on":""}" data-shelf="${letter}">${letter}<span class="shelf-count">${sCounts[letter]}</span></button>`;
     }).join("")}
   </div>` : "";
 
@@ -1233,7 +1233,7 @@ function renderDetail(){
     <dl class="spec">
       <dt>Drink</dt><dd>${drinkVal ?? `<span class="tbd">TBD</span>`}</dd>
       <dt>Shelf</dt><dd>${tbd(w.shelfSection)}</dd>
-      <dt>Bin code</dt><dd>${tbd(w.binCode)}</dd>
+      <dt>Bin/Rack</dt><dd>${tbd(w.binCode)}</dd>
       <dt>Titi</dt><dd>${w.titi ? "Yes — Dad's cellar" : "No"}</dd>
       <dt>Fire</dt><dd>
         <div class="fire-tier-picker" id="fire-tier-picker">
@@ -1454,7 +1454,7 @@ function renderForm(){
         ${SHELF_SECTIONS.map(s=>`<option ${w.shelfSection===s?"selected":""}>${s}</option>`).join("")}
       </select></div>
       <div class="bincode-row">
-        <div class="field"><label>Bin code</label><input id="f-bincode" value="${esc(w.binCode)}" placeholder="e.g. K03"></div>
+        <div class="field"><label>Bin/Rack</label><input id="f-bincode" value="${esc(w.binCode)}" placeholder="e.g. K03"></div>
         <button type="button" id="suggest-bin">Suggest</button>
       </div>
     </div>
