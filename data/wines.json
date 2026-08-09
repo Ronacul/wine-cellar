@@ -29,7 +29,7 @@
     "drinkTo": "2028",
     "pairings": "Charcuterie, pasta with meat sauce, wood-fired pizza, roasted chicken, grilled pork chops",
     "source": "CB (04/26)",
-    "price": "~$21 CAD",
+    "price": "~$18 CAD (est.)",
     "location": "O",
     "notes": "100% Dolcetto. A vibrant, fruit-forward red with bright acidity, dark cherry notes, and a classic bitter almond finish; typical drinking window used for young Dolcetto.",
     "imagePath": "images/ms2ih3pfhr19j.jpg",
@@ -93,7 +93,7 @@
     "titi": false,
     "pairings": "Grilled steak, roast lamb, aged cheddar, venison, hearty stews",
     "source": "CB (05/26)",
-    "price": "~$42 CAD",
+    "price": "~$30 CAD (est.)",
     "location": "I",
     "notes": "Bordeaux-style red blend from the Allée Bleue estate (founded 1690), Stellenbosch. Award-winning bottling (Double Platinum, National Wine Challenge Champion, Top 100 SA Wines). Drink window is an estimate for a premium Cape Bordeaux blend of this vintage, not a producer-published figure.",
     "imagePath": "images/6a693529e829da8f.jpg",
@@ -752,7 +752,7 @@
     "titi": true,
     "pairings": "Grilled red meats, pasta with meat ragù, hard cheeses, risotto",
     "source": "CB (10/21)",
-    "price": "~$48 CAD",
+    "price": "~$32 CAD (est.)",
     "location": "",
     "notes": "Azienda Agricola. Ripasso method — re-fermented on Amarone grape skins for added body and complexity.",
     "imagePath": "images/e959a2d140a137a3.jpg"
@@ -858,7 +858,7 @@
     "titi": false,
     "pairings": "Grilled ribeye steak, roasted rack of lamb, braised beef short ribs, aged cheddar cheese",
     "source": "CB (02/21)",
-    "price": "~$93 CAD",
+    "price": "~$75 CAD (est.)",
     "location": "",
     "notes": "Cabernet Sauvignon, Merlot, Cabernet Franc, Syrah, Petit Verdot. A plush and full-bodied Napa blend featuring ripe blackberry, mocha, and toasted oak spice.",
     "imagePath": "images/msgrar7e6736y.jpg"
@@ -942,7 +942,7 @@
     "titi": false,
     "pairings": "roasted red meats, pasta with wild boar ragu, grilled lamb chops, mature cheeses",
     "source": "CB (10/21)",
-    "price": "~$38 CAD",
+    "price": "~$25 CAD (est.)",
     "location": "",
     "notes": "Typically a blend of Corvina, Corvinone, Rondinella, and Croatina. A rich, velvety Veneto red with ripe dark fruit, baking spice, and subtle dried grape notes. Vintage not visible on front label; drinking window and price estimate assume a typical current release.",
     "imagePath": "images/msgrlscg6bubp.jpg"
@@ -963,7 +963,7 @@
     "titi": false,
     "pairings": "roasted duck, grilled venison, mushroom risotto, charcuterie",
     "source": "CB (01/22)",
-    "price": "~$45 CAD",
+    "price": "~$95 CAD (est.)",
     "location": "E",
     "notes": "Chardonnay and Pinot Noir (often co-fermented or blended depending on the vintage); an elegant, terroir-driven, and highly sought-after cool-climate wine known for its nuanced complexity.",
     "imagePath": "images/msgro5y04m54l.jpg"
@@ -984,7 +984,7 @@
     "titi": false,
     "pairings": "BBQ ribs, grilled steak, wood-fired pizza, smoked brisket",
     "source": "CB (02/22)",
-    "price": "~$48 CAD",
+    "price": "~$40 CAD (est.)",
     "location": "",
     "notes": "Mainly Zinfandel with a touch of Petite Sirah. A rich yet elegant expression of Dry Creek Valley with brambly blackberry fruit, spice, and balanced acidity.",
     "imagePath": "images/msgrq8r7c8sxi.jpg"
@@ -1005,7 +1005,7 @@
     "titi": false,
     "pairings": "Grilled pork chops, roasted chicken, burgers, tomato-based pasta dishes",
     "source": "CB (05/21)",
-    "price": "~$26 CAD",
+    "price": "~$12 CAD (est.)",
     "location": "E",
     "notes": "Merlot and Grenache. A simple, easy-drinking rustic Southern French red blend; based on typical IGP Pays d'Oc standards, this bottle is likely well past its prime drinking window.",
     "imagePath": "images/msgrsjwdb0b3z.jpg"
@@ -1026,7 +1026,7 @@
     "titi": false,
     "pairings": "roasted duck, grilled lamb chops, beef goulash, aged cheeses",
     "source": "CB (10/25)",
-    "price": "~$26 CAD",
+    "price": "~$22 CAD (est.)",
     "location": "E",
     "notes": "100% Zweigelt. A rich and velvety Austrian red featuring dark cherry, plum, and fine spices from oak barrique aging. Vintage not visible on front label; drinking window and pricing are estimated based on typical recent releases.",
     "imagePath": "images/msgruglpwvbtm.jpg"
@@ -1047,7 +1047,7 @@
     "titi": false,
     "pairings": "Grilled ribeye, pasta bolognese, wild boar ragu, aged pecorino cheese",
     "source": "CB (06/19)",
-    "price": "~$22 CAD",
+    "price": "~$18 CAD (est.)",
     "location": "E",
     "notes": "Typically a blend of Sangiovese and Cabernet Franc. A vibrant, medium-bodied Tuscan red with notes of dark cherries, wild herbs, and supple tannins; vintage is not visible on the front label.",
     "imagePath": "images/msgrwequx87ka.jpg"
@@ -1068,7 +1068,7 @@
     "titi": false,
     "pairings": "Grilled lamb, roasted Mediterranean vegetables, cassoulet, pork chops, hard cheeses",
     "source": "CB (11/23)",
-    "price": "~$30 CAD",
+    "price": "~$16 CAD (est.)",
     "location": "F",
     "notes": "A blend of Carignan, Grenache, Syrah, and Mourvèdre. A rustic, medium-bodied organic red with notes of ripe dark fruit, black pepper, and wild garrigue herbs.",
     "imagePath": "images/msgrz9t84xxeg.jpg"
@@ -1089,7 +1089,7 @@
     "titi": false,
     "pairings": "Roasted lamb, grilled ribeye steak, venison stew, wild boar, rosemary-infused dishes",
     "source": "CB (11/21)",
-    "price": "~$51 CAD",
+    "price": "~$40 CAD (est.)",
     "location": "F",
     "notes": "Typically a Grenache-dominated blend with Syrah and Mourvèdre. A rich, full-bodied Southern Rhône red featuring ripe dark fruit, garrigue, and black pepper notes. Vintage is not visible on the front label.",
     "imagePath": "images/msgs0riy5kx48.jpg"
@@ -1110,7 +1110,7 @@
     "titi": false,
     "pairings": "roasted lamb, slow-cooked beef ragù, aged pecorino cheese, wild game",
     "source": "CB (03/19)",
-    "price": "~$80 CAD",
+    "price": "~$90 CAD (est.)",
     "location": "F",
     "notes": "100% Nero d'Avola. An intensely structured, single-vineyard Sicilian red showcasing complex notes of dark plum, leather, Mediterranean scrub, and well-integrated tertiary earthiness.",
     "imagePath": "images/msgs2selxxke8.jpg"
@@ -1131,7 +1131,7 @@
     "titi": false,
     "pairings": "Grilled ribeye steak, rosemary-roasted lamb, wild boar ragu, aged pecorino cheese",
     "source": "CB (06/19)",
-    "price": "~$55 CAD",
+    "price": "~$30 CAD (est.)",
     "location": "F",
     "notes": "Cabernet Sauvignon, Cabernet Franc. An elegant, structured Super Tuscan with ripe dark fruits, herbal nuances, and refined tannins. Vintage is not visible on the front label; drinking window is estimated based on a typical release.",
     "imagePath": "images/msgs3ynvxy3g8.jpg"
@@ -1152,7 +1152,7 @@
     "titi": false,
     "pairings": "grilled lamb chops, beef stew, khachapuri, roasted game, aged cheeses",
     "source": "CB (06/20)",
-    "price": "~$27 CAD",
+    "price": "~$22 CAD (est.)",
     "location": "F",
     "notes": "100% Saperavi. A traditional clay-vessel (Qvevri) fermented red offering deep blackberry and plum notes, firm rustic tannins, and an earthy, savory finish.",
     "imagePath": "images/msgs4wowmj9l3.jpg"
@@ -1173,7 +1173,7 @@
     "titi": false,
     "pairings": "Truffle risotto, roasted veal, aged cheeses, wild mushroom pasta",
     "source": "CB (05/19)",
-    "price": "~$33 CAD",
+    "price": "~$30 CAD (est.)",
     "location": "F",
     "notes": "100% Nebbiolo. A medium-bodied, classic Piedmontese red showing notes of sour cherry, dried rose petals, and tar, with the vibrant acidity and structured tannins typical of the stellar 2016 vintage.",
     "imagePath": "images/msgs5y5q5upck.jpg"
@@ -1194,7 +1194,7 @@
     "titi": false,
     "pairings": "risotto with seafood, grilled sea bass, goat cheese, vegetable tempura",
     "source": "CB (12/20)",
-    "price": "~$33 CAD",
+    "price": "~$35 CAD (est.)",
     "location": "K",
     "notes": "100% Erbaluce; a crisp, mineral-driven white wine with high acidity and delicate citrus and floral aromatics characteristic of the Caluso/Alto Piemonte terroir.",
     "imagePath": "images/msgs8t9brcsth.jpg"
@@ -1215,7 +1215,7 @@
     "titi": false,
     "pairings": "Beef goulash, roasted game, hearty stews, pork paprikash",
     "source": "CB (12/19)",
-    "price": "~$15 CAD",
+    "price": "~$20 CAD (est.)",
     "location": "F",
     "notes": "A classic Hungarian Kékfrankos-based blend. Medium-bodied and vibrant with bright dark cherry, forest floor, and warm baking spices.",
     "imagePath": "images/msgsasff7u95u.jpg"
@@ -1236,7 +1236,7 @@
     "titi": false,
     "pairings": "Bistecca alla Fiorentina, wild mushroom risotto, truffled pasta, aged Parmigiano-Reggiano, game meats",
     "source": "Gift - Barb (10/20)",
-    "price": "~$58 CAD",
+    "price": "~$65 CAD (est.)",
     "location": "F",
     "notes": "100% Nebbiolo; a traditionally styled, structured Barolo with notes of dried roses, tar, leather, and firm tannins.",
     "imagePath": "images/msgscrijihfar.jpg"
@@ -1257,7 +1257,7 @@
     "titi": false,
     "pairings": "roasted meats, aged cheeses, mushroom risotto, charcuterie",
     "source": "CB (12/20)",
-    "price": "~$34 CAD",
+    "price": "~$35 CAD (est.)",
     "location": "G",
     "notes": "100% Nebbiolo; an elegant, expressive, and mineral-driven red typical of the cool-climate vineyards in the Lessona and Bramaterra areas.",
     "imagePath": "images/msgsfux5wtiel.jpg"
@@ -1321,7 +1321,7 @@
     "titi": false,
     "pairings": "roasted lamb, grilled beef, hard cheeses, charcuterie",
     "source": "CB (01/24)",
-    "price": "~$22 CAD",
+    "price": "~$18 CAD (est.)",
     "location": "G",
     "notes": "A blend dominated by Merlot and Cabernet Sauvignon; a structured, fruit-forward, and approachable Bordeaux Supérieur with classic dark berry notes.",
     "imagePath": "images/msgsmgotistlt.jpg"
@@ -1362,7 +1362,7 @@
     "binCode": "",
     "titi": false,
     "pairings": "goat cheese, fresh salads, shellfish, ceviche, grilled white fish",
-    "source": "Gift - Titi (00/23)",
+    "source": "Gift - Titi",
     "price": "~$15 CAD (est.)",
     "location": "K",
     "notes": "100% Sauvignon Blanc; a crisp, vibrant, and aromatic expression with classic zesty citrus and tropical fruit notes typical of the cool-climate Aconcagua region.",
@@ -1405,7 +1405,7 @@
     "titi": false,
     "pairings": "cheese plates, fruit-based desserts, walnuts, churchkhela, roasted poultry",
     "source": "CB (06/20)",
-    "price": "~$41 CAD",
+    "price": "~$30 CAD (est.)",
     "location": "G",
     "notes": "Made from Alexanderi and Mujuretuli grapes; this is a classic Georgian naturally semi-sweet red wine known for its velvety texture and prominent strawberry and raspberry notes.",
     "imagePath": "images/msgsvdd9pneej.jpg"
@@ -1553,7 +1553,7 @@
     "titi": false,
     "pairings": "roasted lamb, grilled steaks, mature cheeses, game meats",
     "source": "CB (03/24)",
-    "price": "~$25 CAD",
+    "price": "~$30 CAD (est.)",
     "location": "G",
     "notes": "A field blend of traditional Douro grapes; elegant and structured with concentrated dark fruit, spice, and polished tannins typical of a premium Reserva from the region.",
     "imagePath": "images/msgt6uwqrgl2n.jpg"
@@ -1616,7 +1616,7 @@
     "titi": false,
     "pairings": "Bistecca alla Fiorentina, roasted lamb, wild boar ragu, aged pecorino cheese",
     "source": "CB (03/20)",
-    "price": "~$59 CAD",
+    "price": "~$45 CAD (est.)",
     "location": "F",
     "notes": "Blend of Sangiovese, Merlot, and Cabernet Sauvignon; a powerful, structured Super Tuscan with ripe dark fruit, integrated oak, and velvety tannins.",
     "imagePath": "images/msgtf8kdvs4sn.jpg"
@@ -1658,7 +1658,7 @@
     "titi": false,
     "pairings": "Grilled steak, lamb chops, roast beef, hard cheeses",
     "source": "CB (02/20)",
-    "price": "~$38 CAD",
+    "price": "~$30 CAD (est.)",
     "location": "F",
     "notes": "A blend of Merlot and Cabernet Franc; this is a structured yet accessible Right Bank Bordeaux with notes of ripe dark fruit, graphite, and silky tannins.",
     "imagePath": "images/msgtihrhvzvey.jpg"
@@ -1679,7 +1679,7 @@
     "titi": false,
     "pairings": "Roasted lamb, grilled steak, hard cheeses, mushroom risotto",
     "source": "CB (02/20)",
-    "price": "~$34 CAD",
+    "price": "~$25 CAD (est.)",
     "location": "F",
     "notes": "Merlot and Cabernet Franc blend; a medium-bodied, approachable Bordeaux Supérieur with ripe red fruit and earthy undertones.",
     "imagePath": "images/msgtk0ra3ycgh.jpg"
@@ -1700,7 +1700,7 @@
     "titi": false,
     "pairings": "grilled steak, braised short ribs, aged cheddar, roasted lamb",
     "source": "CB (01/20)",
-    "price": "~$27 CAD",
+    "price": "~$22 CAD (est.)",
     "location": "F",
     "notes": "100% Cabernet Sauvignon; a bold, full-bodied California red with notes of dark berries, oak, and smooth tannins, typical of accessible Napa/North Coast style blends.",
     "imagePath": "images/msgtmjcoc3gm3.jpg"
@@ -1742,7 +1742,7 @@
     "titi": false,
     "pairings": "grilled ribeye steak, braised short ribs, aged cheddar, roasted lamb",
     "source": "CB (01/20)",
-    "price": "~$27 CAD",
+    "price": "~$45 CAD (est.)",
     "location": "G",
     "notes": "100% Cabernet Sauvignon; a bold, fruit-forward Napa Valley red with layers of black currant, cocoa, and toasted oak.",
     "imagePath": "images/msgtourx26j3q.jpg"
@@ -1910,7 +1910,7 @@
     "titi": false,
     "pairings": "grilled meats, roasted lamb, pasta with tomato sauce, semi-hard cheeses",
     "source": "CB (07/25)",
-    "price": "~$41 CAD",
+    "price": "~$25 CAD (est.)",
     "location": "F",
     "notes": "100% Nero d'Avola; a medium-bodied, fresh, and mineral-driven red wine showcasing the volcanic influence of the Iblei mountains.",
     "imagePath": "images/msgu3d8v5jy1z.jpg"
@@ -1952,7 +1952,7 @@
     "titi": false,
     "pairings": "grilled lamb, roasted duck, chorizo, aged manchego cheese",
     "source": "CB (02/24)",
-    "price": "~$82 CAD",
+    "price": "~$30 CAD (est.)",
     "location": "F",
     "notes": "100% Tempranillo; a structured, elegant expression of Tempranillo from the Umpqua Valley showing classic notes of dark fruit, leather, and spice with well-integrated oak.",
     "imagePath": "images/msgu6291nlvz7.jpg"
@@ -1973,7 +1973,7 @@
     "titi": false,
     "pairings": "roasted chicken, grilled duck breast, mushroom risotto, mild cheeses",
     "source": "CB (09/24)",
-    "price": "~$52 CAD",
+    "price": "~$45 CAD (est.)",
     "location": "G",
     "notes": "100% Pinot Noir; a classic, medium-bodied red Burgundy featuring bright red cherry notes, earthy undertones, and silky tannins.",
     "imagePath": "images/msgu7decz7vag.jpg"
@@ -2015,7 +2015,7 @@
     "titi": false,
     "pairings": "Grilled red meats, pasta with meat ragu, aged pecorino cheese, roasted game",
     "source": "CB (07/24)",
-    "price": "~$27 CAD",
+    "price": "~$22 CAD (est.)",
     "location": "F",
     "notes": "Primarily Sangiovese; a classic, medium-bodied Chianti Classico displaying notes of red cherry, violets, and earthy spice with refined tannins.",
     "imagePath": "images/msguahj6ajj16.jpg"
@@ -2057,7 +2057,7 @@
     "titi": false,
     "pairings": "Bistecca alla Fiorentina, roasted lamb, wild boar ragu, aged pecorino cheese",
     "source": "CB (04/24)",
-    "price": "~$70 CAD",
+    "price": "~$45 CAD (est.)",
     "location": "G",
     "notes": "100% Sangiovese; a classic, structured, and elegant Brunello with notes of dark cherry, leather, and earthy spices.",
     "imagePath": "images/msgue7l0t15lp.jpg"
@@ -2078,7 +2078,7 @@
     "titi": false,
     "pairings": "grilled steak, braised short ribs, aged cheddar, roasted lamb",
     "source": "CB (11/24)",
-    "price": "~$31 CAD",
+    "price": "~$35 CAD (est.)",
     "location": "G",
     "notes": "100% Cabernet Sauvignon; a bold, fruit-forward Alexander Valley Cabernet with structured tannins and a polished finish typical of the producer's style.",
     "imagePath": "images/msgufmh8djryh.jpg"
@@ -2099,7 +2099,7 @@
     "titi": false,
     "pairings": "grilled meats, pecorino cheese, roasted lamb, pasta with ragu",
     "source": "CB (07/24)",
-    "price": "~$55 CAD",
+    "price": "~$25 CAD (est.)",
     "location": "I",
     "notes": "Primarily Sangiovese; an approachable, fruit-forward Tuscan red wine meant for relatively early consumption.",
     "imagePath": "images/msgugt3bt4n9v.jpg"
@@ -2119,8 +2119,8 @@
     "binCode": "",
     "titi": false,
     "pairings": "braised beef, game meats, aged cheeses, dark chocolate",
-    "source": "Gift - Dave (00/24)",
-    "price": "~$65 CAD",
+    "source": "Gift - Dave",
+    "price": "~$55 CAD (est.)",
     "location": "G",
     "notes": "Corvina, Corvinone, Rondinella; a bold, full-bodied, and velvety Amarone with intense notes of dried cherry, raisin, and warm spice.",
     "imagePath": "images/msguii601metk.jpg"
@@ -2247,7 +2247,7 @@
     "fire": false,
     "pairings": "seafood pasta, grilled white fish, soft cheeses, vegetable risotto",
     "source": "CB (01/26)",
-    "price": "~$22 CAD",
+    "price": "~$25 CAD (est.)",
     "location": "K",
     "notes": "100% Albana. An aromatic, dry white wine with notes of stone fruit, citrus, and subtle floral undertones characteristic of the Albana di Romagna region.",
     "imagePath": "images/msh2pxw89mi2t.jpg"
@@ -2291,7 +2291,7 @@
     "fire": false,
     "pairings": "fontina cheese, alpine mountain cuisine, roasted chicken, sautéed freshwater fish",
     "source": "CB (08/24)",
-    "price": "~$49 CAD",
+    "price": "~$75 CAD (est.)",
     "location": "K",
     "notes": "100% Chardonnay; a high-altitude, mineral-driven, and elegant expression of Chardonnay from the Aosta Valley.",
     "imagePath": "images/msh2smhzisyhx.jpg"
@@ -2335,7 +2335,7 @@
     "fire": false,
     "pairings": "pan-seared scallops, spicy Thai curry, pork schnitzel, aged cheddar",
     "source": "Gift - Rhim (09/25)",
-    "price": "$22.95",
+    "price": "~$35 CAD (est.)",
     "location": "K",
     "notes": "100% Riesling; an iconic Canadian dry-style Riesling showing high acidity, petrol notes, and intense lime-citrus concentration.",
     "imagePath": "images/msh2viuyix2vy.jpg"
@@ -2423,7 +2423,7 @@
     "fire": false,
     "pairings": "grilled white fish, seafood pasta, soft goat cheese, light appetizers",
     "source": "CB (07/25)",
-    "price": "~$35 CAD",
+    "price": "~$45 CAD (est.)",
     "location": "",
     "notes": "Chardonnay and Carricante; a fresh, elegant, and mineral-driven white wine with crisp acidity and notes of citrus and Mediterranean scrub.",
     "imagePath": "images/msh319otc9xwq.jpg"
@@ -2445,7 +2445,7 @@
     "fire": false,
     "pairings": "seafood, sushi, light pasta, summer salads, appetizers",
     "source": "CB (01/23)",
-    "price": "~$38 CAD",
+    "price": "~$28 CAD (est.)",
     "location": "K",
     "notes": "Predominantly Groppello with Marzemino, Sangiovese and Barbera; a classic, elegant Valtènesi Chiaretto known for its pale 'flower petal' pink hue and refreshing, delicate acidity.",
     "imagePath": "images/msh32ars0w82m.jpg"
@@ -2489,7 +2489,7 @@
     "fire": false,
     "pairings": "roasted chicken, grilled white fish, comté cheese, creamy pasta dishes",
     "source": "CB (09/24)",
-    "price": "~$22 CAD",
+    "price": "~$45 CAD (est.)",
     "location": "K",
     "notes": "100% Chardonnay; a classic, elegant Burgundian white with crisp acidity and subtle mineral notes, typical of the Bourgogne Côte-d'Or appellation.",
     "imagePath": "images/msh34p3ifbhn9.jpg"
@@ -2555,7 +2555,7 @@
     "fire": false,
     "pairings": "roasted chicken, grilled white fish, creamy pasta dishes, aged goat cheese",
     "source": "CB (01/22)",
-    "price": "~$34 CAD",
+    "price": "~$55 CAD (est.)",
     "location": "K",
     "notes": "Chardonnay. A refined, cool-climate Chardonnay defined by vibrant acidity, mineral tension, and thoughtful oak integration.",
     "imagePath": "images/msh39rg1ls9hq.jpg"
@@ -2599,7 +2599,7 @@
     "fire": false,
     "pairings": "roasted chicken, goat cheese, grilled white fish, light appetizers",
     "source": "CB (01/19)",
-    "price": "~$27 CAD",
+    "price": "~$30 CAD (est.)",
     "location": "K",
     "notes": "100% Chardonnay; a crisp, mineral-driven, and terroir-focused white Beaujolais that is best enjoyed in its youth.",
     "imagePath": "images/msh3czb13dyhk.jpg"
@@ -2621,7 +2621,7 @@
     "fire": false,
     "pairings": "khachapuri, grilled pork, roasted chicken, hard cheeses, nuts",
     "source": "CB (06/20)",
-    "price": "~$27 CAD",
+    "price": "~$30 CAD (est.)",
     "location": "K",
     "notes": "100% Rkatsiteli; this is an amber (orange) wine fermented in traditional Qvevri vessels, offering a dry, tannic, and textured profile with dried fruit and honeyed nut notes.",
     "imagePath": "images/msh3e84rh98hu.jpg"
@@ -2731,7 +2731,7 @@
     "fire": false,
     "pairings": "goat cheese, grilled white fish, roast chicken, light appetizers, shellfish",
     "source": "CB (04/25)",
-    "price": "~$27 CAD",
+    "price": "~$22 CAD (est.)",
     "location": "K",
     "notes": "100% Chardonnay; a fresh, crisp, and unoaked Mâcon-Villages typical of the region's accessible, mineral-driven white style.",
     "imagePath": "images/msh3nbvt06ch4.jpg"
@@ -2752,7 +2752,7 @@
     "titi": false,
     "pairings": "roasted chicken, pork tenderloin, creamy pasta dishes, soft cheeses",
     "source": "CB (11/18)",
-    "price": "~$35 CAD",
+    "price": "~$55 CAD (est.)",
     "location": "K",
     "notes": "Primarily Chardonnay with other white varieties; a cult-status Niagara wine known for natural winemaking, complex acidity, and refined texture.",
     "imagePath": "images/msh3p0hh18nzf.jpg"
@@ -2774,7 +2774,7 @@
     "fire": false,
     "pairings": "seafood, grilled asparagus, goat cheese, light pasta dishes, salads",
     "source": "CB (01/25)",
-    "price": "~$14 CAD",
+    "price": "~$18 CAD (est.)",
     "location": "K",
     "notes": "Sauvignon Blanc; a crisp, aromatic white wine showcasing typical Friulian acidity and citrus notes, meant for early consumption.",
     "imagePath": "images/msh3qu5rp4qkh.jpg"
@@ -3448,7 +3448,7 @@
     "fire": false,
     "pairings": "Braised beef, venison, wild boar stew, aged Parmigiano-Reggiano, rich game dishes",
     "source": "CB (02/26)",
-    "price": "~$40 CAD",
+    "price": "~$60 CAD (est.)",
     "location": "G",
     "notes": "Corvina, Corvinone, Rondinella, and Molinara. A rich, full-bodied Italian red showing notes of dried figs, black cherries, and sweet spices. No vintage is visible on the front label; drink dates and pricing are estimated based on a typical recent vintage.",
     "imagePath": "images/msjlaxdnrs9v7.jpg"
@@ -3470,7 +3470,7 @@
     "fire": false,
     "pairings": "roasted pork, charcuterie, grilled poultry, mushroom risotto",
     "source": "CB (06/23)",
-    "price": "~$27 CAD",
+    "price": "~$30 CAD (est.)",
     "location": "I",
     "notes": "100% Mencía. A fresh and vibrant Galician red featuring bright red cherry, floral violet notes, and a signature stony mineral finish.",
     "imagePath": "images/msjlc9ph3vsyw.jpg"
@@ -3492,7 +3492,7 @@
     "fire": false,
     "pairings": "Grilled ribeye steak, roasted lamb chops, hearty beef stew, aged Manchego cheese",
     "source": "CB (06/23)",
-    "price": "~$26 CAD",
+    "price": "~$35 CAD (est.)",
     "location": "I",
     "notes": "Blend of Samsó (Carignan), Garnatxa (Grenache), and Syrah. A concentrated, expressive old-vine red with notes of dark berries, sweet spices, mineral depth, and ripe tannins.",
     "imagePath": "images/msjldf1lox0z1.jpg"
@@ -3514,7 +3514,7 @@
     "fire": false,
     "pairings": "Grilled lamb chops, roasted duck breast, mushroom risotto, charcuterie",
     "source": "CB (09/23)",
-    "price": "~$41 CAD",
+    "price": "~$30 CAD (est.)",
     "location": "",
     "notes": "Exact grape variety and vintage not specified on the front label; likely a cool-climate Pinot Noir, Shiraz, or red blend from Adelaide Hills, showcasing bright red fruit, soft tannins, and fresh acidity.",
     "imagePath": "images/msjlev27oswe8.jpg"
@@ -3536,7 +3536,7 @@
     "fire": false,
     "pairings": "Grilled meats, tapas, cured cheeses, roasted pork, mushroom risotto",
     "source": "CB (06/23)",
-    "price": "~$18 CAD",
+    "price": "~$28 CAD (est.)",
     "location": "I",
     "notes": "Carignan (Samsó) and Grenache (Lledoner Negre). A fresh and expressive Mediterranean red with bright red fruit, subtle spice, and smooth tannins.",
     "imagePath": "images/msjlgd59afm1j.jpg"
@@ -3558,7 +3558,7 @@
     "fire": false,
     "pairings": "roasted lamb, grilled ribeye steak, wild boar ragu, aged pecorino cheese",
     "source": "CB (07/21)",
-    "price": "~$47 CAD",
+    "price": "~$45 CAD (est.)",
     "location": "I",
     "notes": "100% Syrah. A bold and structured Tuscan red featuring intense dark fruit, cracked black pepper, and refined oak-driven spice.",
     "imagePath": "images/msjlhzbtomrlf.jpg"
@@ -3580,7 +3580,7 @@
     "fire": false,
     "pairings": "grilled lamb chops, chorizo, roasted pork, tapas, medium-aged cheeses",
     "source": "CB (00/22)",
-    "price": "~$18 CAD",
+    "price": "~$24 CAD (est.)",
     "location": "I",
     "notes": "100% Tempranillo. A medium-bodied classic Rioja Crianza with bright red berry fruits, toasted oak, vanilla, and smooth tannins.",
     "imagePath": "images/msjlkfs4z11sf.jpg"
@@ -3602,7 +3602,7 @@
     "fire": false,
     "pairings": "Grilled lamb chops, rosemary roasted beef, venison, mature cheddar",
     "source": "CB (00/25)",
-    "price": "~$55 CAD",
+    "price": "~$28 CAD (est.)",
     "location": "I",
     "notes": "100% Shiraz. A cool-climate Australian Shiraz featuring bright blackberry aromas, subtle white pepper, and elegant, well-integrated French oak.",
     "imagePath": "images/msjllljt9fgk6.jpg"
@@ -3889,8 +3889,8 @@
     "titi": false,
     "fire": 1,
     "pairings": "Braised beef short ribs, wild boar ragu, roasted venison, aged Parmigiano-Reggiano",
-    "source": "Gift - Lisa and Phil (00/24)",
-    "price": "$54.95",
+    "source": "Gift - Lisa and Phil",
+    "price": "~$60 CAD (est.)",
     "location": "G",
     "notes": "Blend of Corvina, Rondinella, Oseleta, and Croatina. A powerful, full-bodied Italian classic made using the appassimento method, featuring rich aromas of black cherry, plum, cocoa, and baking spice.",
     "imagePath": "images/mskqsj8pzgmue.jpg"
@@ -3912,7 +3912,7 @@
     "fire": 1,
     "pairings": "roasted duck breast, beef bourguignon, mushroom risotto, roasted pork loin",
     "source": "CB (09/22)",
-    "price": "~$56 CAD",
+    "price": "~$70 CAD (est.)",
     "location": "G",
     "notes": "100% Pinot Noir. A balanced and elegant red Burgundy showing ripe red cherry, earth, and light spice characteristic of the excellent 2019 vintage.",
     "imagePath": "images/mskqv7rwcpv71.jpg"
@@ -3934,7 +3934,7 @@
     "fire": 0,
     "pairings": "Grilled poultry, pork loin, roasted root vegetables, pasta with meat sauce",
     "source": "CB (10/25)",
-    "price": "~$16 CAD",
+    "price": "~$22 CAD (est.)",
     "location": "I",
     "notes": "100% Zweigelt. A fresh, juicy, fruit-forward Austrian red with bright cherry notes, soft tannins, and a touch of spice.",
     "imagePath": "images/mskqwkrer9yad.jpg"
@@ -3977,8 +3977,8 @@
     "titi": false,
     "fire": 1,
     "pairings": "BBQ beef brisket, grilled ribeye steak, roasted lamb chops, blue cheese burgers",
-    "source": "Gift - Michelle and Scot (08/24)",
-    "price": "~$60 CAD",
+    "source": "Gift - Michelle and Scot",
+    "price": "~$85 CAD (est.)",
     "location": "G",
     "notes": "A blend of Zinfandel, Cabernet Sauvignon, Petite Sirah, Syrah, and Charbono. Extremely bold, lush, and full-bodied with plush dark fruit, sweet vanilla oak, and chocolate notes. Vintage estimated as 2021.",
     "imagePath": "images/mskqyi85ipqsw.jpg"
@@ -4044,7 +4044,7 @@
     "fire": 1,
     "pairings": "Osso buco, roasted venison, braised beef short ribs, aged Parmigiano-Reggiano",
     "source": "Gift - Sophie (09/25)",
-    "price": "~$55 CAD",
+    "price": "~$70 CAD (est.)",
     "location": "G",
     "notes": "Corvina, Rondinella, and Oseleta. A rich, full-bodied, and velvety dry red wine with intense notes of black cherry, plum, cocoa, and sweet spices.",
     "imagePath": "images/mskr29irq0nyg.jpg"
@@ -4176,7 +4176,7 @@
     "fire": 0,
     "pairings": "Pasta with meat sauce, grilled steak, roasted pork, medium-aged cheeses",
     "source": "CB (11/22)",
-    "price": "~$32 CAD",
+    "price": "~$30 CAD (est.)",
     "location": "I",
     "notes": "Sangiovese, Cabernet Sauvignon, and Merlot. A vibrant, organic and biodynamic Tuscan red with ripe red berry fruits, soft tannins, and a fresh, approachable finish.",
     "imagePath": "images/mskr709ze8juw.jpg"
@@ -4374,7 +4374,7 @@
     "fire": 0,
     "pairings": "Tuscan ribollita, grilled steak, pasta with tomato-based meat sauce, aged Pecorino cheese",
     "source": "CB (03/26)",
-    "price": "~$32 CAD",
+    "price": "~$30 CAD (est.)",
     "location": "I",
     "notes": "100% Sangiovese; a classic, elegant, and medium-bodied Chianti Classico with vibrant red cherry fruit, high acidity, and refined tannins.",
     "imagePath": "images/mskrxt169vlct.jpg"
@@ -4396,7 +4396,7 @@
     "fire": 0,
     "pairings": "Grilled lamb chops, smoked brisket, wild boar ragu, roasted root vegetables",
     "source": "CB (05/22)",
-    "price": "~$27 CAD",
+    "price": "~$42 CAD (est.)",
     "location": "J",
     "notes": "A blend of Syrah, Carignan, Grenache, and Mourvèdre. Medium-to-full-bodied with vibrant acidity, dark berry flavors, and rustic, earthy undertones characteristic of Itata's old-vine terroir.",
     "imagePath": "images/mskryxi64batu.jpg"
@@ -4418,7 +4418,7 @@
     "fire": 0,
     "pairings": "choucroute garnie, grilled fish, goat cheese, sushi, quiche lorraine",
     "source": "CB (08/23)",
-    "price": "~$18 CAD",
+    "price": "~$22 CAD (est.)",
     "location": "P",
     "notes": "100% Riesling; a classic, dry, crisp, and aromatic Alsatian white with bright acidity and notes of green apple and citrus.",
     "imagePath": "images/msks1m0votj3e.jpg"
@@ -4440,7 +4440,7 @@
     "fire": 0,
     "pairings": "grilled red meats, roasted poultry, hard cheeses, charcuterie",
     "source": "CB (06/26)",
-    "price": "~$21 CAD",
+    "price": "~$18 CAD (est.)",
     "location": "O",
     "notes": "Typical blend of Merlot, Cabernet Sauvignon, and Cabernet Franc; this is a youthful, accessible, and fruit-forward Bordeaux intended for early consumption.",
     "imagePath": "images/msks2oc4ohopv.jpg"
@@ -4506,7 +4506,7 @@
     "fire": 0,
     "pairings": "grilled lamb, beef stew, hearty pasta dishes, aged hard cheeses",
     "source": "CB (11/23)",
-    "price": "~$34 CAD",
+    "price": "~$25 CAD (est.)",
     "location": "I",
     "notes": "A blend of Grenache, Syrah, Carignan, and Mourvèdre; a rustic, sun-drenched Languedoc red featuring ripe dark fruit, garrigue herbs, and a savory, earthy finish.",
     "imagePath": "images/msks8kaeagmip.jpg"
@@ -4527,7 +4527,7 @@
     "titi": false,
     "fire": 0,
     "pairings": "grilled steak, roasted lamb, hearty stews, aged cheddar",
-    "source": "Gift - Andrea and Kelly (00/23)",
+    "source": "Gift - Andrea and Kelly",
     "price": "~$20 CAD (est.)",
     "location": "O",
     "notes": "100% Cabernet Sauvignon; a widely available, approachable, fruit-forward California red with notes of dark berries and toasted oak.",
@@ -4572,7 +4572,7 @@
     "fire": 0,
     "pairings": "grilled beef, lamb, empanadas, hard cheeses",
     "source": "CB (04/23)",
-    "price": "~$32 CAD",
+    "price": "~$25 CAD (est.)",
     "location": "J",
     "notes": "100% Malbec; a bold, fruit-forward Argentine red with notes of dark plum, blackberry, and subtle oak spice.",
     "imagePath": "images/msksdqf8agzlx.jpg"
@@ -4582,7 +4582,7 @@
     "added": "2026-08-09",
     "producer": "Ruxe Ruxe",
     "name": "Mencía",
-    "vintage": "20182018",
+    "vintage": "2018",
     "type": "Red",
     "qty": 1,
     "region": "Galicia, Spain",
@@ -4594,7 +4594,7 @@
     "fire": 0,
     "pairings": "Cured meats, grilled pork, roasted chicken, mushroom tapas",
     "source": "CB (11/20)",
-    "price": "~$27 CAD",
+    "price": "~$28 CAD (est.)",
     "location": "L",
     "notes": "100% Mencía. A fresh, light-to-medium-bodied Galician red showing bright red cherry, floral aromas, and a mineral, slate-like finish.",
     "imagePath": "images/mslee4biyvem1.jpg"
@@ -4660,7 +4660,7 @@
     "fire": 1,
     "pairings": "Grilled ribeye, lamb chops, aged cheeses, game meats",
     "source": "CB (05/22)",
-    "price": "~$38 CAD",
+    "price": "~$125 CAD (est.)",
     "location": "G",
     "notes": "A blend of Carignan, Mataro (Mourvèdre), and Garnacha; a structured, concentrated, and complex boutique field blend from old vines.",
     "imagePath": "images/msleiaeosmz70.jpg"
@@ -4704,7 +4704,7 @@
     "fire": 0,
     "pairings": "charcuterie, grilled chicken, summer salads, spicy Asian cuisine, seafood",
     "source": "CB (09/25)",
-    "price": "~$26 CAD",
+    "price": "~$22 CAD (est.)",
     "location": "L",
     "notes": "Predominantly Merlot and Cabernet Sauvignon. Bordeaux Clairet is a style of rose that is darker, more concentrated, and more structured than typical Provencal rose, offering vibrant red fruit flavors.",
     "imagePath": "images/mslek7764lilz.jpg"
@@ -4726,7 +4726,7 @@
     "fire": 1,
     "pairings": "bistecca alla fiorentina, roasted lamb, wild boar ragu, aged pecorino cheese",
     "source": "CB (03/25)",
-    "price": "~$80 CAD",
+    "price": "~$75 CAD (est.)",
     "location": "J",
     "notes": "100% Sangiovese; a classic, structured, and age-worthy Tuscan red with vibrant acidity and refined tannins.",
     "imagePath": "images/mslem37i5ruqf.jpg"
@@ -4770,7 +4770,7 @@
     "fire": 0,
     "pairings": "roasted meats, aged cheddar, grilled vegetables, hearty stews",
     "source": "CB (01/22)",
-    "price": "~$45 CAD",
+    "price": "~$30 CAD (est.)",
     "location": "L",
     "notes": "A blend of traditional Bordeaux varieties (typically Cabernet Franc, Merlot, and Cabernet Sauvignon) produced using the appassimento method; a bold, full-bodied red with rich dark fruit and a smooth, slightly dried-fruit character.",
     "imagePath": "images/msleoyct3xdfu.jpg"
@@ -4792,7 +4792,7 @@
     "fire": 0,
     "pairings": "roasted lamb, grilled ribeye, duck breast, aged hard cheeses",
     "source": "Gift - Vik and Ramona",
-    "price": "~$36 CAD",
+    "price": "~$45 CAD (est.)",
     "location": "L",
     "notes": "Blend of Merlot, Cabernet Sauvignon, and Cabernet Franc; a classic, structured Médoc red with notes of dark berries, cedar, and graphite.",
     "imagePath": "images/msleqzafn23pg.jpg"
@@ -4836,7 +4836,7 @@
     "fire": 0,
     "pairings": "grilled ribeye steak, barbecued ribs, aged cheddar, dark chocolate",
     "source": "Gift - Cordelia",
-    "price": "~$78 CAD",
+    "price": "~$65 CAD (est.)",
     "location": "",
     "notes": "100% Shiraz; a quintessential, opulent, and high-octane McLaren Vale Shiraz known for its intense fruit concentration and velvety texture.",
     "imagePath": "images/mslet3jlk37cs.jpg"
@@ -4858,7 +4858,7 @@
     "fire": 0,
     "pairings": "roasted lamb, grilled steaks, hard cheeses, charcuterie",
     "source": "CB (03/25)",
-    "price": "~$14 CAD",
+    "price": "~$28 CAD (est.)",
     "location": "L",
     "notes": "A blend of traditional Douro grapes; an elegant, fresh, and mineral-driven red with vibrant dark fruit and subtle spice.",
     "imagePath": "images/msleu8s6g4kvu.jpg"
@@ -4968,7 +4968,7 @@
     "fire": 0,
     "pairings": "truffle risotto, roasted duck breast, braised veal shank, aged pecorino",
     "source": "CB (06/24)",
-    "price": "~$71 CAD",
+    "price": "~$60 CAD (est.)",
     "location": "J",
     "notes": "100% Nebbiolo. An approachable, elegant Barbaresco featuring ripe red berries, floral aromatics, savory spice, and fine-grained tannins.",
     "imagePath": "images/mslxhvlrj540j.jpg"
@@ -4990,7 +4990,7 @@
     "fire": 0,
     "pairings": "Pizza, tomato-based pasta, charcuterie, grilled poultry, burgers",
     "source": "CB (08/25)",
-    "price": "~$30 CAD",
+    "price": "~$22 CAD (est.)",
     "location": "L",
     "notes": "Sangiovese. A fresh, fruit-forward, and easy-drinking Tuscan red showing bright red berry notes, lively acidity, and smooth tannins, designed to be enjoyed youthful.",
     "imagePath": "images/mslxipc5fkluc.jpg"
@@ -5034,7 +5034,7 @@
     "fire": 0,
     "pairings": "grilled steak, roasted lamb, duck breast, hamburgers, aged hard cheeses",
     "source": "CB (09/23)",
-    "price": "~$26 CAD",
+    "price": "~$22 CAD (est.)",
     "location": "L",
     "notes": "100% Cabernet Sauvignon. An approachable, fruit-forward style of Bordeaux showcasing bright blackcurrant, subtle herbaceous undertones, and soft tannins.",
     "imagePath": "images/mslxkg8tpf1hu.jpg"
@@ -5056,7 +5056,7 @@
     "fire": 0,
     "pairings": "roasted lamb, pasta bolognese, wild boar ragù, aged pecorino cheese",
     "source": "CB (12/23)",
-    "price": "~$26 CAD",
+    "price": "~$25 CAD (est.)",
     "location": "L",
     "notes": "Blend of Gaglioppo, Greco Nero, Nocera, and Nero d'Avola. A rustic, medium-to-full-bodied Southern Italian red with savory dark fruit, leather, and dry herbal notes. Vintage is not visible on the front label; drinking window and price are estimated based on typical current retail releases.",
     "imagePath": "images/mslxorza27452.jpg"
@@ -5100,7 +5100,7 @@
     "fire": 0,
     "pairings": "Roasted lamb, prime rib, wild boar ragu, aged Pecorino cheese",
     "source": "CB (08/25)",
-    "price": "~$55 CAD",
+    "price": "~$58 CAD (est.)",
     "location": "M",
     "notes": "Typically a blend of Cabernet Franc, Merlot, Cabernet Sauvignon, and Petit Verdot. A rich, plush, and velvety Super Tuscan offering lush dark berry fruit, sweet spices, and elegant structure.",
     "imagePath": "images/mslzh79t8v5p1.jpg"
@@ -5144,7 +5144,7 @@
     "fire": 0,
     "pairings": "Roasted lamb, grilled ribeye steak, pan-seared duck breast, mushroom risotto, aged cheeses",
     "source": "CB (06/26)",
-    "price": "~$25 CAD",
+    "price": "~$35 CAD (est.)",
     "location": "L",
     "notes": "A blend of Merlot and Cabernet Franc. This Right Bank Bordeaux offers a classic profile of ripe plum, red currants, graphite, and structured yet accessible tannins.",
     "imagePath": "images/mslzjm3kur84a.jpg"
@@ -5166,7 +5166,7 @@
     "fire": 0,
     "pairings": "Grilled ribeye steak, roasted lamb chops, pan-seared duck breast, aged Gouda",
     "source": "CB (12/25)",
-    "price": "~$58 CAD",
+    "price": "~$65 CAD (est.)",
     "location": "L",
     "notes": "Typically a blend of Cabernet Sauvignon and Merlot. An elegant, medium-bodied Margaux second wine showing ripe dark fruit, violets, and refined, supple tannins.",
     "imagePath": "images/mslzkmeyzxgox.jpg"
@@ -5210,7 +5210,7 @@
     "fire": 0,
     "pairings": "Cured meats, tagliatelle al ragù, roasted pork, medium-aged cheeses",
     "source": "CB (01/26)",
-    "price": "~$22 CAD",
+    "price": "~$25 CAD (est.)",
     "location": "L",
     "notes": "100% Centesimino (locally known as Savignôn Rosso). An aromatic, medium-bodied red wine from the hills of Faenza, showing intense floral notes of violet and wild rose, bright red cherries, and savory spice.",
     "imagePath": "images/mslzmfadwzc6k.jpg"
@@ -5254,7 +5254,7 @@
     "fire": 0,
     "pairings": "grilled ribeye steak, roasted lamb chops, portobello mushrooms, aged cheddar cheese",
     "source": "CB (11/24)",
-    "price": "~$30 CAD",
+    "price": "~$40 CAD (est.)",
     "location": "L",
     "notes": "Cabernet Sauvignon. A rich, classic Sonoma Cabernet with ripe dark berry fruit, sweet oak spice, and plush, approachable tannins.",
     "imagePath": "images/mslzoahcd4qrw.jpg"
@@ -5276,7 +5276,7 @@
     "fire": 1,
     "pairings": "roasted lamb, prime rib, duck breast, beef tenderloin, aged cheeses",
     "source": "CB (03/22)",
-    "price": "~$82 CAD",
+    "price": "~$85 CAD (est.)",
     "location": "M",
     "notes": "Cabernet Sauvignon, Merlot. A traditional, structured, and elegant old-school Margaux with notes of cassis, cedar, and classic earthy complexity.",
     "imagePath": "images/mslzpk07ks6m9.jpg"
@@ -5298,7 +5298,7 @@
     "fire": 0,
     "pairings": "Roast lamb, beef tenderloin, duck breast, porcini mushroom risotto, aged cheeses",
     "source": "CB (11/19)",
-    "price": "~$80 CAD",
+    "price": "~$75 CAD (est.)",
     "location": "P large bottle 1.5L",
     "notes": "A blend of Merlot, Cabernet Franc, Cabernet Sauvignon, and Malbec. A classic, organic, right-bank Bordeaux showing dark plum, graphite, forest floor, and refined, silky tannins from an exceptional vintage.",
     "imagePath": "images/mslzvr76y7zc1.jpg"
@@ -5386,7 +5386,7 @@
     "fire": 0,
     "pairings": "grilled steak, roasted duck breast, charcuterie board, cheeseburgers, aged cheddar",
     "source": "CB (12/25)",
-    "price": "~$33 CAD",
+    "price": "~$24 CAD (est.)",
     "location": "M",
     "notes": "A blend of Cabernet Sauvignon and Merlot. A modern, fruit-forward, and accessible vegan-friendly Bordeaux with vibrant red fruit, supple tannins, and subtle spice.",
     "imagePath": "images/msm016arxq9bx.jpg"
@@ -5430,7 +5430,7 @@
     "fire": 0,
     "pairings": "grilled ribeye steak, roast lamb chops, hearty beef stew, aged cheddar",
     "source": "CB (03/23)",
-    "price": "~$34 CAD",
+    "price": "~$40 CAD (est.)",
     "location": "M",
     "notes": "Cabernet Sauvignon. A rich and approachable Alexander Valley Cabernet with ripe blackberry, cassis, and soft oak spices.",
     "imagePath": "images/msm0482hhu39g.jpg"
@@ -5672,7 +5672,7 @@
     "fire": 0,
     "pairings": "roasted meats, wild boar ragu, aged pecorino, grilled steaks",
     "source": "CB (11/22)",
-    "price": "~$45 CAD",
+    "price": "~$65 CAD (est.)",
     "location": "M",
     "notes": "100% Sangiovese; an elegant, refined, and aromatically complex expression of organic-farmed Sangiovese from Greve, Radda, and Gaiole.",
     "imagePath": "images/msm0jr7i434m6.jpg"
@@ -5716,7 +5716,7 @@
     "fire": 0,
     "pairings": "Tapas, roasted lamb, chorizo, grilled vegetables, hard cheeses",
     "source": "CB (02/24)",
-    "price": "~$37 CAD",
+    "price": "~$35 CAD (est.)",
     "location": "M",
     "notes": "100% Tempranillo; an approachable, fruit-forward style with bright acidity and soft tannins characteristic of the Umpqua Valley estate.",
     "imagePath": "images/msm0m541ekkfi.jpg"
@@ -5738,7 +5738,7 @@
     "fire": 0,
     "pairings": "Grilled red meats, game, aged hard cheeses, hearty pasta dishes with ragù",
     "source": "CB (01/26)",
-    "price": "~$22 CAD",
+    "price": "~$45 CAD (est.)",
     "location": "M",
     "notes": "100% Sangiovese Riserva. This is a robust, structured expression of Sangiovese from the Romagna region, showcasing characteristic dark cherry, earthy spice, and well-integrated tannins.",
     "imagePath": "images/msm0n4hzsc349.jpg"
@@ -5760,7 +5760,7 @@
     "fire": 0,
     "pairings": "grilled swordfish, seafood pasta, goat cheese, roasted vegetable dishes",
     "source": "Gift - Leonardo",
-    "price": "~$36 CAD",
+    "price": "~$45 CAD (est.)",
     "location": "H",
     "notes": "100% Carricante; a mineral-driven, elegant, and crisp white wine defined by volcanic soil salinity and zesty citrus aromatics.",
     "imagePath": "images/msm0ozj989b29.jpg"
@@ -5804,7 +5804,7 @@
     "fire": 0,
     "pairings": "grilled lamb, roasted duck, aged Manchego cheese, mushroom risotto",
     "source": "CB (06/25)",
-    "price": "~$27 CAD",
+    "price": "~$45 CAD (est.)",
     "location": "M",
     "notes": "Blend of Garnacha and Cariñena; a bold, mineral-driven red with intense dark fruit, toasted spice, and the classic structured tannins characteristic of Priorat's slate 'llicorella' soils.",
     "imagePath": "images/msm0sriflhol8.jpg"
@@ -5892,7 +5892,7 @@
     "fire": 0,
     "pairings": "wiener schnitzel, roast chicken, asparagus, fresh salads, mild goat cheese",
     "source": "CB (10/25)",
-    "price": "~$16 CAD",
+    "price": "~$20 CAD (est.)",
     "location": "M",
     "notes": "100% Grüner Veltliner; a classic, crisp, and refreshing Austrian white wine with signature notes of green apple, white pepper, and citrus.",
     "imagePath": "images/msm0y433yqr1v.jpg"
