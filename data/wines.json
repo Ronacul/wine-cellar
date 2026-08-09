@@ -5060,5 +5060,27 @@
     "location": "L",
     "notes": "Blend of Gaglioppo, Greco Nero, Nocera, and Nero d'Avola. A rustic, medium-to-full-bodied Southern Italian red with savory dark fruit, leather, and dry herbal notes. Vintage is not visible on the front label; drinking window and price are estimated based on typical current retail releases.",
     "imagePath": "images/mslxorza27452.jpg"
+  },
+  {
+    "id": "mslxqfj94hdh4",
+    "added": "2026-08-09",
+    "producer": "Château Martet",
+    "name": "Les Hauts de Martet",
+    "vintage": "2019",
+    "type": "Red",
+    "qty": 1,
+    "region": "Sainte-Foy-Côtes de Bordeaux, France",
+    "drinkFrom": "2022",
+    "drinkTo": "2034",
+    "shelfSection": "",
+    "binCode": "",
+    "titi": false,
+    "fire": 0,
+    "pairings": "Roasted duck breast, grilled ribeye steak, pork chops with plum sauce, aged Gouda",
+    "source": "CB (05/24)",
+    "price": "~$35 CAD (est.)",
+    "location": "L",
+    "notes": "Predominantly Merlot with Cabernet Sauvignon and Cabernet Franc. A supple, medium-to-full-bodied Bordeaux offering ripe plum, dark cherry, and integrated oak spices with soft tannins.",
+    "imagePath": "images/mslxqfj94hdh4.jpg"
   }
 ]
