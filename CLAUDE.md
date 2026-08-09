@@ -41,6 +41,9 @@ Each wine object in `wines.json`:
   "drinkNotes": null,
   "buyAgain": null,
   "giftedTo": null,
+  "marketValue": "~$55 CAD (est.)",
+  "lastValueCheck": "2026-08-09",
+  "tastingHistory": [],
   "imagePath": "images/{id}.jpg"
 }
 ```
@@ -55,7 +58,10 @@ Each wine object in `wines.json`:
 - `buyAgain` (boolean or null) = would buy again toggle, recorded during drink review
 - `giftedTo` (string or null) = if set, bottle was given as a gift rather than drunk. Value is the recipient/occasion. Gifts get 🎁 badge instead of drank styling.
 - `price` uses `~$XX CAD (est.)` for AI-estimated prices vs actual purchase prices (always CAD)
-- `source` uses `CB (mm/yy)` format for Charlie's Burgers shipments. The form splits this into a "CB" text input + separate mm/yy date fields, then recombines on save.
+- `marketValue` (string or null) = AI-estimated current retail market value in CAD, from the Value tab's "Update market values" feature. Compared against `price` for appreciation tracking.
+- `lastValueCheck` (ISO date or null) = when `marketValue` was last updated
+- `tastingHistory` (array or null) = maturity tracking entries for multi-bottle wines. Each entry: `{date, rating, notes, buyAgain, bottleNum}`. Added when opening a bottle from a multi-bottle wine. Last bottle's review also adds an entry.
+- `source` uses `CB (mm/yy)` format for Charlie's Burgers shipments. Gift source uses `Gift - Name (mm/yy)` format. The form splits these into text input + separate mm/yy date fields, then recombines on save.
 
 ### Origins (derived, not stored)
 
@@ -85,12 +91,15 @@ Origins are computed from `source` + `titi` fields by `getOrigin(w)`:
 - Bulk price re-check on sync page processes all wines sequentially with stop button
 
 ### Navigation
-- SPA with tab-based routing: cellar, soon, add, stats, sync
+- SPA with tab-based routing: cellar, soon, add, stats, value, sync
 - Detail view pushes browser `history.pushState` so phone back button works
 - `cellarScrollY` saves/restores scroll position when entering/leaving detail view
 
 ### Display helpers (top-level functions)
-- `fmtSource(s)` — formats "CB (02/23)" → "CB · Feb '23" for display
+- `fmtSource(s)` — formats "CB (02/23)" → "CB · Feb '23" and "Gift - Lisa (10/24)" → "Gift - Lisa · Oct '24" for display
+- `parseGiftSource(s)` — parses "Gift - Name (mm/yy)" into `{name, mm, yy}` components
+- `parsePrice(p)` — extracts numeric value from price string (e.g. "$37.95" → 37.95)
+- `addTastingEntry(w, rating, notes, buyAgain)` — adds a timestamped entry to `w.tastingHistory` for maturity tracking
 - `fireLevel(w)` — returns integer 0–3 from `w.fire` (handles `true` → 1 backward compat)
 - `isFire(w)` — checks `fireLevel(w) > 0`
 - `fireEmoji(w)` — returns "🔥" repeated by tier (e.g. "🔥🔥🔥" for Icon)
@@ -119,12 +128,13 @@ The `windowStatus()` function returns graduated statuses based on months remaini
 - Drink Soon tab sorts by urgency (most urgent first) and groups into sections
 
 ### Drink review flow
-When qty hits 0 via the minus button, a review sheet appears:
-- **Choice**: "🍷 Drank it" or "🎁 Gave as gift"
-- **Drank it**: 5-star rating (tappable ★/☆), tasting notes textarea, "Would buy again?" yes/no
-- **Gave as gift**: optional "To whom / occasion" input
-- Both options have "Skip — just mark as gone" to bypass review
-- Review data stored in `rating`, `drinkNotes`, `buyAgain`, `giftedTo` fields
+When qty decreases via the minus button:
+- **Multi-bottle (qty > 1)**: Tasting note review sheet appears — rate, note, buy-again. Saves to `tastingHistory` array for maturity tracking. "Skip — just remove bottle" option.
+- **Last bottle (qty → 0)**: Full review sheet with choice:
+  - **🍷 Drank it**: 5-star rating (tappable ★/☆), tasting notes textarea, "Would buy again?" yes/no. Also adds to `tastingHistory`.
+  - **🎁 Gave as gift**: optional "To whom / occasion" input
+  - Both options have "Skip — just mark as gone" to bypass review
+- Review data stored in `rating`, `drinkNotes`, `buyAgain`, `giftedTo` fields (last bottle) plus `tastingHistory` (all bottles)
 
 ### Unrated bottles nudge
 - Appears as a collapsible `<details>` section at the top of the Drank view
@@ -158,9 +168,32 @@ The toolbar uses a chip-based filter system instead of discrete toggle buttons:
 - 🎲 Random bottle picker ("What should I drink tonight?") — picks from in-cave wines, tappable to detail
 - Bottle-shaped SVG charts by wine type (proportional height)
 - Origin breakdown bar chart (CB, Titi, SAQ, LCBO, etc.)
-- CB by shipment month sub-chart
 - Price distribution (CAD buckets: $0–20, $20–40, $40–60, $60–100, $100+)
 - Vintage spread bar chart
+- CB by shipment: collapsible by year (current year open, older collapsed), at bottom of page
+
+### Value tab (📈)
+- Summary pills: acquisition cost, current market value, overall appreciation %
+- Consumed value pill for drank wines
+- AI market value update button: batch-checks all wines via Gemini for current retail prices
+- Wine ticker: stock-ticker-style list with ▲/▼ % change, color-coded (green = up, red = down)
+- Sort: gainers, losers, total value, A–Z
+- "Hide past peak" toggle: filters out overdue wines to avoid depressing valuations
+- Data: `marketValue` (AI estimate), `lastValueCheck` (date)
+- Detail view: shows market value + appreciation % inline below purchase price
+
+### Maturity tracking
+- `tastingHistory` array on wine object stores timestamped tasting entries
+- Multi-bottle wines: removing a bottle (qty > 1) prompts for tasting notes instead of silently decrementing
+- Maturity timeline on detail view: vertical timeline showing all tastings with date, rating, notes
+- Maturity nudge: gold-bordered prompt on multi-bottle wines suggesting periodic tasting
+  - "You have N bottles — consider opening one to start tracking…" (if never tasted)
+  - "Last tasted X months ago — time to open another?" (if ≥6 months since last tasting)
+
+### Duplicate detection
+- After AI label identification, checks existing wines for matching producer + name + vintage
+- If duplicate found, offers "Add another bottle" button to increment qty instead of creating a new entry
+- User can still save as a separate entry via the form
 
 ### Fire tier criteria
 For manual assignment or AI identification from labels:
@@ -205,6 +238,11 @@ For manual assignment or AI identification from labels:
 - Gift vs drank choice — different paths for different outcomes, no rating needed for gifts
 - Unrated bottles nudge with gold border — draws eye to bottles awaiting review
 - Graduated peak countdown — color escalation (green → gold → orange → red) communicates urgency at a glance
+- Search select-all on focus — tapping search selects existing text so typing replaces it instantly
+- Gift source with name + date fields — like CB, "Gift" gets split into name input + mm/yy date, auto-capitalizes first letter
+- Stock ticker UI for value tracking — familiar metaphor, color-coded ▲/▼ changes at a glance
+- Multi-bottle tasting prompt — captures maturity data at the natural bottle-opening moment
+- "Hide past peak" toggle — avoids depressing valuations of over-the-hill wines
 
 ### Template literal gotcha
 - `\d{2}` regex inside template `${}` — the `}` is interpreted as closing the template expression
@@ -213,6 +251,7 @@ For manual assignment or AI identification from labels:
 ## Common sources
 
 - **CB** — Charlie's Burgers, monthly wine subscription, stored as `CB (mm/yy)`
+- **Gift** — wines received as gifts, stored as `Gift - Name (mm/yy)`, e.g. `Gift - Lisa and Phil (10/24)`
 - **Wine club (monthly)** — generic subscription
 - **SAQ** — Société des alcools du Québec
 - **LCBO** — Liquor Control Board of Ontario

@@ -429,6 +429,19 @@ details.collapse .collapse-body{padding:12px 0 0}
 /* ---------- drank rating stars in cards ---------- */
 .card-stars{font-size:12px;color:var(--gold);margin-top:4px;letter-spacing:1px}
 
+/* ---------- maturity timeline ---------- */
+.maturity-section{margin:16px 0;padding:14px;background:var(--panel);border:1px solid var(--line);border-radius:6px}
+.maturity-section h4{font-family:"Cormorant Garamond",serif;font-weight:600;font-size:17px;margin-bottom:12px}
+.timeline{position:relative;padding-left:20px}
+.timeline::before{content:"";position:absolute;left:6px;top:6px;bottom:6px;width:2px;background:var(--line)}
+.timeline-entry{position:relative;padding:0 0 14px 10px}
+.timeline-entry:last-child{padding-bottom:0}
+.timeline-entry::before{content:"";position:absolute;left:-17px;top:6px;width:10px;height:10px;border-radius:50%;background:var(--gold);border:2px solid var(--panel)}
+.timeline-date{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.06em}
+.timeline-rating{font-size:13px;color:var(--gold);margin:2px 0}
+.timeline-notes{font-size:13px;color:var(--ink-dim);line-height:1.4}
+.maturity-nudge{margin:12px 0;padding:12px;background:var(--panel2);border:1px solid var(--gold);border-radius:6px;font-size:13px;color:var(--gold);text-align:center}
+
 /* ---------- value / appreciation tab ---------- */
 .val-summary{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:12px 0}
 .val-pill{font-family:"IBM Plex Mono",monospace;font-size:12px;padding:6px 12px;border:1px solid var(--line);border-radius:12px;color:var(--ink-dim);text-align:center}
@@ -500,6 +513,7 @@ let filters = {fire:false, titi:false, cb:false, peak:false, soon:false, past:fa
 let shelfFilters = new Set();
 let reviewPending = null; /* wine id when review sheet is open */
 let valueSort = "change-desc"; /* ticker sort: change-desc, change-asc, name, value-desc */
+let valueHidePastPeak = false; /* hide wines well past their maturity on value tab */
 
 const saveWines = () => localStorage.setItem(LS_WINES, JSON.stringify(wines));
 let syncHistory = JSON.parse(localStorage.getItem(LS_HIST) || "[]");
@@ -942,19 +956,93 @@ function bindCards(){
 }
 
 /* ================= review sheet (drink/gift flow) ================= */
-function showReviewSheet(w){
+function addTastingEntry(w, rating, notes, buyAgain){
+  if(!w.tastingHistory) w.tastingHistory = [];
+  const entry = { date: new Date().toISOString().slice(0,10) };
+  if(rating) entry.rating = rating;
+  if(notes) entry.notes = notes;
+  if(buyAgain !== null && buyAgain !== undefined) entry.buyAgain = buyAgain;
+  entry.bottleNum = (w.tastingHistory.length || 0) + 1;
+  w.tastingHistory.push(entry);
+}
+
+function showReviewSheet(w, isLastBottle){
   reviewPending = w.id;
   const reviewArea = document.getElementById("review-area");
   if(!reviewArea) return;
+  const hasHistory = w.tastingHistory && w.tastingHistory.length;
+  const heading = isLastBottle ? "Last bottle — what happened?" : `Opening bottle ${(hasHistory ? w.tastingHistory.length : 0) + 1} — how is it?`;
   reviewArea.innerHTML = `<div class="review-sheet">
-    <h3 class="serif">Last bottle — what happened?</h3>
-    <div class="review-choice">
+    <h3 class="serif">${heading}</h3>
+    ${isLastBottle ? `<div class="review-choice">
       <button type="button" id="rev-drank">🍷 Drank it</button>
       <button type="button" id="rev-gift">🎁 Gave as gift</button>
-    </div>
-    <div id="rev-body"></div>
+    </div>` : ""}
+    <div id="rev-body">${isLastBottle ? "" : `
+      <div class="field"><label>Rating</label>
+        <div class="star-rating" id="star-row">
+          ${[1,2,3,4,5].map(i=>`<button type="button" class="star" data-v="${i}">☆</button>`).join("")}
+        </div>
+      </div>
+      <div class="field"><label>How is it evolving?</label>
+        <textarea id="rev-notes" placeholder="Tasting notes — compare to previous bottles…" style="background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--ink);padding:10px 12px;font-size:14px;min-height:56px;resize:vertical;width:100%"></textarea>
+      </div>
+      <div class="field"><label>Would buy again?</label>
+        <div class="buy-again-row">
+          <button type="button" class="ba-btn" data-v="yes">👍 Yes</button>
+          <button type="button" class="ba-btn" data-v="no">👎 No</button>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="rev-save">Save tasting note</button>
+      <button class="btn btn-ghost" id="rev-skip">Skip — just remove bottle</button>
+    `}</div>
   </div>`;
 
+  /* bind star/buy-again for both multi-bottle and last-bottle drank modes */
+  function bindDrankControls(saveCallback, skipCallback){
+    let rating = 0, buyAgain = null;
+    document.querySelectorAll("#star-row .star").forEach(s => {
+      s.onclick = ()=>{
+        rating = parseInt(s.dataset.v);
+        document.querySelectorAll("#star-row .star").forEach((ss,i)=>{
+          ss.textContent = i < rating ? "★" : "☆";
+          ss.classList.toggle("active", i < rating);
+        });
+      };
+    });
+    document.querySelectorAll(".ba-btn").forEach(b => {
+      b.onclick = ()=>{
+        buyAgain = b.dataset.v === "yes";
+        document.querySelectorAll(".ba-btn").forEach(bb=>bb.classList.remove("selected"));
+        b.classList.add("selected");
+      };
+    });
+    const saveBtn = document.getElementById("rev-save");
+    if(saveBtn) saveBtn.onclick = ()=> saveCallback(rating, buyAgain);
+    const skipBtn = document.getElementById("rev-skip");
+    if(skipBtn) skipBtn.onclick = skipCallback;
+  }
+
+  if(!isLastBottle){
+    /* multi-bottle: save tasting note, decrement qty */
+    bindDrankControls(
+      (rating, buyAgain) => {
+        const notes = (document.getElementById("rev-notes").value||"").trim() || null;
+        addTastingEntry(w, rating, notes, buyAgain);
+        w.qty = qtyOf(w) - 1;
+        reviewPending = null;
+        saveWines(); render();
+      },
+      () => {
+        w.qty = qtyOf(w) - 1;
+        reviewPending = null;
+        saveWines(); render();
+      }
+    );
+    return;
+  }
+
+  /* last bottle — drank or gift choice */
   document.getElementById("rev-drank").onclick = ()=>{
     document.getElementById("rev-drank").classList.add("selected");
     document.getElementById("rev-gift").classList.remove("selected");
@@ -975,39 +1063,26 @@ function showReviewSheet(w){
       </div>
       <button class="btn btn-primary" id="rev-save">Save review</button>
       <button class="btn btn-ghost" id="rev-skip">Skip — just mark as gone</button>`;
-    let rating = 0, buyAgain = null;
-    document.querySelectorAll("#star-row .star").forEach(s => {
-      s.onclick = ()=>{
-        rating = parseInt(s.dataset.v);
-        document.querySelectorAll("#star-row .star").forEach((ss,i)=>{
-          ss.textContent = i < rating ? "★" : "☆";
-          ss.classList.toggle("active", i < rating);
-        });
-      };
-    });
-    document.querySelectorAll(".ba-btn").forEach(b => {
-      b.onclick = ()=>{
-        buyAgain = b.dataset.v === "yes";
-        document.querySelectorAll(".ba-btn").forEach(bb=>bb.classList.remove("selected"));
-        b.classList.add("selected");
-      };
-    });
-    document.getElementById("rev-save").onclick = ()=>{
-      w.qty = 0;
-      w.drankDate = new Date().toISOString().slice(0,10);
-      if(rating) w.rating = rating;
-      w.drinkNotes = (document.getElementById("rev-notes").value||"").trim() || null;
-      w.buyAgain = buyAgain;
-      w.giftedTo = null;
-      reviewPending = null;
-      saveWines(); render();
-    };
-    document.getElementById("rev-skip").onclick = ()=>{
-      w.qty = 0;
-      w.drankDate = new Date().toISOString().slice(0,10);
-      reviewPending = null;
-      saveWines(); render();
-    };
+    bindDrankControls(
+      (rating, buyAgain) => {
+        const notes = (document.getElementById("rev-notes").value||"").trim() || null;
+        addTastingEntry(w, rating, notes, buyAgain);
+        w.qty = 0;
+        w.drankDate = new Date().toISOString().slice(0,10);
+        if(rating) w.rating = rating;
+        w.drinkNotes = notes;
+        w.buyAgain = buyAgain;
+        w.giftedTo = null;
+        reviewPending = null;
+        saveWines(); render();
+      },
+      () => {
+        w.qty = 0;
+        w.drankDate = new Date().toISOString().slice(0,10);
+        reviewPending = null;
+        saveWines(); render();
+      }
+    );
   };
 
   document.getElementById("rev-gift").onclick = ()=>{
@@ -1069,6 +1144,45 @@ function renderDetail(){
     reviewDetailHTML = `<dl class="spec"><dt>Gifted to</dt><dd>${esc(w.giftedTo || "someone")}</dd></dl>`;
   }
 
+  /* maturity timeline */
+  let maturityHTML = "";
+  if(w.tastingHistory && w.tastingHistory.length){
+    const entries = w.tastingHistory.slice().sort((a,b) => (a.date||"").localeCompare(b.date||""));
+    const timelineEntries = entries.map(e => {
+      const dateStr = e.date || "Unknown";
+      const ratingStr = e.rating ? starsHTML(e.rating, 13) : "";
+      const noteStr = e.notes ? `<div class="timeline-notes">${esc(e.notes)}</div>` : "";
+      const baStr = e.buyAgain !== null && e.buyAgain !== undefined
+        ? `<span style="font-size:11px;color:var(--ink-faint)">${e.buyAgain ? "👍 buy again" : "👎 no"}</span>` : "";
+      return `<div class="timeline-entry">
+        <div class="timeline-date">${esc(dateStr)}${e.bottleNum ? " · Bottle #"+e.bottleNum : ""}</div>
+        ${ratingStr ? `<div class="timeline-rating">${ratingStr}</div>` : ""}
+        ${noteStr}
+        ${baStr}
+      </div>`;
+    }).join("");
+    maturityHTML = `<div class="maturity-section">
+      <h4>🍷 Maturity Timeline</h4>
+      <div class="timeline">${timelineEntries}</div>
+    </div>`;
+  }
+
+  /* maturity nudge for multi-bottle wines */
+  let maturityNudgeHTML = "";
+  if(!drank && qtyOf(w) > 1){
+    const history = w.tastingHistory || [];
+    const lastTasted = history.length ? history[history.length - 1].date : null;
+    if(!lastTasted){
+      maturityNudgeHTML = `<div class="maturity-nudge">🍷 You have ${qtyOf(w)} bottles — consider opening one to start tracking how this wine evolves over time</div>`;
+    } else {
+      const lastDate = new Date(lastTasted);
+      const monthsSince = Math.round((Date.now() - lastDate.getTime()) / (1000*60*60*24*30));
+      if(monthsSince >= 6){
+        maturityNudgeHTML = `<div class="maturity-nudge">🍷 Last tasted ${monthsSince} months ago — time to open another bottle and check how it's evolving?</div>`;
+      }
+    }
+  }
+
   view.innerHTML = `<div class="sheet">
     <div class="back-row"><button id="back-top">← Back</button></div>
     ${src?`<img class="detail-photo" src="${esc(src)}" alt="Label photo" crossorigin="anonymous">`:""}
@@ -1080,7 +1194,9 @@ function renderDetail(){
       ${drankInfoHTML}
     </div>
     ${bandHTML(w)}
+    ${maturityNudgeHTML}
     ${reviewDetailHTML}
+    ${maturityHTML}
     <dl class="spec">
       <dt>Drink</dt><dd>${drinkVal ?? `<span class="tbd">TBD</span>`}</dd>
       <dt>Shelf</dt><dd>${tbd(w.shelfSection)}</dd>
@@ -1199,9 +1315,15 @@ function renderDetail(){
     const prev = qtyOf(w);
     const newQty = Math.max(0, prev - 1);
     if(newQty === 0){
-      /* show review flow instead of immediately saving */
+      /* last bottle — show full review flow */
       w.qty = prev; /* keep qty for now; review sheet will set to 0 */
-      showReviewSheet(w);
+      showReviewSheet(w, true);
+      return;
+    }
+    if(prev > 1){
+      /* multi-bottle: offer tasting note for maturity tracking */
+      w.qty = prev; /* keep qty; review sheet will decrement */
+      showReviewSheet(w, false);
       return;
     }
     w.qty = newQty;
@@ -1824,6 +1946,21 @@ function renderValue(){
     }
   });
 
+  /* filter past-peak wines if toggle is on */
+  const hiddenCount = valueHidePastPeak ? tickerItems.filter(t => {
+    const ws = windowStatus(t.w);
+    return ws.cls === "overdue" && !t.drank;
+  }).length : 0;
+  if(valueHidePastPeak){
+    const filtered = tickerItems.filter(t => {
+      if(t.drank) return true; /* always show drank wines */
+      const ws = windowStatus(t.w);
+      return ws.cls !== "overdue";
+    });
+    tickerItems.length = 0;
+    tickerItems.push(...filtered);
+  }
+
   /* sort ticker */
   if(valueSort === "change-desc") tickerItems.sort((a,b) => b.change - a.change);
   else if(valueSort === "change-asc") tickerItems.sort((a,b) => a.change - b.change);
@@ -1882,7 +2019,12 @@ function renderValue(){
     <div class="sync-status" id="value-st" style="display:none"></div>
 
     ${tickerItems.length ? `
-    <div class="stat-section-label">Wine ticker</div>
+    <div class="stat-section-label" style="display:flex;align-items:center;justify-content:space-between">
+      <span>Wine ticker</span>
+      <label style="display:flex;align-items:center;gap:6px;font-size:10px;letter-spacing:0;text-transform:none;cursor:pointer;color:var(--ink-faint)">
+        <input type="checkbox" id="hide-past-peak" ${valueHidePastPeak?"checked":""}> Hide past peak${hiddenCount ? " ("+hiddenCount+")" : ""}
+      </label>
+    </div>
     <div class="ticker-sort">
       <button type="button" class="${valueSort==="change-desc"?"on":""}" data-vs="change-desc">▲ Gainers</button>
       <button type="button" class="${valueSort==="change-asc"?"on":""}" data-vs="change-asc">▼ Losers</button>
@@ -1896,6 +2038,10 @@ function renderValue(){
   view.querySelectorAll(".ticker-sort button").forEach(btn=>{
     btn.onclick = ()=>{ valueSort = btn.dataset.vs; renderValue(); };
   });
+
+  /* hide past peak toggle */
+  const hidePeakEl = document.getElementById("hide-past-peak");
+  if(hidePeakEl) hidePeakEl.onchange = ()=>{ valueHidePastPeak = hidePeakEl.checked; renderValue(); };
 
   /* tap to detail */
   view.querySelectorAll(".ticker-row").forEach(row=>{
@@ -2043,6 +2189,15 @@ function renderSync(){
       <summary>What's new</summary>
       <div class="collapse-body">
         <ul class="changelog">
+          <li><span class="cl-ver">Aug 9, 2026</span>
+            <span class="cl-title">📈 Value appreciation tab</span><br>
+            <span class="cl-desc">New "📈 Value" tab showing cellar appreciation like a stock ticker. Acquisition cost vs current market value with ▲/▼ % change. Sort by gainers, losers, total value, or A–Z. AI-powered market value updates. "Hide past peak" toggle to keep the vibes positive. Detail view shows market value + appreciation % inline.</span></li>
+          <li><span class="cl-ver">Aug 9, 2026</span>
+            <span class="cl-title">🍷 Maturity tracking</span><br>
+            <span class="cl-desc">Multi-bottle wines now prompt for tasting notes when opening each bottle — tracks how the wine evolves over time. Maturity timeline on detail view shows all tastings. Nudge reminders for multi-bottle wines suggesting periodic tasting. Last bottle still gets the full drank/gift review flow.</span></li>
+          <li><span class="cl-ver">Aug 9, 2026</span>
+            <span class="cl-title">🔍 Smarter scanning + gift dates</span><br>
+            <span class="cl-desc">Label scan now checks for duplicates — offers to add another bottle instead of creating a duplicate. Gift source gets name + mm/yy date fields like CB. Search selects all on tap for faster re-searching. CB shipments in stats grouped by year (collapsible). Cleaned up 12 gift source records.</span></li>
           <li><span class="cl-ver">Aug 8, 2026</span>
             <span class="cl-title">🔥 3-tier fire system</span><br>
             <span class="cl-desc">Fire is now a 3-tier rating: 🔥 Notable, 🔥🔥 Prestige, 🔥🔥🔥 Icon. Segmented picker in detail + edit views. AI label scan assigns tiers automatically. Stats show tier breakdown. Audited cellar — tightened to 8 fire wines (5 icon, 2 prestige, 1 notable).</span></li>
