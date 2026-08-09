@@ -373,6 +373,9 @@ details.collapse .collapse-body{padding:12px 0 0}
 .chip.overdue{color:var(--urgent);border-color:var(--urgent)}
 .chip.last-call{color:var(--orange);border-color:var(--orange)}
 .chip.countdown{font-size:9.5px;color:var(--ink-faint);border:none;padding:2px 4px}
+.chip.peak-icon{border:none;padding:1px 3px;line-height:1;display:inline-flex;align-items:center}
+.chip.peak-icon svg{display:block}
+.chip.price{color:var(--ink-dim);border-color:var(--line);font-size:10px}
 
 /* ---------- review sheet ---------- */
 .review-sheet{
@@ -715,10 +718,22 @@ function render(){
   else if(tab==="sync") renderSync();
 }
 
+/* mountain SVG for peak icon — colored by status */
+const PEAK_COLORS = {hold:"#7b9a7b", window:"#7da87b", soon:"#c9a227", urgent:"#d4842a", overdue:"#c05060"};
+function peakMtnSVG(cls){
+  const c = PEAK_COLORS[cls]||PEAK_COLORS.window;
+  return `<svg viewBox="0 0 16 11" width="14" height="10"><path d="M0 11L5.5 1L11 11z" fill="${c}"/><path d="M7 11L11 4L16 11z" fill="${c}" opacity=".5"/></svg>`;
+}
+function peakIconHTML(w){
+  const st = windowStatus(w);
+  if(!st.cls || st.cls==="hold") return "";
+  const tip = st.label + (st.countdown ? " · " + st.countdown : "");
+  return `<span class="chip peak-icon" title="${esc(tip)}">${peakMtnSVG(st.cls)}</span>`;
+}
+/* verbose version for detail view */
 function peakChipHTML(w){
   const st = windowStatus(w);
   if(!st.cls || st.cls==="hold" || st.cls==="window") {
-    /* in window with countdown */
     if(st.cls==="window" && st.countdown) return `<span class="chip window" style="color:var(--ok);border-color:var(--ok)">In window</span><span class="chip countdown">${esc(st.countdown)}</span>`;
     return "";
   }
@@ -752,11 +767,12 @@ function cardHTML(w){
           ${w.type?`<span class="chip ${tcls}">${esc(w.type)}</span>`:""}
           ${!drank && w.qty>1?`<span class="chip">×${esc(w.qty)}</span>`:""}
           ${w.binCode?`<span class="chip bin">${esc(w.binCode)}</span>`:""}
+          ${fire?`<span class="chip fire">${fireEmoji(w)}</span>`:""}
+          ${!drank ? peakIconHTML(w) : ""}
+          ${w.price?`<span class="chip price">${fmtCardPrice(w.price)}</span>`:""}
           ${w.titi?`<span class="chip titi">Titi</span>`:""}
           ${isCB(w)?`<span class="chip cb">CB</span>`:""}
-          ${fire?`<span class="chip fire">${fireEmoji(w)} ${fireLabel(w)}</span>`:""}
-          ${gifted?`<span class="chip gift">🎁 Gift</span>`:""}
-          ${!drank ? peakChipHTML(w) : ""}
+          ${gifted?`<span class="chip gift">🎁</span>`:""}
         </div>
         ${drank && !gifted && w.rating ? starsHTML(w.rating) : ""}
       </div>
@@ -1910,6 +1926,10 @@ function parsePrice(p){
   if(!p) return null;
   const m = p.match(/\$(\d+(?:\.\d+)?)/);
   return m ? parseFloat(m[1]) : null;
+}
+function fmtCardPrice(p){
+  const v = parsePrice(p);
+  return v !== null ? "$" + Math.round(v) : "";
 }
 function renderValue(){
   const inCave = wines.filter(w=>!isDrank(w));
