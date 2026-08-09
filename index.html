@@ -2185,64 +2185,69 @@ function renderSync(){
       <div class="collapse-body" id="stats-body"></div>
     </details>
 
-    <details class="collapse">
-      <summary>What's new</summary>
-      <div class="collapse-body">
-        <ul class="changelog">
-          <li><span class="cl-ver">Aug 9, 2026</span>
-            <span class="cl-title">📈 Value appreciation tab</span><br>
-            <span class="cl-desc">New "📈 Value" tab showing cellar appreciation like a stock ticker. Acquisition cost vs current market value with ▲/▼ % change. Sort by gainers, losers, total value, or A–Z. AI-powered market value updates. "Hide past peak" toggle to keep the vibes positive. Detail view shows market value + appreciation % inline.</span></li>
-          <li><span class="cl-ver">Aug 9, 2026</span>
-            <span class="cl-title">🍷 Maturity tracking</span><br>
-            <span class="cl-desc">Multi-bottle wines now prompt for tasting notes when opening each bottle — tracks how the wine evolves over time. Maturity timeline on detail view shows all tastings. Nudge reminders for multi-bottle wines suggesting periodic tasting. Last bottle still gets the full drank/gift review flow.</span></li>
-          <li><span class="cl-ver">Aug 9, 2026</span>
-            <span class="cl-title">🔍 Smarter scanning + gift dates</span><br>
-            <span class="cl-desc">Label scan now checks for duplicates — offers to add another bottle instead of creating a duplicate. Gift source gets name + mm/yy date fields like CB. Search selects all on tap for faster re-searching. CB shipments in stats grouped by year (collapsible). Cleaned up 12 gift source records.</span></li>
-          <li><span class="cl-ver">Aug 8, 2026</span>
-            <span class="cl-title">🔥 3-tier fire system</span><br>
-            <span class="cl-desc">Fire is now a 3-tier rating: 🔥 Notable, 🔥🔥 Prestige, 🔥🔥🔥 Icon. Segmented picker in detail + edit views. AI label scan assigns tiers automatically. Stats show tier breakdown. Audited cellar — tightened to 8 fire wines (5 icon, 2 prestige, 1 notable).</span></li>
-          <li><span class="cl-ver">Aug 7, 2026</span>
-            <span class="cl-title">🏷️ Unified filter bar & shelf letters</span><br>
-            <span class="cl-desc">Replaced discrete filter buttons with a scrollable chip bar — toggle Fire, Titi, CB, Peak, Soon, Past filters independently. Shelf filter now uses physical shelf letters (A–R) derived from bin codes.</span></li>
-          <li><span class="cl-ver">Aug 7, 2026</span>
-            <span class="cl-title">🍷 Bottle lifecycle: reviews, gifts & peak countdown</span><br>
-            <span class="cl-desc">Graduated peak warnings (green → gold → orange → red) with countdown. Rate bottles when you drink them (⭐ 1–5 + notes + "buy again?"). Gift option when removing from cellar (🎁). Unrated bottles nudge in Drank view.</span></li>
-          <li><span class="cl-ver">Aug 6, 2026</span>
-            <span class="cl-title">🔥 Fire prestige, ⛰️ Peak window, drank history</span><br>
-            <span class="cl-desc">🔥 Fire = icon/collectible wines (Sassicaia, Cheval Blanc…) — manual toggle + AI auto-detect. ⛰️ Peak chip for wines approaching or past their drink window. Drank history: bottles at qty 0 stay in your records with a date stamp; toggle In cave / Drank / All in the cellar. Stats page shows origins (CB, Titi, SAQ…), CB shipments by month, consumed value, and fire/peak counts.</span></li>
-          <li><span class="cl-ver">Aug 6, 2026</span>
-            <span class="cl-title">Stats page &amp; CB badge</span><br>
-            <span class="cl-desc">New Stats tab with bottle-shaped type charts, vintage spread, price distribution, and 🎲 random bottle picker. CB badge on cards. CB source input cleaned up (no more duplicate dates).</span></li>
-          <li><span class="cl-ver">Aug 6, 2026</span>
-            <span class="cl-title">CB shorthand, price re-check &amp; qty controls</span><br>
-            <span class="cl-desc">Charlie's Burgers → CB with separate mm/yy date field. Re-check price from detail view (uses label photo when available) or bulk re-check all prices on sync page. Inline price editing on detail view. +/− qty buttons on add/edit form. All prices now in CAD.</span></li>
-          <li><span class="cl-ver">Aug 6, 2026</span>
-            <span class="cl-title">Sort, search &amp; detail-view refinements</span><br>
-            <span class="cl-desc">Cellar sort by producer, vintage, recently added, or drink window. Search now includes notes. Detail view has a back button at top, and +/− buttons for quantity. Drink-soon badge shows count. Cellar stats section added.</span></li>
-          <li><span class="cl-ver">Aug 5, 2026</span>
-            <span class="cl-title">Sync history &amp; collapsible settings</span><br>
-            <span class="cl-desc">Push/pull activity is now logged with timestamps. API keys and settings tucked behind a collapsible section to prevent accidental edits.</span></li>
-          <li><span class="cl-ver">Aug 5, 2026</span>
-            <span class="cl-title">Empty field highlighting</span><br>
-            <span class="cl-desc">After AI label identification, fields the model couldn't read get a gold pulse and dot so you know what to fill in manually.</span></li>
-          <li><span class="cl-ver">Aug 5, 2026</span>
-            <span class="cl-title">Gemini model retry &amp; fallback</span><br>
-            <span class="cl-desc">Label scanning now retries on busy errors and falls back through gemini-3.5-flash → 2.5-flash → 3.1-flash-lite. Same free API key.</span></li>
-          <li><span class="cl-ver">Aug 5, 2026</span>
-            <span class="cl-title">Charlie's Burgers &amp; source quick-pick</span><br>
-            <span class="cl-desc">New dropdown on the add/edit form with common sources: Charlie's Burgers (auto-stamps month/year), Wine club, SAQ, LCBO, Gift, Winery.</span></li>
-          <li><span class="cl-ver">Aug 5, 2026</span>
-            <span class="cl-title">Browser back button &amp; scroll restore</span><br>
-            <span class="cl-desc">Tapping a wine pushes browser history — phone back button returns to the cellar. Scroll position is restored so you land where you left off.</span></li>
-          <li><span class="cl-ver">Aug 5, 2026</span>
-            <span class="cl-title">Sync page reordered</span><br>
-            <span class="cl-desc">Pull button at the top, Push further down to prevent accidental overwrites.</span></li>
-          <li><span class="cl-ver">Aug 5, 2026</span>
-            <span class="cl-title">Price estimates for all wines</span><br>
-            <span class="cl-desc">Estimated market prices added to all 39 wines that were missing them, from web research. Label scanning now returns a price estimate too.</span></li>
-        </ul>
-      </div>
-    </details>
+    <div style="margin:18px 0">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-faint);padding:10px 0;display:flex;align-items:center;gap:6px">▸ What's new</div>
+      <ul class="changelog">
+        <li><span class="cl-ver">Aug 9, 2026</span>
+          <span class="cl-title">📈 Value appreciation tab</span><br>
+          <span class="cl-desc">New "📈 Value" tab showing cellar appreciation like a stock ticker. Acquisition cost vs current market value with ▲/▼ % change. Sort by gainers, losers, total value, or A–Z. AI-powered market value updates. "Hide past peak" toggle to keep the vibes positive. Detail view shows market value + appreciation % inline.</span></li>
+        <li><span class="cl-ver">Aug 9, 2026</span>
+          <span class="cl-title">🍷 Maturity tracking</span><br>
+          <span class="cl-desc">Multi-bottle wines now prompt for tasting notes when opening each bottle — tracks how the wine evolves over time. Maturity timeline on detail view shows all tastings. Nudge reminders for multi-bottle wines suggesting periodic tasting. Last bottle still gets the full drank/gift review flow.</span></li>
+        <li><span class="cl-ver">Aug 9, 2026</span>
+          <span class="cl-title">🔍 Smarter scanning + gift dates</span><br>
+          <span class="cl-desc">Label scan now checks for duplicates — offers to add another bottle instead of creating a duplicate. Gift source gets name + mm/yy date fields like CB. Search selects all on tap for faster re-searching. CB shipments in stats grouped by year (collapsible). Cleaned up 12 gift source records.</span></li>
+      </ul>
+      <details class="collapse">
+        <summary>Older updates</summary>
+        <div class="collapse-body">
+          <ul class="changelog">
+            <li><span class="cl-ver">Aug 8, 2026</span>
+              <span class="cl-title">🔥 3-tier fire system</span><br>
+              <span class="cl-desc">Fire is now a 3-tier rating: 🔥 Notable, 🔥🔥 Prestige, 🔥🔥🔥 Icon. Segmented picker in detail + edit views. AI label scan assigns tiers automatically. Stats show tier breakdown. Audited cellar — tightened to 8 fire wines (5 icon, 2 prestige, 1 notable).</span></li>
+            <li><span class="cl-ver">Aug 7, 2026</span>
+              <span class="cl-title">🏷️ Unified filter bar & shelf letters</span><br>
+              <span class="cl-desc">Replaced discrete filter buttons with a scrollable chip bar — toggle Fire, Titi, CB, Peak, Soon, Past filters independently. Shelf filter now uses physical shelf letters (A–R) derived from bin codes.</span></li>
+            <li><span class="cl-ver">Aug 7, 2026</span>
+              <span class="cl-title">🍷 Bottle lifecycle: reviews, gifts & peak countdown</span><br>
+              <span class="cl-desc">Graduated peak warnings (green → gold → orange → red) with countdown. Rate bottles when you drink them (⭐ 1–5 + notes + "buy again?"). Gift option when removing from cellar (🎁). Unrated bottles nudge in Drank view.</span></li>
+            <li><span class="cl-ver">Aug 6, 2026</span>
+              <span class="cl-title">🔥 Fire prestige, ⛰️ Peak window, drank history</span><br>
+              <span class="cl-desc">🔥 Fire = icon/collectible wines (Sassicaia, Cheval Blanc…) — manual toggle + AI auto-detect. ⛰️ Peak chip for wines approaching or past their drink window. Drank history: bottles at qty 0 stay in your records with a date stamp; toggle In cave / Drank / All in the cellar. Stats page shows origins (CB, Titi, SAQ…), CB shipments by month, consumed value, and fire/peak counts.</span></li>
+            <li><span class="cl-ver">Aug 6, 2026</span>
+              <span class="cl-title">Stats page &amp; CB badge</span><br>
+              <span class="cl-desc">New Stats tab with bottle-shaped type charts, vintage spread, price distribution, and 🎲 random bottle picker. CB badge on cards. CB source input cleaned up (no more duplicate dates).</span></li>
+            <li><span class="cl-ver">Aug 6, 2026</span>
+              <span class="cl-title">CB shorthand, price re-check &amp; qty controls</span><br>
+              <span class="cl-desc">Charlie's Burgers → CB with separate mm/yy date field. Re-check price from detail view (uses label photo when available) or bulk re-check all prices on sync page. Inline price editing on detail view. +/− qty buttons on add/edit form. All prices now in CAD.</span></li>
+            <li><span class="cl-ver">Aug 6, 2026</span>
+              <span class="cl-title">Sort, search &amp; detail-view refinements</span><br>
+              <span class="cl-desc">Cellar sort by producer, vintage, recently added, or drink window. Search now includes notes. Detail view has a back button at top, and +/− buttons for quantity. Drink-soon badge shows count. Cellar stats section added.</span></li>
+            <li><span class="cl-ver">Aug 5, 2026</span>
+              <span class="cl-title">Sync history &amp; collapsible settings</span><br>
+              <span class="cl-desc">Push/pull activity is now logged with timestamps. API keys and settings tucked behind a collapsible section to prevent accidental edits.</span></li>
+            <li><span class="cl-ver">Aug 5, 2026</span>
+              <span class="cl-title">Empty field highlighting</span><br>
+              <span class="cl-desc">After AI label identification, fields the model couldn't read get a gold pulse and dot so you know what to fill in manually.</span></li>
+            <li><span class="cl-ver">Aug 5, 2026</span>
+              <span class="cl-title">Gemini model retry &amp; fallback</span><br>
+              <span class="cl-desc">Label scanning now retries on busy errors and falls back through gemini-3.5-flash → 2.5-flash → 3.1-flash-lite. Same free API key.</span></li>
+            <li><span class="cl-ver">Aug 5, 2026</span>
+              <span class="cl-title">Charlie's Burgers &amp; source quick-pick</span><br>
+              <span class="cl-desc">New dropdown on the add/edit form with common sources: Charlie's Burgers (auto-stamps month/year), Wine club, SAQ, LCBO, Gift, Winery.</span></li>
+            <li><span class="cl-ver">Aug 5, 2026</span>
+              <span class="cl-title">Browser back button &amp; scroll restore</span><br>
+              <span class="cl-desc">Tapping a wine pushes browser history — phone back button returns to the cellar. Scroll position is restored so you land where you left off.</span></li>
+            <li><span class="cl-ver">Aug 5, 2026</span>
+              <span class="cl-title">Sync page reordered</span><br>
+              <span class="cl-desc">Pull button at the top, Push further down to prevent accidental overwrites.</span></li>
+            <li><span class="cl-ver">Aug 5, 2026</span>
+              <span class="cl-title">Price estimates for all wines</span><br>
+              <span class="cl-desc">Estimated market prices added to all 39 wines that were missing them, from web research. Label scanning now returns a price estimate too.</span></li>
+          </ul>
+        </div>
+      </details>
+    </div>
 
     <details class="collapse">
       <summary>Settings &amp; API keys</summary>
