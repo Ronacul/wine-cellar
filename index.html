@@ -694,9 +694,9 @@ function filterCounts(baseItems){
 function shelfCounts(baseItems){
   const counts = {};
   baseItems.forEach(w => {
-    if(w.binCode){
-      const letter = w.binCode.charAt(0).toUpperCase();
-      counts[letter] = (counts[letter]||0) + 1;
+    const loc = (w.location||"").trim();
+    if(loc && loc.length <= 2){
+      counts[loc.toUpperCase()] = (counts[loc.toUpperCase()]||0) + 1;
     }
   });
   return counts;
@@ -779,7 +779,7 @@ function cardHTML(w){
         <div class="wine-sub">${subLine ? esc(subLine) : `<span class="tbd">TBD</span>`}</div>
         <div class="chips">
           ${w.vintage?`<span class="chip vintage">${esc(w.vintage)}</span>`:""}
-          ${w.binCode?`<span class="chip bin">${esc(w.binCode)}</span>`:""}
+          ${w.location?`<span class="chip bin">${esc(w.location)}</span>`:""}
           ${w.type?`<span class="chip ${tcls}">${esc(w.type)}</span>`:""}
           ${flag?`<span class="chip flag">${flag}</span>`:""}
           ${!drank && w.qty>1?`<span class="chip">×${esc(w.qty)}</span>`:""}
@@ -826,7 +826,7 @@ function renderList(soonMode){
   if(filters.peak) items = items.filter(w => isPeak(w));
   if(filters.soon) items = items.filter(w => { const st = windowStatus(w); return st.cls==="soon" || st.cls==="urgent"; });
   if(filters.past) items = items.filter(w => { const st = windowStatus(w); return st.cls==="overdue"; });
-  if(shelfFilters.size) items = items.filter(w => w.binCode && shelfFilters.has(w.binCode.charAt(0).toUpperCase()));
+  if(shelfFilters.size) items = items.filter(w => { const loc=(w.location||"").trim().toUpperCase(); return loc && shelfFilters.has(loc); });
 
   const drankExists = wines.some(isDrank);
 
