@@ -1580,23 +1580,47 @@ function renderStats(){
     </div>`;
   }).join("");
 
-  /* CB by month sub-breakdown */
-  const cbByMonth = {};
+  /* CB by shipment — grouped by year, collapsible */
+  const cbByYearMonth = {};
   wines.forEach(w=>{
     if(!(w.source||"").startsWith("CB")) return;
     const cm = (w.source||"").match(/\((\d{2})\/(\d{2})\)/);
-    const key = cm ? SMONTHS[parseInt(cm[1])-1] + " '" + cm[2] : "undated";
-    cbByMonth[key] = (cbByMonth[key]||0) + Math.max(qtyOf(w), 1);
+    if(!cm){
+      if(!cbByYearMonth["undated"]) cbByYearMonth["undated"] = {};
+      cbByYearMonth["undated"]["undated"] = (cbByYearMonth["undated"]["undated"]||0) + Math.max(qtyOf(w), 1);
+      return;
+    }
+    const yearKey = "20" + cm[2];
+    const monthKey = SMONTHS[parseInt(cm[1])-1] + " '" + cm[2];
+    if(!cbByYearMonth[yearKey]) cbByYearMonth[yearKey] = {};
+    cbByYearMonth[yearKey][monthKey] = (cbByYearMonth[yearKey][monthKey]||0) + Math.max(qtyOf(w), 1);
   });
-  const cbSorted = Object.entries(cbByMonth).sort((a,b)=>b[0].localeCompare(a[0]));
-  const maxCb = Math.max(...cbSorted.map(s=>s[1]),1);
-  const cbHTML = cbSorted.length ? cbSorted.map(([label,cnt])=>{
-    const pct = Math.round((cnt/maxCb)*100);
-    return `<div class="bar-row">
-      <span class="bar-label" style="width:80px">${esc(label)}</span>
-      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:var(--ok)"></div></div>
-      <span class="bar-val">${cnt}</span>
-    </div>`;
+  const cbYears = Object.keys(cbByYearMonth).sort().reverse();
+  const currentYearStr = String(YEAR);
+  const cbHTML = cbYears.length ? cbYears.map(year => {
+    const months = cbByYearMonth[year];
+    const monthsSorted = Object.entries(months).sort((a,b)=>{
+      /* sort by mm/yy descending */
+      const ma = a[0].match(/'(\d{2})$/), mb = b[0].match(/'(\d{2})$/);
+      if(!ma || !mb) return b[0].localeCompare(a[0]);
+      const mmA = SMONTHS.indexOf(a[0].split(" ")[0]), mmB = SMONTHS.indexOf(b[0].split(" ")[0]);
+      return mmB - mmA;
+    });
+    const yearTotal = monthsSorted.reduce((sum,[,cnt])=>sum+cnt,0);
+    const maxMonth = Math.max(...monthsSorted.map(s=>s[1]),1);
+    const isOpen = year === currentYearStr;
+    const barsHTML = monthsSorted.map(([label,cnt])=>{
+      const pct = Math.round((cnt/maxMonth)*100);
+      return `<div class="bar-row">
+        <span class="bar-label" style="width:80px">${esc(label)}</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:var(--ok)"></div></div>
+        <span class="bar-val">${cnt}</span>
+      </div>`;
+    }).join("");
+    return `<details class="collapse"${isOpen?" open":""}>
+      <summary>${year === "undated" ? "Undated" : year} · ${yearTotal} bottle${yearTotal!==1?"s":""}</summary>
+      <div class="collapse-body">${barsHTML}</div>
+    </details>`;
   }).join("") : "";
 
   /* fire wines — prestige */
@@ -1645,16 +1669,16 @@ function renderStats(){
     <div class="stat-section-label">Bottles by type</div>
     <div class="bottles-row">${bottlesHTML}</div>
 
-    <div class="stat-section-label">Origins</div>
+    <div class="stat-section-label">Bottles by origin</div>
     ${originHTML}
-
-    ${cbHTML ? `<div class="stat-section-label">CB by shipment</div>${cbHTML}` : ""}
 
     <div class="stat-section-label">Price range (CAD)</div>
     ${priceHTML}
 
     <div class="stat-section-label">Vintage spread</div>
     <div class="vbar-wrap">${vintHTML}</div>
+
+    ${cbHTML ? `<div class="stat-section-label">CB by shipment</div>${cbHTML}` : ""}
   </div>`;
 
   /* random picker handler */
