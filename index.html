@@ -1065,7 +1065,7 @@ function showReviewSheet(w, isLastBottle){
         </div>
       </div>
       <button class="btn btn-primary" id="rev-save">Save tasting note</button>
-      <button class="btn btn-ghost" id="rev-skip">Skip — just remove bottle</button>
+      <button class="btn btn-ghost" id="rev-skip">Skip — rate later</button>
     `}</div>
   </div>`;
 
@@ -1133,7 +1133,7 @@ function showReviewSheet(w, isLastBottle){
         </div>
       </div>
       <button class="btn btn-primary" id="rev-save">Save review</button>
-      <button class="btn btn-ghost" id="rev-skip">Skip — just mark as gone</button>`;
+      <button class="btn btn-ghost" id="rev-skip">Skip — rate later</button>`;
     bindDrankControls(
       (rating, buyAgain) => {
         const notes = (document.getElementById("rev-notes").value||"").trim() || null;
@@ -1164,7 +1164,7 @@ function showReviewSheet(w, isLastBottle){
         <input id="rev-giftee" placeholder="e.g. Mom's birthday" style="background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--ink);padding:10px 12px;font-size:14px;width:100%">
       </div>
       <button class="btn btn-primary" id="rev-save-gift">Save</button>
-      <button class="btn btn-ghost" id="rev-skip-gift">Skip — just mark as gone</button>`;
+      <button class="btn btn-ghost" id="rev-skip-gift">Skip — rate later</button>`;
     document.getElementById("rev-save-gift").onclick = ()=>{
       w.qty = 0;
       w.drankDate = new Date().toISOString().slice(0,10);
@@ -1306,6 +1306,7 @@ function renderDetail(){
       <dt>Notes</dt><dd>${tbd(w.notes)}</dd>
     </dl>
     <div id="review-area"></div>
+    <button class="btn btn-ghost" id="add-tasting-note" style="margin-bottom:8px">🍷 Add tasting note</button>
     <div class="recheck-bar">
       <button class="btn btn-ghost" id="recheck-price">✨ Identify / re-check price</button>
     </div>
@@ -1315,6 +1316,56 @@ function renderDetail(){
   </div>`;
   document.getElementById("edit").onclick = ()=>{ editingId=w.id; tab="add"; render(); };
   document.getElementById("back-top").onclick = ()=>{ history.back(); };
+  /* stand-alone tasting note — no qty change, just add a note any time */
+  document.getElementById("add-tasting-note").onclick = ()=>{
+    const area = document.getElementById("review-area");
+    if(!area) return;
+    const bottleNum = (w.tastingHistory ? w.tastingHistory.length : 0) + 1;
+    area.innerHTML = `<div class="review-sheet">
+      <h3 class="serif">Tasting note — bottle #${bottleNum}</h3>
+      <div class="field"><label>Rating</label>
+        <div class="star-rating" id="star-row">
+          ${[1,2,3,4,5].map(i=>`<button type="button" class="star" data-v="${i}">☆</button>`).join("")}
+        </div>
+      </div>
+      <div class="field"><label>How is it?</label>
+        <textarea id="rev-notes" placeholder="Tasting notes, how it's evolving…" style="background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--ink);padding:10px 12px;font-size:14px;min-height:56px;resize:vertical;width:100%"></textarea>
+      </div>
+      <div class="field"><label>Would buy again?</label>
+        <div class="buy-again-row">
+          <button type="button" class="ba-btn" data-v="yes">👍 Yes</button>
+          <button type="button" class="ba-btn" data-v="no">👎 No</button>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="rev-save">Save tasting note</button>
+      <button class="btn btn-ghost" id="rev-cancel">Cancel</button>
+    </div>`;
+    let rating = 0, buyAgain = null;
+    document.querySelectorAll("#star-row .star").forEach(s => {
+      s.onclick = ()=>{
+        rating = parseInt(s.dataset.v);
+        document.querySelectorAll("#star-row .star").forEach((ss,i)=>{
+          ss.textContent = i < rating ? "★" : "☆";
+          ss.classList.toggle("active", i < rating);
+        });
+      };
+    });
+    document.querySelectorAll(".ba-btn").forEach(b => {
+      b.onclick = ()=>{
+        buyAgain = b.dataset.v === "yes";
+        document.querySelectorAll(".ba-btn").forEach(bb=>bb.classList.remove("selected"));
+        b.classList.add("selected");
+      };
+    });
+    document.getElementById("rev-save").onclick = ()=>{
+      const notes = (document.getElementById("rev-notes").value||"").trim() || null;
+      addTastingEntry(w, rating, notes, buyAgain);
+      if(rating && !w.rating) w.rating = rating;
+      saveWines(); render();
+    };
+    document.getElementById("rev-cancel").onclick = ()=>{ area.innerHTML = ""; };
+    area.scrollIntoView({behavior:"smooth"});
+  };
   document.getElementById("fire-tier-picker").querySelectorAll(".fire-tier-btn").forEach(btn=>{
     btn.onclick = ()=>{ w.fire = parseInt(btn.dataset.tier); saveWines(); render(); };
   });
@@ -2270,8 +2321,8 @@ function renderSync(){
       <div class="collapse-body">
         <ul class="changelog">
           <li><span class="cl-ver">Aug 10, 2026</span>
-            <span class="cl-title">🔍 Search fix on mobile</span><br>
-            <span class="cl-desc">Typing in the cellar search box now works properly on mobile — characters no longer replace each other. The toolbar stays in place while only the card list re-renders.</span></li>
+            <span class="cl-title">🍷 Add tasting notes any time + search fix</span><br>
+            <span class="cl-desc">New "Add tasting note" button on every bottle's detail page — no need to rate at the moment you open it. Skip buttons now say "rate later" instead of "just remove." Also fixed search typing on mobile (characters were replacing each other).</span></li>
           <li><span class="cl-ver">Aug 9, 2026</span>
             <span class="cl-title">📈 Value appreciation tab</span><br>
             <span class="cl-desc">New "📈 Value" tab showing cellar appreciation like a stock ticker. Acquisition cost vs current market value with ▲/▼ % change. Sort by gainers, losers, total value, or A–Z. AI-powered market value updates. "Hide past peak" toggle to keep the vibes positive. Detail view shows market value + appreciation % inline.</span></li>
