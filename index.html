@@ -820,15 +820,6 @@ function renderList(soonMode){
   const sCounts = shelfCounts(items);
   const usedShelves = Object.keys(sCounts).sort();
 
-  /* apply chip filters */
-  if(filters.fire) items = items.filter(w => isFire(w));
-  if(filters.titi) items = items.filter(w => !!w.titi);
-  if(filters.cb) items = items.filter(w => isCB(w));
-  if(filters.peak) items = items.filter(w => isPeak(w));
-  if(filters.soon) items = items.filter(w => { const st = windowStatus(w); return st.cls==="soon" || st.cls==="urgent"; });
-  if(filters.past) items = items.filter(w => { const st = windowStatus(w); return st.cls==="overdue"; });
-  if(shelfFilters.size) items = items.filter(w => { const loc=(w.location||"").trim().toUpperCase(); return loc && shelfFilters.has(loc); });
-
   const drankExists = wines.some(isDrank);
 
   /* chip config: key, label, active color */
@@ -872,72 +863,11 @@ function renderList(soonMode){
     </select>` : ""}
   </div>`;
 
-  /* unrated bottles nudge (drank view only, not soonMode) */
-  let unratedHTML = "";
-  if(!soonMode && cellarView==="drank"){
-    const unrated = wines.filter(w => isDrank(w) && w.drankDate && !w.rating && !isGifted(w))
-      .sort((a,b) => (b.drankDate||"").localeCompare(a.drankDate||""));
-    if(unrated.length){
-      const unratedCards = unrated.map(w => {
-        const src = imgSrc(w);
-        const thumbH = src
-          ? `<img src="${esc(src)}" style="width:36px;height:48px;object-fit:cover;border-radius:3px" alt="">`
-          : `<div class="thumb empty" style="width:36px;height:48px;font-size:16px">?</div>`;
-        return `<div class="unrated-card" data-id="${w.id}">
-          ${thumbH}
-          <div style="flex:1;min-width:0">
-            <div class="wine-name serif">${esc(w.producer||"")} ${esc(w.name||"")}</div>
-            <div class="wine-sub">${esc([w.vintage, w.drankDate].filter(Boolean).join(" · "))}</div>
-          </div>
-          <span style="font-size:18px;color:var(--gold)">☆</span>
-        </div>`;
-      }).join("");
-      unratedHTML = `<details class="unrated-section" open>
-        <summary>🍷 Rate these bottles (${unrated.length})</summary>
-        ${unratedCards}
-      </details>`;
-    }
-  }
-
-  let body;
-  if(soonMode){
-    /* sort by urgency: most urgent (lowest monthsRemaining) first */
-    const withWindow = items.filter(w => w.drinkTo);
-    withWindow.sort((a,b) => {
-      const ma = monthsRemaining(a) ?? 9999;
-      const mb = monthsRemaining(b) ?? 9999;
-      return ma - mb;
-    });
-    const overdue = withWindow.filter(w => { const st = windowStatus(w); return st.cls==="overdue"; });
-    const urgent = withWindow.filter(w => { const st = windowStatus(w); return st.cls==="urgent"; });
-    const soon = withWindow.filter(w => { const st = windowStatus(w); return st.cls==="soon"; });
-    const inWindow = withWindow.filter(w => { const st = windowStatus(w); return st.cls==="window"; });
-    if(!withWindow.length){
-      body = `<div class="empty-state"><div class="serif">Nothing with a drink-by window yet.</div>
-        Set a "Drink by" year on a bottle and it will show up here.</div>`;
-    } else {
-      body = "";
-      if(overdue.length) body += `<div class="list"><div class="list-heading overdue">Past peak — drink or gift these (${overdue.length})</div>${overdue.map(cardHTML).join("")}</div>`;
-      if(urgent.length) body += `<div class="list"><div class="list-heading" style="color:var(--orange)">Last call — 1–3 months (${urgent.length})</div>${urgent.map(cardHTML).join("")}</div>`;
-      if(soon.length) body += `<div class="list"><div class="list-heading" style="color:var(--warn)">Drink soon — 3–12 months (${soon.length})</div>${soon.map(cardHTML).join("")}</div>`;
-      if(inWindow.length) body += `<div class="list"><div class="list-heading">In window (${inWindow.length})</div>${inWindow.map(cardHTML).join("")}</div>`;
-    }
-  } else {
-    if(sortBy==="vintage-desc") items.sort((a,b)=>(parseInt(b.vintage)||0)-(parseInt(a.vintage)||0));
-    else if(sortBy==="vintage-asc") items.sort((a,b)=>(parseInt(a.vintage)||0)-(parseInt(b.vintage)||0));
-    else if(sortBy==="added") items.sort((a,b)=>(b.added||"").localeCompare(a.added||""));
-    else if(sortBy==="window") items.sort((a,b)=>(parseInt(a.drinkTo)||9999)-(parseInt(b.drinkTo)||9999));
-    else items.sort((a,b)=>(a.producer||"").localeCompare(b.producer||""));
-    body = items.length
-      ? `<div class="list">${items.map(cardHTML).join("")}</div>`
-      : `<div class="empty-state"><div class="serif">The cellar book is empty.</div>
-         Tap <b>+ Bottle</b> below and photograph your first label.</div>`;
-  }
-
-  view.innerHTML = toolbar + unratedHTML + body;
+  view.innerHTML = toolbar + `<div id="card-list"></div>`;
 
   const qEl = document.getElementById("q");
-  qEl.addEventListener("input", e=>{ searchQ=e.target.value; renderListOnly(soonMode); });
+  /* search input only updates the card list — toolbar stays in the DOM so mobile keyboard keeps compose state */
+  qEl.addEventListener("input", e=>{ searchQ=e.target.value; renderCards(soonMode); });
   /* select-all on focus — delay for mobile Safari which cancels immediate select() */
   qEl.addEventListener("focus", ()=> setTimeout(()=> qEl.select(), 10));
   document.getElementById("tf").addEventListener("change", e=>{ typeFilter=e.target.value; renderListOnly(soonMode); });
@@ -986,8 +916,96 @@ function renderList(soonMode){
   document.querySelectorAll(".view-toggle button").forEach(b=>b.addEventListener("click", ()=>{ cellarView=b.dataset.cv; renderListOnly(soonMode); }));
   const sortEl = document.getElementById("sort");
   if(sortEl) sortEl.addEventListener("change", e=>{ sortBy=e.target.value; renderListOnly(soonMode); });
+  renderCards(soonMode);
+}
+/* Update only the card list — toolbar stays untouched so search input keeps focus on mobile */
+function renderCards(soonMode){
+  let items = wines.slice();
+  if(!soonMode){
+    if(cellarView==="cave") items = items.filter(w=>!isDrank(w));
+    else if(cellarView==="drank") items = items.filter(w=>isDrank(w));
+  } else {
+    items = items.filter(w=>!isDrank(w));
+  }
+  if(searchQ){
+    const q = searchQ.toLowerCase();
+    items = items.filter(w => [w.producer,w.name,w.region,w.vintage,w.source,w.pairings,w.location,w.binCode,w.notes]
+      .some(f => (f||"").toString().toLowerCase().includes(q)));
+  }
+  if(typeFilter) items = items.filter(w => w.type===typeFilter);
+  if(filters.fire) items = items.filter(w => isFire(w));
+  if(filters.titi) items = items.filter(w => !!w.titi);
+  if(filters.cb) items = items.filter(w => isCB(w));
+  if(filters.peak) items = items.filter(w => isPeak(w));
+  if(filters.soon) items = items.filter(w => { const st = windowStatus(w); return st.cls==="soon" || st.cls==="urgent"; });
+  if(filters.past) items = items.filter(w => { const st = windowStatus(w); return st.cls==="overdue"; });
+  if(shelfFilters.size) items = items.filter(w => { const loc=(w.location||"").trim().toUpperCase(); return loc && shelfFilters.has(loc); });
+
+  /* unrated bottles nudge (drank view only, not soonMode) */
+  let unratedHTML = "";
+  if(!soonMode && cellarView==="drank"){
+    const unrated = wines.filter(w => isDrank(w) && w.drankDate && !w.rating && !isGifted(w))
+      .sort((a,b) => (b.drankDate||"").localeCompare(a.drankDate||""));
+    if(unrated.length){
+      const unratedCards = unrated.map(w => {
+        const src = imgSrc(w);
+        const thumbH = src
+          ? `<img src="${esc(src)}" style="width:36px;height:48px;object-fit:cover;border-radius:3px" alt="">`
+          : `<div class="thumb empty" style="width:36px;height:48px;font-size:16px">?</div>`;
+        return `<div class="unrated-card" data-id="${w.id}">
+          ${thumbH}
+          <div style="flex:1;min-width:0">
+            <div class="wine-name serif">${esc(w.producer||"")} ${esc(w.name||"")}</div>
+            <div class="wine-sub">${esc([w.vintage, w.drankDate].filter(Boolean).join(" · "))}</div>
+          </div>
+          <span style="font-size:18px;color:var(--gold)">☆</span>
+        </div>`;
+      }).join("");
+      unratedHTML = `<details class="unrated-section" open>
+        <summary>🍷 Rate these bottles (${unrated.length})</summary>
+        ${unratedCards}
+      </details>`;
+    }
+  }
+
+  let body;
+  if(soonMode){
+    const withWindow = items.filter(w => w.drinkTo);
+    withWindow.sort((a,b) => {
+      const ma = monthsRemaining(a) ?? 9999;
+      const mb = monthsRemaining(b) ?? 9999;
+      return ma - mb;
+    });
+    const overdue = withWindow.filter(w => { const st = windowStatus(w); return st.cls==="overdue"; });
+    const urgent = withWindow.filter(w => { const st = windowStatus(w); return st.cls==="urgent"; });
+    const soon = withWindow.filter(w => { const st = windowStatus(w); return st.cls==="soon"; });
+    const inWindow = withWindow.filter(w => { const st = windowStatus(w); return st.cls==="window"; });
+    if(!withWindow.length){
+      body = `<div class="empty-state"><div class="serif">Nothing with a drink-by window yet.</div>
+        Set a "Drink by" year on a bottle and it will show up here.</div>`;
+    } else {
+      body = "";
+      if(overdue.length) body += `<div class="list"><div class="list-heading overdue">Past peak — drink or gift these (${overdue.length})</div>${overdue.map(cardHTML).join("")}</div>`;
+      if(urgent.length) body += `<div class="list"><div class="list-heading" style="color:var(--orange)">Last call — 1–3 months (${urgent.length})</div>${urgent.map(cardHTML).join("")}</div>`;
+      if(soon.length) body += `<div class="list"><div class="list-heading" style="color:var(--warn)">Drink soon — 3–12 months (${soon.length})</div>${soon.map(cardHTML).join("")}</div>`;
+      if(inWindow.length) body += `<div class="list"><div class="list-heading">In window (${inWindow.length})</div>${inWindow.map(cardHTML).join("")}</div>`;
+    }
+  } else {
+    if(sortBy==="vintage-desc") items.sort((a,b)=>(parseInt(b.vintage)||0)-(parseInt(a.vintage)||0));
+    else if(sortBy==="vintage-asc") items.sort((a,b)=>(parseInt(a.vintage)||0)-(parseInt(b.vintage)||0));
+    else if(sortBy==="added") items.sort((a,b)=>(b.added||"").localeCompare(a.added||""));
+    else if(sortBy==="window") items.sort((a,b)=>(parseInt(a.drinkTo)||9999)-(parseInt(b.drinkTo)||9999));
+    else items.sort((a,b)=>(a.producer||"").localeCompare(b.producer||""));
+    body = items.length
+      ? `<div class="list">${items.map(cardHTML).join("")}</div>`
+      : `<div class="empty-state"><div class="serif">The cellar book is empty.</div>
+         Tap <b>+ Bottle</b> below and photograph your first label.</div>`;
+  }
+
+  const container = document.getElementById("card-list");
+  container.innerHTML = unratedHTML + body;
   /* bind unrated cards */
-  view.querySelectorAll(".unrated-card").forEach(c => c.addEventListener("click", ()=>{
+  container.querySelectorAll(".unrated-card").forEach(c => c.addEventListener("click", ()=>{
     cellarScrollY = window.scrollY;
     detailId = c.dataset.id; tab="detail";
     history.pushState({tab:"detail", id:detailId}, "");
@@ -995,12 +1013,9 @@ function renderList(soonMode){
   }));
   bindCards();
 }
+/* Full re-render — used by filter/sort/view-toggle clicks (not during search typing) */
 function renderListOnly(soonMode){
-  const q = document.getElementById("q");
-  const pos = q ? q.selectionStart : 0;
   renderList(soonMode);
-  const q2 = document.getElementById("q");
-  if(q2){ q2.focus(); q2.setSelectionRange(pos,pos); }
 }
 function bindCards(){
   view.querySelectorAll(".card").forEach(c => c.addEventListener("click", ()=>{
@@ -2254,6 +2269,9 @@ function renderSync(){
       <summary>What's new</summary>
       <div class="collapse-body">
         <ul class="changelog">
+          <li><span class="cl-ver">Aug 10, 2026</span>
+            <span class="cl-title">🔍 Search fix on mobile</span><br>
+            <span class="cl-desc">Typing in the cellar search box now works properly on mobile — characters no longer replace each other. The toolbar stays in place while only the card list re-renders.</span></li>
           <li><span class="cl-ver">Aug 9, 2026</span>
             <span class="cl-title">📈 Value appreciation tab</span><br>
             <span class="cl-desc">New "📈 Value" tab showing cellar appreciation like a stock ticker. Acquisition cost vs current market value with ▲/▼ % change. Sort by gainers, losers, total value, or A–Z. AI-powered market value updates. "Hide past peak" toggle to keep the vibes positive. Detail view shows market value + appreciation % inline.</span></li>
