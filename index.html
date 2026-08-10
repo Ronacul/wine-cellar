@@ -710,10 +710,18 @@ const countEl = document.getElementById("count");
 function render(){
   const _inCave = wines.filter(w=>!isDrank(w));
   const _wc = _inCave.length, _bc = _inCave.reduce((n,w)=>n+(qtyOf(w)),0);
-  const _drankCount = wines.filter(w => isDrank(w) && !isGifted(w)).length;
-  const _giftedCount = wines.filter(w => isDrank(w) && isGifted(w)).length;
+  /* count individual bottles drank (from tasting history) + fully-consumed wines with no history */
+  let _drankBottles = 0;
+  let _giftedCount = 0;
+  wines.forEach(w => {
+    if(isDrank(w) && isGifted(w)) _giftedCount++;
+    const th = w.tastingHistory || [];
+    _drankBottles += th.length;
+    /* wines fully consumed (qty 0) but no tasting history — count as 1 bottle drank */
+    if(isDrank(w) && !isGifted(w) && !th.length) _drankBottles++;
+  });
   let countParts = _wc === _bc ? `${_bc} bottles` : `${_wc} wines · ${_bc} bottles`;
-  if(_drankCount) countParts += ` · ${_drankCount} drank`;
+  if(_drankBottles) countParts += ` · ${_drankBottles} drank`;
   if(_giftedCount) countParts += ` · ${_giftedCount} gifted`;
   countEl.textContent = countParts;
   /* update drink-soon badge — count wines that are urgent/soon/overdue */
@@ -1105,6 +1113,7 @@ function showReviewSheet(w, isLastBottle){
         saveWines(); render();
       },
       () => {
+        addTastingEntry(w, 0, null, null); /* placeholder — rate later */
         w.qty = qtyOf(w) - 1;
         reviewPending = null;
         saveWines(); render();
@@ -1148,6 +1157,7 @@ function showReviewSheet(w, isLastBottle){
         saveWines(); render();
       },
       () => {
+        addTastingEntry(w, 0, null, null); /* placeholder — rate later */
         w.qty = 0;
         w.drankDate = new Date().toISOString().slice(0,10);
         reviewPending = null;
