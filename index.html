@@ -1229,13 +1229,14 @@ function renderDetail(){
   let maturityHTML = "";
   if(w.tastingHistory && w.tastingHistory.length){
     const entries = w.tastingHistory.slice().sort((a,b) => (a.date||"").localeCompare(b.date||""));
-    const timelineEntries = entries.map(e => {
+    const timelineEntries = entries.map((e, idx) => {
       const dateStr = e.date || "Unknown";
       const ratingStr = e.rating ? starsHTML(e.rating, 13) : "";
       const noteStr = e.notes ? `<div class="timeline-notes">${esc(e.notes)}</div>` : "";
       const baStr = e.buyAgain !== null && e.buyAgain !== undefined
         ? `<span style="font-size:11px;color:var(--ink-faint)">${e.buyAgain ? "👍 buy again" : "👎 no"}</span>` : "";
-      return `<div class="timeline-entry">
+      return `<div class="timeline-entry" style="position:relative">
+        <button type="button" class="tl-del" data-idx="${idx}" title="Remove this entry" style="position:absolute;top:2px;right:2px;background:none;border:none;color:var(--ink-faint);font-size:14px;cursor:pointer;padding:2px 6px;line-height:1">✕</button>
         <div class="timeline-date">${esc(dateStr)}${e.bottleNum ? " · Bottle #"+e.bottleNum : ""}</div>
         ${ratingStr ? `<div class="timeline-rating">${ratingStr}</div>` : ""}
         ${noteStr}
@@ -1326,6 +1327,29 @@ function renderDetail(){
   </div>`;
   document.getElementById("edit").onclick = ()=>{ editingId=w.id; tab="add"; render(); };
   document.getElementById("back-top").onclick = ()=>{ history.back(); };
+  /* delete tasting history entries */
+  document.querySelectorAll(".tl-del").forEach(btn => {
+    btn.onclick = (ev)=>{
+      ev.stopPropagation();
+      const idx = parseInt(btn.dataset.idx);
+      const th = w.tastingHistory || [];
+      if(idx < 0 || idx >= th.length) return;
+      const entry = th[idx];
+      const desc = (entry.date||"?") + (entry.bottleNum ? " #"+entry.bottleNum : "");
+      if(!confirm("Remove tasting entry from " + desc + "?")) return;
+      th.splice(idx, 1);
+      /* re-number remaining entries */
+      th.forEach((e, i) => e.bottleNum = i + 1);
+      /* if this was the wine's top-level rating, clear it or update from remaining */
+      if(w.rating && (!th.length || !th.some(e=>e.rating))){
+        delete w.rating;
+      } else if(th.length){
+        const lastRated = th.slice().reverse().find(e=>e.rating);
+        if(lastRated) w.rating = lastRated.rating;
+      }
+      saveWines(); render();
+    };
+  });
   /* stand-alone tasting note — no qty change, just add a note any time */
   document.getElementById("add-tasting-note").onclick = ()=>{
     const area = document.getElementById("review-area");
