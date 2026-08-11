@@ -1330,16 +1330,25 @@ function renderDetail(){
   document.getElementById("add-tasting-note").onclick = ()=>{
     const area = document.getElementById("review-area");
     if(!area) return;
-    const bottleNum = (w.tastingHistory ? w.tastingHistory.length : 0) + 1;
+    /* find most recent unrated entry to update instead of creating a duplicate */
+    const th = w.tastingHistory || [];
+    const pendingIdx = th.length ? th.findLastIndex(e => !e.rating && !e.notes) : -1;
+    const pending = pendingIdx >= 0 ? th[pendingIdx] : null;
+    const heading = pending
+      ? `Rate bottle #${pending.bottleNum || pendingIdx + 1} (opened ${pending.date})`
+      : `Tasting note — bottle #${th.length + 1}`;
+    /* pre-fill from existing entry if editing */
+    const existingRating = pending && pending.rating ? pending.rating : 0;
+    const existingNotes = pending && pending.notes ? pending.notes : "";
     area.innerHTML = `<div class="review-sheet">
-      <h3 class="serif">Tasting note — bottle #${bottleNum}</h3>
+      <h3 class="serif">${heading}</h3>
       <div class="field"><label>Rating</label>
         <div class="star-rating" id="star-row">
-          ${[1,2,3,4,5].map(i=>`<button type="button" class="star" data-v="${i}">☆</button>`).join("")}
+          ${[1,2,3,4,5].map(i=>`<button type="button" class="star${i<=existingRating?" active":""}" data-v="${i}">${i<=existingRating?"★":"☆"}</button>`).join("")}
         </div>
       </div>
       <div class="field"><label>How is it?</label>
-        <textarea id="rev-notes" placeholder="Tasting notes, how it's evolving…" style="background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--ink);padding:10px 12px;font-size:14px;min-height:56px;resize:vertical;width:100%"></textarea>
+        <textarea id="rev-notes" placeholder="Tasting notes, how it's evolving…" style="background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--ink);padding:10px 12px;font-size:14px;min-height:56px;resize:vertical;width:100%">${esc(existingNotes)}</textarea>
       </div>
       <div class="field"><label>Would buy again?</label>
         <div class="buy-again-row">
@@ -1350,7 +1359,7 @@ function renderDetail(){
       <button class="btn btn-primary" id="rev-save">Save tasting note</button>
       <button class="btn btn-ghost" id="rev-cancel">Cancel</button>
     </div>`;
-    let rating = 0, buyAgain = null;
+    let rating = existingRating, buyAgain = null;
     document.querySelectorAll("#star-row .star").forEach(s => {
       s.onclick = ()=>{
         rating = parseInt(s.dataset.v);
@@ -1369,7 +1378,14 @@ function renderDetail(){
     });
     document.getElementById("rev-save").onclick = ()=>{
       const notes = (document.getElementById("rev-notes").value||"").trim() || null;
-      addTastingEntry(w, rating, notes, buyAgain);
+      if(pending){
+        /* update existing placeholder entry instead of creating a new one */
+        if(rating) pending.rating = rating;
+        if(notes) pending.notes = notes;
+        if(buyAgain !== null && buyAgain !== undefined) pending.buyAgain = buyAgain;
+      } else {
+        addTastingEntry(w, rating, notes, buyAgain);
+      }
       if(rating && !w.rating) w.rating = rating;
       saveWines(); render();
     };
@@ -1807,11 +1823,18 @@ function renderStats(){
   });
   const valStr = totalVal ? `~$${Math.round(totalVal).toLocaleString()} CAD` : "—";
 
-  /* drank value */
-  let drankVal = 0;
-  drankWines.forEach(w=>{
-    const m = (w.price||"").match(/\$(\d+(?:\.\d+)?)/);
-    if(m) drankVal += parseFloat(m[1]);
+  /* drank value + bottle count — count individual bottles from tasting history across ALL wines */
+  let drankVal = 0, drankBottleCount = 0;
+  wines.forEach(w=>{
+    const th = w.tastingHistory || [];
+    let consumed = th.length;
+    /* wines fully gone with no history — count as 1 */
+    if(isDrank(w) && !isGifted(w) && !consumed) consumed = 1;
+    if(consumed){
+      drankBottleCount += consumed;
+      const m = (w.price||"").match(/\$(\d+(?:\.\d+)?)/);
+      if(m) drankVal += parseFloat(m[1]) * consumed;
+    }
   });
   const drankValStr = drankVal ? `~$${Math.round(drankVal).toLocaleString()} CAD` : "";
 
@@ -1979,8 +2002,8 @@ function renderStats(){
       ${peakCount?`<span class="stat-pill" style="border-color:var(--warn)"><span class="n" style="color:var(--warn)">⛰️ ${peakCount}</span> peak</span>`:""}
       <span class="stat-pill"><span class="n">${priced}</span> priced</span>
     </div>
-    ${drankCount || giftedCount ? `<div class="stats-row" style="justify-content:center;gap:12px;margin-top:4px">
-      ${drankCount?`<span class="stat-pill"><span class="n">${drankCount}</span> drank</span>`:""}
+    ${drankBottleCount || giftedCount ? `<div class="stats-row" style="justify-content:center;gap:12px;margin-top:4px">
+      ${drankBottleCount?`<span class="stat-pill"><span class="n">${drankBottleCount}</span> drank</span>`:""}
       ${giftedCount?`<span class="stat-pill" style="border-color:var(--rose)"><span class="n" style="color:var(--rose)">🎁 ${giftedCount}</span> gifted</span>`:""}
       ${drankValStr?`<span class="stat-pill"><span class="n">${drankValStr}</span> consumed</span>`:""}
     </div>` : ""}
