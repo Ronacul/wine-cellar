@@ -480,6 +480,39 @@ details.collapse .collapse-body{padding:12px 0 0}
 .ticker-sort button:not(:first-child){border-left:none}
 .ticker-sort button.on{color:var(--ink);background:var(--panel2);border-color:var(--ink-faint)}
 
+/* ---------- CB box loader wizard ---------- */
+.cb-wizard{padding:16px}
+.cb-wizard h2{font-family:"Cormorant Garamond",serif;font-weight:600;font-size:24px;margin-bottom:4px}
+.cb-wizard .cb-step-label{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px}
+.cb-step-dots{display:flex;gap:8px;margin-bottom:18px}
+.cb-step-dots .dot{width:8px;height:8px;border-radius:50%;background:var(--line)}
+.cb-step-dots .dot.active{background:var(--ok)}
+.cb-step-dots .dot.done{background:var(--ok);opacity:.5}
+.cb-setup-row{display:flex;gap:10px;align-items:flex-end;margin-bottom:14px}
+.cb-setup-row .field{flex:1;margin-bottom:0}
+.cb-setup-row .field.narrow{max-width:72px}
+.cb-count-field input{font-size:24px;text-align:center;padding:12px;font-family:"IBM Plex Mono",monospace}
+.cb-wine-card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:12px;position:relative}
+.cb-wine-card .wine-idx{position:absolute;top:10px;right:12px;font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.06em}
+.cb-wine-card .wine-name{font-family:"Cormorant Garamond",serif;font-weight:600;font-size:17px;margin-bottom:4px}
+.cb-wine-card .wine-detail{font-size:13px;color:var(--ink-dim);line-height:1.5}
+.cb-wine-card .wine-detail span{display:inline-block;margin-right:12px}
+.cb-wine-card .label-zone{margin-top:10px;display:flex;gap:8px;align-items:center}
+.cb-wine-card .label-zone img{width:48px;height:64px;object-fit:cover;border-radius:4px;border:1px solid var(--line)}
+.cb-wine-card .label-btn{position:relative;display:inline-flex;align-items:center;gap:4px;background:var(--panel2);border:1px solid var(--line);border-radius:4px;color:var(--ink-dim);padding:8px 12px;font-size:12px;cursor:pointer;overflow:hidden}
+.cb-wine-card .label-btn input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0}
+.cb-wine-card .audit-status{font-family:"IBM Plex Mono",monospace;font-size:10.5px;margin-top:6px;line-height:1.4}
+.cb-wine-card .audit-status.ok{color:var(--ok)}
+.cb-wine-card .audit-status.warn{color:var(--warn)}
+.cb-wine-card .audit-status.err{color:var(--urgent)}
+.cb-wine-card .audit-status.loading{color:var(--ink-faint)}
+.cb-wine-card.has-label{border-color:var(--ok)}
+.cb-wine-card .edit-fields{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.cb-wine-card .edit-toggle{font-size:11px;color:var(--ink-faint);cursor:pointer;background:none;border:none;padding:2px 0;text-decoration:underline;margin-top:6px}
+.cb-sheet-preview{max-width:100%;max-height:200px;object-fit:contain;border-radius:6px;margin:10px auto;display:block;border:1px solid var(--line)}
+.cb-btn-row{display:flex;gap:10px;margin-top:14px}
+.cb-btn-row .btn{flex:1}
+
 @media (prefers-reduced-motion: no-preference){
   .card{transition:border-color .15s}
   .card:active{border-color:var(--claret)}
@@ -523,6 +556,16 @@ let shelfFilters = new Set();
 let reviewPending = null; /* wine id when review sheet is open */
 let valueSort = "change-desc"; /* ticker sort: change-desc, change-asc, name, value-desc */
 let valueHidePastPeak = false; /* hide wines well past their maturity on value tab */
+/* CB box loader state */
+let cbBoxMode = false;   /* true when CB box wizard is active */
+let cbBoxStep = 1;       /* wizard step: 1=setup, 2=scan sheet, 3=review/labels */
+let cbBoxMonth = "";
+let cbBoxYear = "";
+let cbBoxCount = 0;
+let cbBoxWines = [];     /* extracted wines from info sheet */
+let cbBoxSheetImage = null; /* info sheet photo data URL */
+let cbBoxLabels = [];    /* label photo data URLs, indexed by wine */
+let cbBoxAudit = [];     /* audit results per wine */
 
 const saveWines = () => localStorage.setItem(LS_WINES, JSON.stringify(wines));
 let syncHistory = JSON.parse(localStorage.getItem(LS_HIST) || "[]");
@@ -1538,6 +1581,10 @@ async function callGemini(body, key, statusEl){
 
 const AI_PROMPT = "You are a sommelier's assistant. Read this wine label photo and return ONLY a JSON object (no markdown fences, no prose) with these fields — all strings unless noted: producer, name (the cuvee or wine name, not the producer), vintage (4-digit year), type (one of: Red, White, Rose, Sparkling, Dessert), region (appellation and country), drinkFrom (4-digit year the wine enters its drinking window), drinkTo (4-digit year to drink by), pairings (comma-separated food pairings), price (estimated current market value in CANADIAN DOLLARS, formatted like '~$XX CAD (est.)' — research-grade estimate based on producer, region, vintage, and classification; for icon/collectible wines use secondary-market pricing), fire (integer 0-3: 0 = everyday wine, 1 = notable/above-average quality or reputation, 2 = prestige/collectible — special-occasion wines like top cru Bordeaux or premium Super Tuscans, 3 = icon — legendary bottles like Sassicaia, Penfolds Grange, Romanée-Conti, Cheval Blanc, Ornellaia, Opus One. Be conservative: most wines are 0, only truly exceptional bottles earn 2-3), notes (grape varieties plus a one-line style summary). Base drinkFrom, drinkTo, pairings and price on your knowledge of this producer, region and vintage; if the exact bottling is unknown, use typical ranges for the style and say so in notes. Use an empty string for anything unreadable.";
 
+const CB_SHEET_PROMPT = "You are a sommelier's assistant. This photo is a wine club info sheet / tasting card from a monthly wine subscription box (Charlie's Burgers). It describes multiple wines with their details. Read ALL wines on the sheet and return ONLY a JSON array (no markdown fences, no prose) where each element has: producer, name (the cuvee or wine name, not the producer), vintage (4-digit year), type (one of: Red, White, Rose, Sparkling, Dessert), region (appellation and country), drinkFrom (4-digit year), drinkTo (4-digit year), pairings (comma-separated food pairings from the sheet), price (if listed on the sheet use that price in CAD, otherwise estimate as '~$XX CAD (est.)'), fire (integer 0-3: 0 = everyday, 1 = notable, 2 = prestige, 3 = icon — be conservative, most CB wines are 0 or 1), notes (grape varieties, tasting description from the sheet). Extract every wine mentioned. Use empty strings for anything not on the sheet but make your best inference for drinkFrom/drinkTo/type based on the wine.";
+
+const CB_LABEL_AUDIT_PROMPT = "You are a sommelier verifying a wine label against expected data. Compare the label in this photo against this wine record and return ONLY a JSON object (no markdown fences) with: match (boolean — true if the label matches the expected wine), corrections (object with only the fields that need correcting based on what you see on the label — e.g. if the vintage on the label differs, include vintage; if producer name spelling differs, include producer. Empty object if match is true), confidence (string: 'high', 'medium', or 'low'), notes (one brief sentence about the match or what differs).\n\nExpected wine: ";
+
 /* extract base64 from an <img> element via canvas */
 function imgToBase64(imgEl){
   const c = document.createElement("canvas");
@@ -1548,6 +1595,7 @@ function imgToBase64(imgEl){
 
 let pendingImage = null;
 function renderForm(){
+  if(cbBoxMode){ renderCBBox(); return; }
   const w = editingId ? wines.find(x=>x.id===editingId) : {};
   pendingImage = w && w.imageData ? w.imageData : null;
   const existingSrc = w ? imgSrc(w) : null;
@@ -1559,6 +1607,7 @@ function renderForm(){
   const _giftParsed = _isGift ? parseGiftSource(w.source) : {name:"",mm:"",yy:""};
   const _srcForInput = _isCB ? "CB" : (_isGift ? "Gift" : (w.source||""));
   view.innerHTML = `<div class="sheet">
+    ${editingId ? "" : `<button type="button" id="cb-box-btn" class="btn" style="background:var(--panel);border:1px solid var(--ok);color:var(--ok);margin-bottom:16px;font-family:'IBM Plex Mono',monospace;font-size:14px;letter-spacing:.04em">📦 + CB Box</button>`}
     <h2>${editingId? "Edit bottle" : "New bottle"}</h2>
     <div class="photo-zone">
       ${existingSrc?`<img id="pv" src="${esc(existingSrc)}" alt="">`:`<img id="pv" style="display:none" alt="">`}
@@ -1827,6 +1876,369 @@ function renderForm(){
   };
   const c = document.getElementById("cancel");
   if(c) c.onclick = ()=>{ editingId=null; tab="detail"; render(); };
+  const cbBtn = document.getElementById("cb-box-btn");
+  if(cbBtn) cbBtn.onclick = ()=>{
+    const now = new Date();
+    cbBoxMode = true; cbBoxStep = 1;
+    cbBoxMonth = String(now.getMonth()+1).padStart(2,"0");
+    cbBoxYear = String(now.getFullYear()).slice(2);
+    cbBoxCount = 0; cbBoxWines = []; cbBoxSheetImage = null;
+    cbBoxLabels = []; cbBoxAudit = [];
+    render();
+  };
+}
+
+/* ================= CB box loader wizard ================= */
+function renderCBBox(){
+  const stepNames = ["Setup","Scan sheet","Review & labels"];
+  const dotsHTML = [1,2,3].map(s => `<span class="dot${s < cbBoxStep ? " done" : ""}${s === cbBoxStep ? " active" : ""}"></span>`).join("");
+
+  if(cbBoxStep === 1){
+    /* Step 1: Setup — month/year + bottle count */
+    view.innerHTML = `<div class="cb-wizard">
+      <h2 class="serif">📦 CB Box Loader</h2>
+      <div class="cb-step-label">Step 1 — ${stepNames[0]}</div>
+      <div class="cb-step-dots">${dotsHTML}</div>
+      <div class="cb-setup-row">
+        <div class="field narrow"><label>Month</label><input id="cb-mm" inputmode="numeric" maxlength="2" value="${cbBoxMonth}" placeholder="mm"></div>
+        <div class="field narrow"><label>Year</label><input id="cb-yy" inputmode="numeric" maxlength="2" value="${cbBoxYear}" placeholder="yy"></div>
+      </div>
+      <div class="field cb-count-field">
+        <label>How many bottles in this box?</label>
+        <input id="cb-count" inputmode="numeric" value="${cbBoxCount||""}" placeholder="3–5" autofocus>
+      </div>
+      <button class="btn btn-primary" id="cb-next1">Next →</button>
+      <button class="btn btn-ghost" id="cb-cancel">Cancel</button>
+    </div>`;
+    document.getElementById("cb-count").focus();
+    document.getElementById("cb-next1").onclick = ()=>{
+      cbBoxMonth = document.getElementById("cb-mm").value.trim().padStart(2,"0");
+      cbBoxYear = document.getElementById("cb-yy").value.trim();
+      cbBoxCount = parseInt(document.getElementById("cb-count").value) || 0;
+      if(!cbBoxCount || cbBoxCount < 1 || cbBoxCount > 12){
+        document.getElementById("cb-count").style.borderColor = "var(--urgent)";
+        return;
+      }
+      cbBoxStep = 2; render();
+    };
+    document.getElementById("cb-cancel").onclick = ()=>{ cbBoxMode = false; render(); };
+    return;
+  }
+
+  if(cbBoxStep === 2){
+    /* Step 2: Scan info sheet */
+    view.innerHTML = `<div class="cb-wizard">
+      <h2 class="serif">📦 CB Box Loader</h2>
+      <div class="cb-step-label">Step 2 — ${stepNames[1]}</div>
+      <div class="cb-step-dots">${dotsHTML}</div>
+      <p style="color:var(--ink-dim);font-size:13px;margin-bottom:14px">
+        Photograph or upload the CB info sheet — the one-pager with all the wine names, vintages, prices, and tasting notes.
+      </p>
+      <div class="photo-zone" id="cb-sheet-zone">
+        ${cbBoxSheetImage ? `<img id="cb-sheet-pv" src="${cbBoxSheetImage}" alt="Info sheet" class="cb-sheet-preview">` : `<img id="cb-sheet-pv" style="display:none" class="cb-sheet-preview">`}
+        <label class="photo-btn">📷 Take photo of info sheet
+          <input type="file" id="cb-sheet-cam" accept="image/*" capture="environment">
+        </label>
+        <label class="photo-btn ghost">🖼 Choose from gallery
+          <input type="file" id="cb-sheet-gal" accept="image/*">
+        </label>
+      </div>
+      <button type="button" class="btn" id="cb-read-sheet" style="border:1px solid var(--gold);color:var(--gold);background:var(--panel);margin-top:10px">✨ Read wines from sheet</button>
+      <div class="note" id="cb-sheet-st"></div>
+      <div class="cb-btn-row">
+        <button class="btn btn-ghost" id="cb-back2">← Back</button>
+        <button class="btn btn-ghost" id="cb-skip-sheet">Skip — enter manually</button>
+      </div>
+    </div>`;
+    const pvEl = document.getElementById("cb-sheet-pv");
+    const handleSheetPhoto = async (input)=>{
+      if(!input.files[0]) return;
+      cbBoxSheetImage = await resizeImage(input.files[0]);
+      pvEl.src = cbBoxSheetImage; pvEl.style.display = "block";
+    };
+    document.getElementById("cb-sheet-cam").addEventListener("change", e => handleSheetPhoto(e.target));
+    document.getElementById("cb-sheet-gal").addEventListener("change", e => handleSheetPhoto(e.target));
+
+    document.getElementById("cb-read-sheet").onclick = async ()=>{
+      const st = document.getElementById("cb-sheet-st");
+      if(!cfg.gkey){ st.textContent = "Add a free Gemini API key in the Sync tab first (aistudio.google.com)."; return; }
+      if(!cbBoxSheetImage){ st.textContent = "Take or choose a photo of the info sheet first."; return; }
+      st.textContent = "Reading info sheet…";
+      try{
+        const b64 = cbBoxSheetImage.split(",")[1];
+        const body = {contents:[{parts:[
+          {inline_data:{mime_type:"image/jpeg", data:b64}},
+          {text: CB_SHEET_PROMPT + ` I expect approximately ${cbBoxCount} wines on this sheet.`}
+        ]}]};
+        const {r} = await callGemini(body, cfg.gkey, st);
+        const j = await r.json();
+        const text = ((j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts)||[]).map(p=>p.text||"").join("");
+        const parsed = JSON.parse(text.replace(/```json|```/g,"").trim());
+        const arr = Array.isArray(parsed) ? parsed : [parsed];
+        cbBoxWines = arr.map(w => ({
+          producer: w.producer || "",
+          name: w.name || "",
+          vintage: w.vintage || "",
+          type: (w.type === "Rose" ? "Rosé" : w.type) || "",
+          region: w.region || "",
+          drinkFrom: w.drinkFrom || "",
+          drinkTo: w.drinkTo || "",
+          pairings: w.pairings || "",
+          price: w.price || "",
+          fire: parseInt(w.fire) || 0,
+          notes: w.notes || ""
+        }));
+        cbBoxLabels = new Array(cbBoxWines.length).fill(null);
+        cbBoxAudit = new Array(cbBoxWines.length).fill(null);
+        st.textContent = "✓ Found " + cbBoxWines.length + " wine" + (cbBoxWines.length !== 1 ? "s" : "") + "!";
+        if(cbBoxWines.length !== cbBoxCount){
+          st.textContent += ` (expected ${cbBoxCount} — you can adjust on the next screen)`;
+        }
+        setTimeout(()=>{ cbBoxStep = 3; render(); }, 1200);
+      }catch(e){ st.textContent = "✗ " + e.message + " — try again or tap Skip."; }
+    };
+
+    document.getElementById("cb-back2").onclick = ()=>{ cbBoxStep = 1; render(); };
+    document.getElementById("cb-skip-sheet").onclick = ()=>{
+      /* create empty wine slots */
+      cbBoxWines = [];
+      for(let i = 0; i < cbBoxCount; i++){
+        cbBoxWines.push({producer:"",name:"",vintage:"",type:"",region:"",drinkFrom:"",drinkTo:"",pairings:"",price:"",fire:0,notes:""});
+      }
+      cbBoxLabels = new Array(cbBoxCount).fill(null);
+      cbBoxAudit = new Array(cbBoxCount).fill(null);
+      cbBoxStep = 3; render();
+    };
+    return;
+  }
+
+  if(cbBoxStep === 3){
+    /* Step 3: Review wines + label photos */
+    const sourceStr = `CB (${cbBoxMonth}/${cbBoxYear})`;
+    const allHaveData = cbBoxWines.every(w => w.producer || w.name);
+    view.innerHTML = `<div class="cb-wizard">
+      <h2 class="serif">📦 CB Box — ${cbBoxWines.length} wines</h2>
+      <div class="cb-step-label">Step 3 — ${stepNames[2]} · ${sourceStr}</div>
+      <div class="cb-step-dots">${dotsHTML}</div>
+      <div id="cb-wines-list">
+        ${cbBoxWines.map((w, i) => {
+          const hasLabel = !!cbBoxLabels[i];
+          const auditInfo = cbBoxAudit[i];
+          const auditHTML = auditInfo
+            ? (auditInfo.loading ? `<div class="audit-status loading">⏳ Checking label…</div>`
+              : auditInfo.match ? `<div class="audit-status ok">✓ Label verified${auditInfo.notes ? " — " + esc(auditInfo.notes) : ""}</div>`
+              : `<div class="audit-status warn">⚠ ${esc(auditInfo.notes||"Label differs from sheet")}${auditInfo.corrections ? "<br>Corrections: " + esc(Object.entries(auditInfo.corrections).map(([k,v])=>k+": "+v).join(", ")) : ""}</div>`)
+            : "";
+          return `<div class="cb-wine-card${hasLabel ? " has-label" : ""}" data-idx="${i}">
+            <div class="wine-idx">Bottle ${i+1}</div>
+            <div class="wine-name serif">${esc(w.producer||"?") + " " + esc(w.name||"")}</div>
+            <div class="wine-detail">
+              ${w.vintage ? `<span>${esc(w.vintage)}</span>` : ""}
+              ${w.type ? `<span>${esc(w.type)}</span>` : ""}
+              ${w.region ? `<span>${esc(w.region)}</span>` : ""}
+              ${w.price ? `<span>${esc(w.price)}</span>` : ""}
+              ${w.fire ? `<span>${"🔥".repeat(w.fire)} ${["","Notable","Prestige","Icon"][w.fire]}</span>` : ""}
+            </div>
+            ${w.pairings ? `<div style="font-size:12px;color:var(--ink-faint);margin-top:2px">🍽 ${esc(w.pairings)}</div>` : ""}
+            <div class="label-zone">
+              ${hasLabel ? `<img src="${cbBoxLabels[i]}" alt="label">` : ""}
+              <label class="label-btn">📷 ${hasLabel ? "Retake" : "Add"} label photo
+                <input type="file" class="cb-label-input" data-idx="${i}" accept="image/*" capture="environment">
+              </label>
+              <label class="label-btn" style="border-color:var(--line)">🖼
+                <input type="file" class="cb-label-gal" data-idx="${i}" accept="image/*">
+              </label>
+            </div>
+            ${auditHTML}
+            <button type="button" class="edit-toggle" data-idx="${i}">✏️ Edit fields</button>
+            <div class="edit-fields" id="cb-edit-${i}" style="display:none">
+              <div class="row2">
+                <div class="field"><label>Producer</label><input class="cb-f" data-idx="${i}" data-field="producer" value="${esc(w.producer)}"></div>
+                <div class="field"><label>Wine name</label><input class="cb-f" data-idx="${i}" data-field="name" value="${esc(w.name)}"></div>
+              </div>
+              <div class="row3">
+                <div class="field"><label>Vintage</label><input class="cb-f" data-idx="${i}" data-field="vintage" value="${esc(w.vintage)}"></div>
+                <div class="field"><label>Type</label><select class="cb-f-sel" data-idx="${i}" data-field="type">
+                  ${["","Red","White","Rosé","Sparkling","Dessert"].map(t=>`<option${w.type===t?" selected":""}>${t}</option>`).join("")}
+                </select></div>
+                <div class="field"><label>Price</label><input class="cb-f" data-idx="${i}" data-field="price" value="${esc(w.price)}"></div>
+              </div>
+              <div class="field"><label>Region</label><input class="cb-f" data-idx="${i}" data-field="region" value="${esc(w.region)}"></div>
+              <div class="row2">
+                <div class="field"><label>Drink from</label><input class="cb-f" data-idx="${i}" data-field="drinkFrom" value="${esc(w.drinkFrom)}"></div>
+                <div class="field"><label>Drink by</label><input class="cb-f" data-idx="${i}" data-field="drinkTo" value="${esc(w.drinkTo)}"></div>
+              </div>
+              <div class="field"><label>Pairings</label><input class="cb-f" data-idx="${i}" data-field="pairings" value="${esc(w.pairings)}"></div>
+              <div class="field"><label>Notes</label><textarea class="cb-f" data-idx="${i}" data-field="notes">${esc(w.notes)}</textarea></div>
+              <div class="field"><label>🔥 Fire tier</label>
+                <div class="fire-tier-picker" id="cb-fire-${i}">
+                  ${[0,1,2,3].map(t=>`<button type="button" class="fire-tier-btn cb-fire-btn" data-idx="${i}" data-tier="${t}"${w.fire===t?' style="color:var(--ink);border-color:var(--gold)"':""}>${t===0?"— None":("🔥".repeat(t)+" "+["","Notable","Prestige","Icon"][t])}</button>`).join("")}
+                </div>
+              </div>
+            </div>
+          </div>`;
+        }).join("")}
+      </div>
+      <button class="btn btn-primary" id="cb-save-all" style="margin-top:16px${!allHaveData ? ";opacity:.5" : ""}"${!allHaveData ? " disabled" : ""}>✓ Add all ${cbBoxWines.length} bottles to cellar</button>
+      <button class="btn btn-ghost" id="cb-back3">← Back to sheet</button>
+      <button class="btn btn-ghost" id="cb-cancel3" style="color:var(--urgent)">Cancel</button>
+    </div>`;
+
+    /* bind inline field edits */
+    document.querySelectorAll(".edit-toggle").forEach(btn=>{
+      btn.onclick = ()=>{
+        const idx = btn.dataset.idx;
+        const el = document.getElementById("cb-edit-" + idx);
+        const showing = el.style.display !== "none";
+        el.style.display = showing ? "none" : "block";
+        btn.textContent = showing ? "✏️ Edit fields" : "✏️ Close editor";
+      };
+    });
+    document.querySelectorAll(".cb-f").forEach(input=>{
+      input.addEventListener("change", ()=>{
+        const i = parseInt(input.dataset.idx);
+        const f = input.dataset.field;
+        cbBoxWines[i][f] = input.value.trim();
+      });
+    });
+    document.querySelectorAll(".cb-f-sel").forEach(sel=>{
+      sel.addEventListener("change", ()=>{
+        const i = parseInt(sel.dataset.idx);
+        cbBoxWines[i][sel.dataset.field] = sel.value;
+      });
+    });
+    document.querySelectorAll(".cb-fire-btn").forEach(btn=>{
+      btn.onclick = ()=>{
+        const i = parseInt(btn.dataset.idx);
+        const tier = parseInt(btn.dataset.tier);
+        cbBoxWines[i].fire = tier;
+        document.querySelectorAll(`#cb-fire-${i} .cb-fire-btn`).forEach(b=>{
+          const on = parseInt(b.dataset.tier) === tier;
+          b.style.color = on ? "var(--ink)" : "";
+          b.style.borderColor = on ? "var(--gold)" : "";
+        });
+      };
+    });
+
+    /* bind label photo uploads */
+    const handleLabelPhoto = async (input)=>{
+      if(!input.files[0]) return;
+      const idx = parseInt(input.dataset.idx);
+      cbBoxLabels[idx] = await resizeImage(input.files[0]);
+      /* trigger AI audit in background */
+      auditLabel(idx);
+      render(); /* refresh to show thumb */
+    };
+    document.querySelectorAll(".cb-label-input, .cb-label-gal").forEach(input=>{
+      input.addEventListener("change", ()=> handleLabelPhoto(input));
+    });
+
+    /* save all */
+    document.getElementById("cb-save-all").onclick = ()=>{
+      const added = [];
+      cbBoxWines.forEach((w, i)=>{
+        /* collect any unsaved inline edits */
+        document.querySelectorAll(`.cb-f[data-idx="${i}"]`).forEach(input=>{
+          w[input.dataset.field] = input.value.trim();
+        });
+        document.querySelectorAll(`.cb-f-sel[data-idx="${i}"]`).forEach(sel=>{
+          w[sel.dataset.field] = sel.value;
+        });
+        /* apply audit corrections if user hasn't edited manually */
+        const audit = cbBoxAudit[i];
+        if(audit && !audit.match && audit.corrections){
+          Object.entries(audit.corrections).forEach(([k,v])=>{
+            if(v && !document.querySelector(`.cb-f[data-idx="${i}"][data-field="${k}"]`)?.dataset.userEdited){
+              w[k] = v;
+            }
+          });
+        }
+        const rec = {
+          id: uid(),
+          added: new Date().toISOString().slice(0,10),
+          producer: w.producer,
+          name: w.name,
+          vintage: w.vintage,
+          type: w.type,
+          qty: 1,
+          region: w.region,
+          drinkFrom: w.drinkFrom,
+          drinkTo: w.drinkTo,
+          shelfSection: "",
+          binCode: "",
+          titi: false,
+          fire: w.fire || 0,
+          pairings: w.pairings,
+          source: `CB (${cbBoxMonth}/${cbBoxYear})`,
+          price: w.price,
+          location: "",
+          notes: w.notes,
+          drankDate: null,
+          rating: null,
+          drinkNotes: null,
+          buyAgain: null,
+          giftedTo: null,
+          marketValue: null,
+          lastValueCheck: null,
+          tastingHistory: [],
+          imagePath: null
+        };
+        if(cbBoxLabels[i]){ rec.imageData = cbBoxLabels[i]; rec.imageDirty = true; }
+        wines.push(rec);
+        added.push(rec);
+      });
+      saveWines();
+      cbBoxMode = false; cbBoxStep = 1;
+      cbBoxWines = []; cbBoxLabels = []; cbBoxAudit = []; cbBoxSheetImage = null;
+      tab = "cellar"; setTab("cellar");
+    };
+
+    document.getElementById("cb-back3").onclick = ()=>{ cbBoxStep = 2; render(); };
+    document.getElementById("cb-cancel3").onclick = ()=>{
+      if(confirm("Cancel CB Box import? You'll lose the extracted data.")){
+        cbBoxMode = false; render();
+      }
+    };
+    return;
+  }
+}
+
+/* label audit via Gemini — runs in background */
+async function auditLabel(idx){
+  if(!cfg.gkey || !cbBoxLabels[idx] || !cbBoxWines[idx]) return;
+  cbBoxAudit[idx] = {loading:true};
+  render();
+  try{
+    const w = cbBoxWines[idx];
+    const desc = [w.producer, w.name, w.vintage, w.type, w.region].filter(Boolean).join(", ");
+    const b64 = cbBoxLabels[idx].split(",")[1];
+    const body = {contents:[{parts:[
+      {inline_data:{mime_type:"image/jpeg", data:b64}},
+      {text: CB_LABEL_AUDIT_PROMPT + desc}
+    ]}]};
+    const st = document.createElement("span"); /* dummy status el for callGemini */
+    const {r} = await callGemini(body, cfg.gkey, st);
+    const j = await r.json();
+    const text = ((j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts)||[]).map(p=>p.text||"").join("");
+    const result = JSON.parse(text.replace(/```json|```/g,"").trim());
+    cbBoxAudit[idx] = {
+      match: !!result.match,
+      corrections: result.corrections || {},
+      confidence: result.confidence || "medium",
+      notes: result.notes || ""
+    };
+    /* if corrections found, auto-apply them to cbBoxWines */
+    if(!result.match && result.corrections){
+      Object.entries(result.corrections).forEach(([k,v])=>{
+        if(v && cbBoxWines[idx].hasOwnProperty(k)){
+          cbBoxWines[idx][k] = v;
+        }
+      });
+    }
+  }catch(e){
+    cbBoxAudit[idx] = {match:false, notes:"Audit failed: " + e.message, corrections:{}};
+  }
+  render();
 }
 
 /* ================= stats page ================= */
@@ -2377,6 +2789,9 @@ function renderSync(){
       <summary>What's new</summary>
       <div class="collapse-body">
         <ul class="changelog">
+          <li><span class="cl-ver">Aug 12, 2026</span>
+            <span class="cl-title">📦 CB Box Loader</span><br>
+            <span class="cl-desc">New "+CB Box" button on the Add tab — photograph the Charlie's Burgers info sheet and AI reads all wines at once. Then snap a label photo per bottle for cross-verification. Adds all bottles in one go with the CB source and date pre-filled.</span></li>
           <li><span class="cl-ver">Aug 10, 2026</span>
             <span class="cl-title">🍷 Add tasting notes any time + search fix</span><br>
             <span class="cl-desc">New "Add tasting note" button on every bottle's detail page — no need to rate at the moment you open it. Skip buttons now say "rate later" instead of "just remove." Also fixed search typing on mobile (characters were replacing each other).</span></li>
@@ -2563,7 +2978,9 @@ function setTab(t, restoreScroll){
   else window.scrollTo(0, 0);
 }
 document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click", ()=>{
-  editingId = null; setTab(b.dataset.tab);
+  editingId = null;
+  if(b.dataset.tab !== "add") cbBoxMode = false;
+  setTab(b.dataset.tab);
 }));
 
 /* browser back/forward button support */
