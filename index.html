@@ -2736,10 +2736,12 @@ function renderValue(){
 const GH = "https://api.github.com";
 function ghHeaders(){ return {"Authorization":"Bearer "+cfg.token, "Accept":"application/vnd.github+json"}; }
 async function ghGetSha(path){
-  const r = await fetch(`${GH}/repos/${cfg.owner}/${cfg.repo}/contents/${path}?ref=${cfg.branch||"main"}`, {headers:ghHeaders()});
-  if(r.status===404) return null;
-  if(!r.ok) throw new Error(`GET ${path}: ${r.status}`);
-  return (await r.json()).sha;
+  try{
+    const r = await fetch(`${GH}/repos/${cfg.owner}/${cfg.repo}/contents/${path}?ref=${cfg.branch||"main"}`, {headers:ghHeaders()});
+    if(r.status===404) return null;
+    if(!r.ok) return null; /* file likely doesn't exist; let PUT handle auth errors */
+    return (await r.json()).sha;
+  }catch(e){ return null; }
 }
 async function ghPut(path, base64Content, message){
   const sha = await ghGetSha(path);
@@ -2748,6 +2750,19 @@ async function ghPut(path, base64Content, message){
   const r = await fetch(`${GH}/repos/${cfg.owner}/${cfg.repo}/contents/${path}`, {
     method:"PUT", headers:{...ghHeaders(),"Content-Type":"application/json"}, body:JSON.stringify(body)
   });
+  if(r.status===401) throw new Error(`Auth failed — check your token in Settings (PUT ${path})`);
+  if(r.status===409 && !sha){
+    /* file exists but we missed the SHA — retry with SHA */
+    const sha2 = await ghGetSha(path);
+    if(sha2){
+      body.sha = sha2;
+      const r2 = await fetch(`${GH}/repos/${cfg.owner}/${cfg.repo}/contents/${path}`, {
+        method:"PUT", headers:{...ghHeaders(),"Content-Type":"application/json"}, body:JSON.stringify(body)
+      });
+      if(!r2.ok) throw new Error(`PUT ${path}: ${r2.status} ${(await r2.text()).slice(0,120)}`);
+      return;
+    }
+  }
   if(!r.ok) throw new Error(`PUT ${path}: ${r.status} ${(await r.text()).slice(0,120)}`);
 }
 function b64EncodeUnicode(str){
