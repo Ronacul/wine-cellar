@@ -566,6 +566,8 @@ let cbBoxWines = [];     /* extracted wines from info sheet */
 let cbBoxSheetImage = null; /* info sheet photo data URL */
 let cbBoxLabels = [];    /* label photo data URLs, indexed by wine */
 let cbBoxAudit = [];     /* audit results per wine */
+let cbBoxShelf = "";     /* default shelf section for the box */
+let cbBoxLocation = "";  /* default location/rack for the box */
 
 const saveWines = () => localStorage.setItem(LS_WINES, JSON.stringify(wines));
 let syncHistory = JSON.parse(localStorage.getItem(LS_HIST) || "[]");
@@ -1986,7 +1988,10 @@ function renderCBBox(){
           pairings: w.pairings || "",
           price: w.price || "",
           fire: parseInt(w.fire) || 0,
-          notes: w.notes || ""
+          notes: w.notes || "",
+          shelfSection: "",
+          binCode: "",
+          location: ""
         }));
         cbBoxLabels = new Array(cbBoxWines.length).fill(null);
         cbBoxAudit = new Array(cbBoxWines.length).fill(null);
@@ -2003,7 +2008,7 @@ function renderCBBox(){
       /* create empty wine slots */
       cbBoxWines = [];
       for(let i = 0; i < cbBoxCount; i++){
-        cbBoxWines.push({producer:"",name:"",vintage:"",type:"",region:"",drinkFrom:"",drinkTo:"",pairings:"",price:"",fire:0,notes:""});
+        cbBoxWines.push({producer:"",name:"",vintage:"",type:"",region:"",drinkFrom:"",drinkTo:"",pairings:"",price:"",fire:0,notes:"",shelfSection:"",binCode:"",location:""});
       }
       cbBoxLabels = new Array(cbBoxCount).fill(null);
       cbBoxAudit = new Array(cbBoxCount).fill(null);
@@ -2020,6 +2025,21 @@ function renderCBBox(){
       <h2 class="serif">📦 CB Box — ${cbBoxWines.length} wines</h2>
       <div class="cb-step-label">Step 3 — ${stepNames[2]} · ${sourceStr}</div>
       <div class="cb-step-dots">${dotsHTML}</div>
+      <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:16px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-faint);margin-bottom:8px">Default shelf for all bottles</div>
+        <div class="cb-setup-row" style="margin-bottom:0">
+          <div class="field" style="margin-bottom:0">
+            <select id="cb-def-shelf">
+              <option value="">— none —</option>
+              ${SHELF_SECTIONS.map(s=>`<option${cbBoxShelf===s?" selected":""}>${s}</option>`).join("")}
+            </select>
+          </div>
+          <div class="field" style="margin-bottom:0;max-width:100px">
+            <input id="cb-def-loc" value="${esc(cbBoxLocation)}" placeholder="Bin e.g. K01">
+          </div>
+          <button type="button" id="cb-suggest-bin" style="flex:none;background:var(--panel2);border:1px solid var(--ink-faint);border-radius:4px;color:var(--ink-dim);padding:10px 12px;font-size:12px;cursor:pointer">Suggest</button>
+        </div>
+      </div>
       <div id="cb-wines-list">
         ${cbBoxWines.map((w, i) => {
           const hasLabel = !!cbBoxLabels[i];
@@ -2070,6 +2090,14 @@ function renderCBBox(){
               </div>
               <div class="field"><label>Pairings</label><input class="cb-f" data-idx="${i}" data-field="pairings" value="${esc(w.pairings)}"></div>
               <div class="field"><label>Notes</label><textarea class="cb-f" data-idx="${i}" data-field="notes">${esc(w.notes)}</textarea></div>
+              <div class="row2">
+                <div class="field"><label>Shelf section</label><select class="cb-f-sel" data-idx="${i}" data-field="shelfSection">
+                  <option value="">— default —</option>
+                  ${SHELF_SECTIONS.map(s=>`<option${(w.shelfSection||"")===s?" selected":""}>${s}</option>`).join("")}
+                </select></div>
+                <div class="field"><label>Bin / Rack</label><input class="cb-f" data-idx="${i}" data-field="binCode" value="${esc(w.binCode||"")}" placeholder="default"></div>
+              </div>
+              <div class="field"><label>Location</label><input class="cb-f" data-idx="${i}" data-field="location" value="${esc(w.location||"")}" placeholder="default"></div>
               <div class="field"><label>🔥 Fire tier</label>
                 <div class="fire-tier-picker" id="cb-fire-${i}">
                   ${[0,1,2,3].map(t=>`<button type="button" class="fire-tier-btn cb-fire-btn" data-idx="${i}" data-tier="${t}"${w.fire===t?' style="color:var(--ink);border-color:var(--gold)"':""}>${t===0?"— None":("🔥".repeat(t)+" "+["","Notable","Prestige","Icon"][t])}</button>`).join("")}
@@ -2083,6 +2111,21 @@ function renderCBBox(){
       <button class="btn btn-ghost" id="cb-back3">← Back to sheet</button>
       <button class="btn btn-ghost" id="cb-cancel3" style="color:var(--urgent)">Cancel</button>
     </div>`;
+
+    /* bind default shelf controls */
+    document.getElementById("cb-def-shelf").addEventListener("change", (e)=>{
+      cbBoxShelf = e.target.value;
+    });
+    document.getElementById("cb-def-loc").addEventListener("change", (e)=>{
+      cbBoxLocation = e.target.value.trim();
+    });
+    document.getElementById("cb-suggest-bin").onclick = ()=>{
+      const section = document.getElementById("cb-def-shelf").value;
+      if(!section) return;
+      const suggested = suggestBinCode(section);
+      document.getElementById("cb-def-loc").value = suggested;
+      cbBoxLocation = suggested;
+    };
 
     /* bind inline field edits */
     document.querySelectorAll(".edit-toggle").forEach(btn=>{
@@ -2164,14 +2207,14 @@ function renderCBBox(){
           region: w.region,
           drinkFrom: w.drinkFrom,
           drinkTo: w.drinkTo,
-          shelfSection: "",
-          binCode: "",
+          shelfSection: w.shelfSection || cbBoxShelf || "",
+          binCode: w.binCode || "",
           titi: false,
           fire: w.fire || 0,
           pairings: w.pairings,
           source: `CB (${cbBoxMonth}/${cbBoxYear})`,
           price: w.price,
-          location: "",
+          location: w.location || cbBoxLocation || "",
           notes: w.notes,
           drankDate: null,
           rating: null,
@@ -2190,6 +2233,7 @@ function renderCBBox(){
       saveWines();
       cbBoxMode = false; cbBoxStep = 1;
       cbBoxWines = []; cbBoxLabels = []; cbBoxAudit = []; cbBoxSheetImage = null;
+      cbBoxShelf = ""; cbBoxLocation = "";
       tab = "cellar"; setTab("cellar");
     };
 
