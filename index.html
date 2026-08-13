@@ -1367,9 +1367,16 @@ function renderDetail(){
       <button class="btn btn-ghost" id="recheck-price">✨ Identify / re-check price</button>
     </div>
     <div class="sync-status" id="recheck-st" style="display:none"></div>
+    ${drank ? `<button class="btn btn-ghost" id="undo-drank" style="border-color:var(--ok);color:var(--ok)">↩ Undo drank — put back in cellar</button>` : ""}
     <button class="btn btn-ghost" id="edit">Edit bottle</button>
     <button class="btn btn-danger" id="del">Remove from cellar</button>
   </div>`;
+  if(document.getElementById("undo-drank")){
+    document.getElementById("undo-drank").onclick = ()=>{
+      w.qty = 1; w.drankDate = null; w.rating = null; w.drinkNotes = null; w.buyAgain = null; w.giftedTo = null;
+      saveWines(); render();
+    };
+  }
   document.getElementById("edit").onclick = ()=>{ editingId=w.id; tab="add"; render(); };
   document.getElementById("back-top").onclick = ()=>{ history.back(); };
   /* delete tasting history entries */
@@ -2483,7 +2490,7 @@ function renderStats(){
       <span class="stat-pill"><span class="n">${priced}</span> priced</span>
     </div>
     ${drankBottleCount || giftedCount ? `<div class="stats-row" style="justify-content:center;gap:12px;margin-top:4px">
-      ${drankBottleCount?`<span class="stat-pill"><span class="n">${drankBottleCount}</span> drank</span>`:""}
+      ${drankBottleCount?`<span class="stat-pill" id="stats-drank-pill" style="cursor:pointer"><span class="n">${drankBottleCount}</span> drank</span>`:""}
       ${giftedCount?`<span class="stat-pill" style="border-color:var(--rose)"><span class="n" style="color:var(--rose)">🎁 ${giftedCount}</span> gifted</span>`:""}
       ${drankValStr?`<span class="stat-pill"><span class="n">${drankValStr}</span> consumed</span>`:""}
     </div>` : ""}
@@ -2538,6 +2545,10 @@ function renderStats(){
     };
   };
   bindRandom();
+
+  /* drank pill → jump to cellar Drank view */
+  const drankPill = document.getElementById("stats-drank-pill");
+  if(drankPill) drankPill.onclick = ()=>{ cellarView = "drank"; setTab("cellar"); };
 }
 
 /* ================= value / appreciation tab ================= */
