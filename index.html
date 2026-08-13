@@ -679,6 +679,7 @@ function isPeak(w){ const st = windowStatus(w); return st.cls==="overdue" || st.
 function isCB(w){ return (w.source||"").startsWith("CB"); }
 function qtyOf(w){ const q = parseInt(w.qty); return isNaN(q) ? 1 : q; }
 function isDrank(w){ return qtyOf(w) <= 0; }
+function hasDrankBottles(w){ return isDrank(w) || (w.tastingHistory && w.tastingHistory.length > 0); }
 function isGifted(w){ return !!w.giftedTo; }
 function getOrigin(w){
   if(w.titi) return "Titi";
@@ -821,10 +822,13 @@ function cardHTML(w){
   const fire = isFire(w);
   const drank = isDrank(w);
   const gifted = isGifted(w);
+  const _th = w.tastingHistory || [];
+  const partialDrank = !drank && _th.length > 0;
   const cardCls = gifted ? "gifted" : (drank ? "drank" : "");
   const drankLabel = gifted
     ? ` <span style="font-size:12px;color:var(--rose);font-family:var(--mono)">· 🎁 gift${w.giftedTo ? " to " + esc(w.giftedTo) : ""}</span>`
-    : (drank ? ` <span style="font-size:12px;color:var(--ink-faint);font-family:var(--mono)">· drank</span>` : "");
+    : (drank ? ` <span style="font-size:12px;color:var(--ink-faint);font-family:var(--mono)">· drank</span>`
+    : (partialDrank ? ` <span style="font-size:12px;color:var(--ink-faint);font-family:var(--mono)">· ${_th.length} drank · ${qtyOf(w)} left in cave</span>` : ""));
   return `<div class="card${cardCls ? " "+cardCls : ""}" data-id="${w.id}">
     <div class="card-top">
       ${thumb}
@@ -846,6 +850,7 @@ function cardHTML(w){
           ${gifted?`<span class="chip gift">🎁</span>`:""}
         </div>
         ${drank && !gifted && w.rating ? starsHTML(w.rating) : ""}
+        ${partialDrank && _th.length ? (() => { const last = _th.slice().reverse().find(e=>e.rating); return last ? starsHTML(last.rating) : ""; })() : ""}
       </div>
     </div>
     ${drank?"":bandHTML(w)}
@@ -857,7 +862,7 @@ function renderList(soonMode){
   /* view filter: cave (default) hides drank, drank shows only drank, all shows everything */
   if(!soonMode){
     if(cellarView==="cave") items = items.filter(w=>!isDrank(w));
-    else if(cellarView==="drank") items = items.filter(w=>isDrank(w));
+    else if(cellarView==="drank") items = items.filter(w=>hasDrankBottles(w));
   } else {
     items = items.filter(w=>!isDrank(w)); /* drink-soon never shows drank */
   }
@@ -873,7 +878,7 @@ function renderList(soonMode){
   const sCounts = shelfCounts(items);
   const usedShelves = Object.keys(sCounts).sort();
 
-  const drankExists = wines.some(isDrank);
+  const drankExists = wines.some(hasDrankBottles);
 
   /* chip config: key, label, active color */
   const chipDefs = [
@@ -976,7 +981,7 @@ function renderCards(soonMode){
   let items = wines.slice();
   if(!soonMode){
     if(cellarView==="cave") items = items.filter(w=>!isDrank(w));
-    else if(cellarView==="drank") items = items.filter(w=>isDrank(w));
+    else if(cellarView==="drank") items = items.filter(w=>hasDrankBottles(w));
   } else {
     items = items.filter(w=>!isDrank(w));
   }
