@@ -1095,7 +1095,9 @@ function showReviewSheet(w, isLastBottle){
   const reviewArea = document.getElementById("review-area");
   if(!reviewArea) return;
   const hasHistory = w.tastingHistory && w.tastingHistory.length;
+  const today = new Date().toISOString().slice(0,10);
   const heading = isLastBottle ? "Last bottle — what happened?" : `Opening bottle ${(hasHistory ? w.tastingHistory.length : 0) + 1} — how is it?`;
+  const dateFieldHTML = `<div class="field"><label>Date</label><input type="date" id="rev-date" value="${today}" style="background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--ink);padding:10px 12px;font-size:14px;width:100%"></div>`;
   reviewArea.innerHTML = `<div class="review-sheet">
     <h3 class="serif">${heading}</h3>
     ${isLastBottle ? `<div class="review-choice">
@@ -1103,6 +1105,7 @@ function showReviewSheet(w, isLastBottle){
       <button type="button" id="rev-gift">🎁 Gave as gift</button>
     </div>` : ""}
     <div id="rev-body">${isLastBottle ? "" : `
+      ${dateFieldHTML}
       <div class="field"><label>Rating</label>
         <div class="star-rating" id="star-row">
           ${[1,2,3,4,5].map(i=>`<button type="button" class="star" data-v="${i}">☆</button>`).join("")}
@@ -1172,6 +1175,7 @@ function showReviewSheet(w, isLastBottle){
     document.getElementById("rev-drank").classList.add("selected");
     document.getElementById("rev-gift").classList.remove("selected");
     document.getElementById("rev-body").innerHTML = `
+      ${dateFieldHTML}
       <div class="field"><label>Rating</label>
         <div class="star-rating" id="star-row">
           ${[1,2,3,4,5].map(i=>`<button type="button" class="star" data-v="${i}">☆</button>`).join("")}
@@ -1193,7 +1197,7 @@ function showReviewSheet(w, isLastBottle){
         const notes = (document.getElementById("rev-notes").value||"").trim() || null;
         addTastingEntry(w, rating, notes, buyAgain);
         w.qty = 0;
-        w.drankDate = new Date().toISOString().slice(0,10);
+        w.drankDate = (document.getElementById("rev-date")||{}).value || new Date().toISOString().slice(0,10);
         if(rating) w.rating = rating;
         w.drinkNotes = notes;
         w.buyAgain = buyAgain;
@@ -1204,7 +1208,7 @@ function showReviewSheet(w, isLastBottle){
       () => {
         addTastingEntry(w, 0, null, null); /* placeholder — rate later */
         w.qty = 0;
-        w.drankDate = new Date().toISOString().slice(0,10);
+        w.drankDate = (document.getElementById("rev-date")||{}).value || new Date().toISOString().slice(0,10);
         reviewPending = null;
         saveWines(); render();
       }
@@ -1215,6 +1219,7 @@ function showReviewSheet(w, isLastBottle){
     document.getElementById("rev-gift").classList.add("selected");
     document.getElementById("rev-drank").classList.remove("selected");
     document.getElementById("rev-body").innerHTML = `
+      ${dateFieldHTML}
       <div class="field"><label>To whom / occasion (optional)</label>
         <input id="rev-giftee" placeholder="e.g. Mom's birthday" style="background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--ink);padding:10px 12px;font-size:14px;width:100%">
       </div>
@@ -1222,14 +1227,14 @@ function showReviewSheet(w, isLastBottle){
       <button class="btn btn-ghost" id="rev-skip-gift">Skip — rate later</button>`;
     document.getElementById("rev-save-gift").onclick = ()=>{
       w.qty = 0;
-      w.drankDate = new Date().toISOString().slice(0,10);
+      w.drankDate = (document.getElementById("rev-date")||{}).value || new Date().toISOString().slice(0,10);
       w.giftedTo = (document.getElementById("rev-giftee").value||"").trim() || "someone";
       reviewPending = null;
       saveWines(); render();
     };
     document.getElementById("rev-skip-gift").onclick = ()=>{
       w.qty = 0;
-      w.drankDate = new Date().toISOString().slice(0,10);
+      w.drankDate = (document.getElementById("rev-date")||{}).value || new Date().toISOString().slice(0,10);
       reviewPending = null;
       saveWines(); render();
     };
