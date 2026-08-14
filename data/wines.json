@@ -6105,5 +6105,27 @@
     "lastValueCheck": null,
     "tastingHistory": [],
     "imagePath": "images/mspnb07umdy8l.jpg"
+  },
+  {
+    "id": "mss75yte5bvwl",
+    "added": "2026-08-14",
+    "producer": "Roederer Estate",
+    "name": "Brut",
+    "vintage": "NV",
+    "type": "Sparkling",
+    "qty": 1,
+    "region": "Anderson Valley, California, USA",
+    "drinkFrom": "2024",
+    "drinkTo": "2027",
+    "shelfSection": "",
+    "binCode": "",
+    "titi": false,
+    "fire": 0,
+    "pairings": "Oysters, fried chicken, triple cream brie, sushi, salted potato chips",
+    "source": "",
+    "price": "~$45 CAD (est.)",
+    "location": "",
+    "notes": "Chardonnay and Pinot Noir blend. A premier, highly acclaimed California sparkling wine with crisp acidity, fine mousse, and notes of green apple, pear, and toasted brioche.",
+    "imagePath": "images/mss75yte5bvwl.jpg"
   }
 ]
