@@ -432,7 +432,7 @@ const DATA_KEY = "folio.data.v1";
 const CATS_KEY = "folio.categories.v1";
 
 /* ---------- State ---------- */
-let config = loadJSON(CONFIG_KEY, { apiKey: "", sheetId: "", sheetTab: "Sheet1" });
+let config = loadJSON(CONFIG_KEY, { apiKey: "", sheetId: "10vTR4bkerCEH_gYGbT0NWHXlQkN1ZbVXAEAd4yT2jzE", sheetTab: "Portfolio" });
 let rawRows = loadJSON(DATA_KEY, []);
 let categories = loadJSON(CATS_KEY, {});
 let positions = [];
@@ -676,36 +676,128 @@ function processTransactions(rows) {
 }
 
 /* ---------- Data Loading ---------- */
+async function fetchSheet(sheetId, tab, apiKey) {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(tab)}?key=${apiKey}&valueRenderOption=UNFORMATTED_VALUE`;
+  const resp = await fetch(url);
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.error?.message || `HTTP ${resp.status}`);
+  }
+  const data = await resp.json();
+  const values = data.values || [];
+  if (values.length < 2) throw new Error("Sheet appears empty");
+  const headers = values[0].map(h => String(h).trim());
+  const rows = [];
+  for (let i = 1; i < values.length; i++) {
+    const row = {};
+    headers.forEach((h, j) => row[h] = values[i] && values[i][j] != null ? values[i][j] : "");
+    rows.push(row);
+  }
+  return { headers, rows };
+}
+
+function isPortfolioFormat(headers) {
+  return headers.includes("Ticker") && headers.includes("Category") && headers.includes("Status");
+}
+
+function loadPortfolioRows(rows) {
+  // Portfolio sheet format: Category, Ticker, Status, Shares, Avg Cost, Price, Chg %, Chg $, Mkt Value, ...
+  const openPositions = [];
+  const closed = [];
+  const watchItems = [];
+  const now = new Date().toLocaleDateString("en-US");
+
+  rows.forEach(r => {
+    const ticker = String(r.Ticker || "").trim();
+    const status = String(r.Status || "").trim();
+    if (!ticker || ticker.startsWith("---")) return;
+
+    const shares = parseFloat(r.Shares) || 0;
+    const avgCost = parseFloat(r["Avg Cost"]) || 0;
+    const price = parseFloat(r.Price) || parseFloat(r["Price (formula)"]) || null;
+    const changePct = parseFloat(r["Chg %"] || r["Change% (formula)"]) || null;
+    const changeAbs = parseFloat(r["Chg $"] || r["Change$ (formula)"]) || null;
+    const cat = String(r.Category || "").trim();
+
+    // Store category from sheet
+    if (cat && cat !== "Other") categories[ticker] = cat;
+
+    if (status === "Watch") {
+      watchItems.push({
+        symbol: ticker, currentPrice: price, change: changeAbs, priceDate: now,
+        dayPct: changePct != null ? changePct / 100 : null,
+      });
+    } else if (status === "Closed" || shares <= 0) {
+      closed.push({
+        symbol: ticker, realizedPnL: 0, totalBought: 0, totalSold: 0,
+        transactions: [], currentPrice: price, change: changeAbs, priceDate: now,
+        category: cat || getCategory(ticker),
+        dayPct: changePct != null ? changePct / 100 : null,
+      });
+    } else if (status === "Active" && shares > 0) {
+      const marketValue = price ? shares * price : null;
+      const costBasis = shares * avgCost;
+      const unrealizedPnL = marketValue != null ? marketValue - costBasis : null;
+      const unrealizedPct = costBasis > 0 && unrealizedPnL != null ? unrealizedPnL / costBasis : null;
+      const dayDelta = changeAbs != null ? shares * changeAbs : null;
+      const dayPct = changePct != null ? changePct / 100 : null;
+
+      openPositions.push({
+        symbol: ticker, shares, avgCost, currentPrice: price,
+        costBasis, marketValue, unrealizedPnL, unrealizedPct,
+        realizedPnL: 0, change: changeAbs, dayDelta, dayPct,
+        category: cat || getCategory(ticker),
+        transactions: [{ date: "", price: avgCost, qty: shares, type: "BUY", comment: "from sheet" }],
+        priceDate: now,
+      });
+    }
+  });
+
+  saveJSON(CATS_KEY, categories);
+  return { positions: openPositions, closed, watchlist: watchItems };
+}
+
 async function loadFromSheet() {
   if (!config.apiKey || !config.sheetId) {
     showStatus("Set Google API key and Sheet ID in Settings", true);
     return false;
   }
-  const tab = config.sheetTab || "Sheet1";
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${config.sheetId}/values/${encodeURIComponent(tab)}?key=${config.apiKey}`;
+  const tab = config.sheetTab || "Portfolio";
   try {
     showStatus("Loading from Google Sheet…");
-    const resp = await fetch(url);
-    if (!resp.ok) {
-      const err = await resp.json().catch(() => ({}));
-      throw new Error(err.error?.message || `HTTP ${resp.status}`);
-    }
-    const data = await resp.json();
-    const values = data.values || [];
-    if (values.length < 2) throw new Error("Sheet appears empty");
+    const { headers, rows } = await fetchSheet(config.sheetId, tab, config.apiKey);
 
-    // Convert to row objects
-    const headers = values[0];
-    const rows = [];
-    for (let i = 1; i < values.length; i++) {
-      const row = {};
-      headers.forEach((h, j) => row[h] = (values[i][j] || "").trim());
-      rows.push(row);
+    if (isPortfolioFormat(headers)) {
+      // Portfolio sheet with GOOGLEFINANCE data — load positions directly
+      const result = loadPortfolioRows(rows);
+      positions = result.positions;
+      closedPositions = result.closed;
+      watchlist = result.watchlist;
+      // Store raw for cache
+      rawRows = rows.map(r => {
+        const obj = {};
+        headers.forEach(h => obj[h] = r[h] != null ? String(r[h]) : "");
+        obj._format = "portfolio";
+        return obj;
+      });
+      saveJSON(DATA_KEY, rawRows);
+      renderSummaryStrip();
+      renderCurrentTab();
+      const priceCount = positions.filter(p => p.currentPrice).length;
+      document.getElementById("lastUpdate").textContent =
+        `${positions.length} positions · ${priceCount} live prices`;
+      showStatus(`Loaded ${positions.length} positions with live prices`);
+    } else {
+      // Yahoo CSV format — existing behavior
+      rawRows = rows.map(r => {
+        const obj = {};
+        headers.forEach(h => obj[h] = String(r[h] || "").trim());
+        return obj;
+      });
+      saveJSON(DATA_KEY, rawRows);
+      processAndRender();
+      showStatus(`Loaded ${rawRows.length} rows from Sheet`);
     }
-    rawRows = rows;
-    saveJSON(DATA_KEY, rawRows);
-    processAndRender();
-    showStatus(`Loaded ${rows.length} rows from Sheet`);
     return true;
   } catch (e) {
     showStatus("Sheet error: " + e.message, true);
@@ -739,10 +831,11 @@ function processAndRender() {
 
 async function refreshData() {
   if (config.apiKey && config.sheetId) {
+    showStatus("Refreshing live prices…");
     await loadFromSheet();
   } else if (rawRows.length > 0) {
     processAndRender();
-    showStatus("Refreshed from cached data");
+    showStatus("Refreshed from cached data (no live source)");
   } else {
     showStatus("No data source configured", true);
     switchTab("settings");
@@ -1198,7 +1291,8 @@ function renderSettings(container) {
 
   html += `<div class="setting-group">
     <label>Sheet Tab Name</label>
-    <input type="text" id="cfgSheetTab" value="${config.sheetTab || 'Sheet1'}" placeholder="Sheet1">
+    <input type="text" id="cfgSheetTab" value="${config.sheetTab || 'Portfolio'}" placeholder="Portfolio">
+    <div class="hint">Use "Portfolio" for the Folio sheet, or "Sheet1" for Yahoo CSV format.</div>
     <div class="btn-row">
       <button onclick="saveConfig()">Save & Load</button>
       <button class="btn-secondary" onclick="testConnection()">Test Connection</button>
@@ -1218,11 +1312,15 @@ function renderSettings(container) {
 
   // Data info
   if (rawRows.length > 0) {
-    const symbols = [...new Set(rawRows.map(r => r.Symbol).filter(Boolean))];
+    const isPortfolio = rawRows[0]?._format === "portfolio";
+    const symbols = isPortfolio
+      ? [...new Set(rawRows.map(r => r.Ticker).filter(Boolean))]
+      : [...new Set(rawRows.map(r => r.Symbol).filter(Boolean))];
+    const source = isPortfolio ? "Portfolio sheet" : "Yahoo CSV";
     html += `<div class="setting-group">
-      <label>Cached Data</label>
+      <label>Cached Data (${source})</label>
       <div style="font-family:var(--mono);font-size:12px;color:var(--ink-dim)">
-        ${rawRows.length} rows · ${symbols.length} symbols · ${positions.length} open positions · ${closedPositions.length} closed
+        ${rawRows.length} rows · ${symbols.length} symbols · ${positions.length} open · ${closedPositions.length} closed · ${watchlist.length} watch
       </div>
       <div class="btn-row">
         <button class="btn-secondary" onclick="if(confirm('Clear all cached data?')){localStorage.removeItem('${DATA_KEY}');rawRows=[];positions=[];closedPositions=[];watchlist=[];processAndRender();renderSettings(document.getElementById('content'));showStatus('Data cleared');}">Clear Data</button>
@@ -1245,7 +1343,7 @@ function renderSettings(container) {
 function saveConfig() {
   config.apiKey = document.getElementById("cfgApiKey").value.trim();
   config.sheetId = document.getElementById("cfgSheetId").value.trim();
-  config.sheetTab = document.getElementById("cfgSheetTab").value.trim() || "Sheet1";
+  config.sheetTab = document.getElementById("cfgSheetTab").value.trim() || "Portfolio";
   saveJSON(CONFIG_KEY, config);
   showStatus("Config saved");
   loadFromSheet();
@@ -1307,13 +1405,25 @@ function saveCats() {
 function init() {
   // Load cached data if available
   if (rawRows.length > 0) {
-    processAndRender();
+    if (rawRows[0]?._format === "portfolio") {
+      // Portfolio sheet data — rebuild positions from cache
+      const result = loadPortfolioRows(rawRows);
+      positions = result.positions;
+      closedPositions = result.closed;
+      watchlist = result.watchlist;
+      renderSummaryStrip();
+      renderCurrentTab();
+      document.getElementById("lastUpdate").textContent =
+        `${positions.length} positions · cached`;
+    } else {
+      processAndRender();
+    }
   } else {
     renderCurrentTab();
   }
 
   // Auto-load from sheet if configured
-  if (config.apiKey && config.sheetId && rawRows.length === 0) {
+  if (config.apiKey && config.sheetId) {
     loadFromSheet();
   }
 }
