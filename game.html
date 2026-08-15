@@ -268,6 +268,7 @@ h1{
   </div>
   <div class="hdr-r">
     <span class="timer" id="timer">0:00</span>
+    <button class="icon-btn" id="btnNew" aria-label="New practice puzzle">⟳</button>
     <button class="icon-btn" id="btnSettings" aria-label="Settings">⚙</button>
   </div>
 </header>
@@ -583,6 +584,7 @@ const state = {
   layers:[],               // [{ grid, solution, givens }] — one per overlaid puzzle
   sel:null,                // { layer, colour } or null
   erase:false,
+  practice:false,          // a re-rollable puzzle, outside the daily record
   mistakes:0,              // foundation for a lives/ads gate later
   done:false,
   elapsed:0, since:null,   // timestamp-based, so the clock never drifts
@@ -605,6 +607,7 @@ function loadDaily(){
   return (d && d.day === state.day) ? d : { day:state.day };
 }
 function saveProgress(){
+  if (state.practice) return;   // practice never enters the daily record
   const d = loadDaily();
   d[state.diff] = {
     layers:state.layers,
@@ -641,14 +644,16 @@ function dayNumber(){
   return Math.floor((today - EPOCH) / 86400000) + 1;
 }
 
-function loadDifficulty(id){
+// `fresh` re-rolls from a random seed instead of loading today's puzzle.
+function loadDifficulty(id, fresh){
   stopTimer();
+  state.practice = !!fresh;
   state.diff = id;
   const cfg = diffOf(id);
   state.n = cfg.n;
   buildMarks();               // mark count follows grid size
 
-  const saved = loadDaily()[id];
+  const saved = fresh ? null : loadDaily()[id];
   if (saved && saved.layers){
     state.layers = saved.layers.map(L => ({
       grid:L.grid.slice(), solution:L.solution.slice(), givens:L.givens.slice(),
@@ -659,7 +664,8 @@ function loadDifficulty(id){
     state.started = state.elapsed > 0;
   } else {
     // Each layer is its own puzzle with its own seed — unrelated by design.
-    const base = state.day * 10 + diffIndex(id);
+    const base = fresh ? ((Math.random() * 1e9) | 0)
+                       : state.day * 10 + diffIndex(id);
     state.layers = [];
     for (let L = 0; L < layerCount(cfg); L++){
       const p = generatePuzzle(base + L * 7919, cfg.n, cfg.givens);
@@ -668,7 +674,7 @@ function loadDifficulty(id){
     state.elapsed = 0; state.mistakes = 0; state.done = false; state.started = false;
   }
   state.since = null; state.sel = null; state.erase = false;
-  save(LS_LAST, id);          // come back to the tier you were last playing
+  if (!fresh) save(LS_LAST, id);   // come back to the tier you were last playing
   render();
   tickTimer();
 }
@@ -712,7 +718,7 @@ function render(){ renderDiffs(); renderBoard(); renderPalette(); renderSub(); }
 
 function renderSub(){
   document.getElementById("sub").textContent =
-    "#" + state.day + " · " + diffOf(state.diff).label;
+    (state.practice ? "Practice" : "#" + state.day) + " · " + diffOf(state.diff).label;
 }
 
 function renderDiffs(){
@@ -902,6 +908,8 @@ function win(){
   state.done = true;
   saveProgress();
   tickTimer();          // freeze the header on the final time, not the last tick
+
+  if (state.practice){ markWon(); setTimeout(showWin, 1100); return; }
 
   const st = load(LS_STATS, blankStats());
   st.played++;
@@ -1121,6 +1129,7 @@ function showSettings(){
 
 document.getElementById("btnHelp").onclick  = showHelp;
 document.getElementById("btnStats").onclick = showStats;
+document.getElementById("btnNew").onclick = () => loadDifficulty(state.diff, true);
 document.getElementById("btnSettings").onclick = showSettings;
 
 applyTheme();
