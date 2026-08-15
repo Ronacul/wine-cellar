@@ -258,6 +258,10 @@ For manual assignment or AI identification from labels:
 
 ## Style conventions
 
+- **Canadian spelling throughout** — colour, grey, centre, behaviour — in UI copy,
+  comments, identifiers and commit messages. CSS keywords (`color`, `background-color`,
+  `prefers-color-scheme`) are language syntax and stay as they are.
+
 - Dark theme with wine-cellar aesthetic (`--bg:#1c1518`, `--claret:#a03040`, `--gold:#c9a227`)
 - Fire color: `#e8a020` (warm amber gold, distinct from urgent red)
 - Peak color graduated: `var(--ok)` green (in window) → `var(--warn)` gold (drink soon) → `var(--orange)` / `#d4842a` (last call) → `var(--urgent)` red (past peak)

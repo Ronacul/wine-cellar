@@ -328,23 +328,44 @@ const TILE = "9px 9px";
 // Primitive pools. A mark set combines these to produce however many
 // distinguishable marks a grid size needs — 4, 9, 16, whatever comes next.
 const HUES = [
-  { hex:"#e74c3c", emoji:["🟥","🟥"], label:"Red"    },
-  { hex:"#3498db", emoji:["🟦","🟦"], label:"Blue"   },
-  { hex:"#27ae60", emoji:["🟩","🟩"], label:"Green"  },
-  { hex:"#f1c40f", emoji:["🟨","🟨"], label:"Yellow" },
-  { hex:"#9b59b6", emoji:["🟪","🟣"], label:"Purple" },
-  { hex:"#e67e22", emoji:["🟧","🟠"], label:"Orange" },
-  { hex:"#16a085", emoji:["🟦","🔵"], label:"Teal"   },
-  { hex:"#7f8c8d", emoji:["⬜","⚪"], label:"Grey"   },
-  { hex:"#6d4c41", emoji:["🟫","🟤"], label:"Brown"  },
+  { hex:"#e74c3c", emoji:["🟥","🟥"], label:"Red"     },
+  { hex:"#3498db", emoji:["🟦","🟦"], label:"Blue"    },
+  { hex:"#27ae60", emoji:["🟩","🟩"], label:"Green"   },
+  { hex:"#f1c40f", emoji:["🟨","🟨"], label:"Yellow"  },
+  { hex:"#9b59b6", emoji:["🟪","🟪"], label:"Purple"  },
+  { hex:"#e67e22", emoji:["🟧","🟧"], label:"Orange"  },
+  { hex:"#16a085", emoji:["🟦","🟦"], label:"Teal"    },
+  { hex:"#8d99ae", emoji:["⬜","⬜"], label:"Grey"    },
+  { hex:"#6d4c41", emoji:["🟫","🟫"], label:"Brown"   },
+  { hex:"#ec7ab5", emoji:["🟪","🟪"], label:"Pink"    },
+  { hex:"#a3c72e", emoji:["🟩","🟩"], label:"Lime"    },
+  { hex:"#1f3a93", emoji:["🟦","🟦"], label:"Navy"    },
+  { hex:"#00b8d4", emoji:["🟦","🟦"], label:"Cyan"    },
+  { hex:"#7d6608", emoji:["🟫","🟫"], label:"Olive"   },
+  { hex:"#c0392b", emoji:["🟥","🟥"], label:"Maroon"  },
+  { hex:"#2c3e50", emoji:["⬛","⬛"], label:"Slate"   },
 ];
-// clip-path lets a shape be one CSS property, so it composes with any fill.
+
+// Shapes are drawn in one ink colour, so the set varies along shape alone.
 const SHAPES = [
-  { label:"Square",   clip:"inset(2%)" },   // sharp corners, vs the circle
-  { label:"Circle",   clip:"circle(50%)" },
-  { label:"Triangle", clip:"polygon(50% 4%,96% 96%,4% 96%)" },
-  { label:"Diamond",  clip:"polygon(50% 2%,98% 50%,50% 98%,2% 50%)" },
+  { label:"Square",    glyph:"■", clip:"inset(2%)" },
+  { label:"Circle",    glyph:"●", clip:"circle(50%)" },
+  { label:"Triangle",  glyph:"▲", clip:"polygon(50% 4%,96% 96%,4% 96%)" },
+  { label:"Diamond",   glyph:"◆", clip:"polygon(50% 2%,98% 50%,50% 98%,2% 50%)" },
+  { label:"Star",      glyph:"★", clip:"polygon(50% 2%,61% 37%,98% 37%,68% 59%,79% 95%,50% 73%,21% 95%,32% 59%,2% 37%,39% 37%)" },
+  { label:"Pentagon",  glyph:"⬟", clip:"polygon(50% 2%,98% 38%,79% 96%,21% 96%,2% 38%)" },
+  { label:"Hexagon",   glyph:"⬢", clip:"polygon(25% 3%,75% 3%,98% 50%,75% 97%,25% 97%,2% 50%)" },
+  { label:"Cross",     glyph:"✚", clip:"polygon(34% 2%,66% 2%,66% 34%,98% 34%,98% 66%,66% 66%,66% 98%,34% 98%,34% 66%,2% 66%,2% 34%,34% 34%)" },
+  { label:"Down",      glyph:"▼", clip:"polygon(4% 4%,96% 4%,50% 96%)" },
+  { label:"Chevron",   glyph:"➤", clip:"polygon(4% 4%,50% 4%,96% 50%,50% 96%,4% 96%,42% 50%)" },
+  { label:"Trapezoid", glyph:"▰", clip:"polygon(22% 8%,78% 8%,98% 92%,2% 92%)" },
+  { label:"Rhomboid",  glyph:"▱", clip:"polygon(26% 6%,98% 6%,74% 94%,2% 94%)" },
+  { label:"Octagon",   glyph:"⯃", clip:"polygon(32% 2%,68% 2%,98% 32%,98% 68%,68% 98%,32% 98%,2% 68%,2% 32%)" },
+  { label:"Bowtie",    glyph:"⧗", clip:"polygon(6% 4%,94% 4%,6% 96%,94% 96%)" },
+  { label:"Arrow",     glyph:"➔", clip:"polygon(2% 34%,60% 34%,60% 8%,98% 50%,60% 92%,60% 66%,2% 66%)" },
+  { label:"Half",      glyph:"◗", clip:"polygon(50% 2%,98% 2%,98% 98%,50% 98%)" },
 ];
+
 const WEAVES = [
   { label:"Diagonals", glyph:"▨",
     bg:"repeating-linear-gradient(45deg,var(--ink) 0 2px,transparent 2px 7px)" },
@@ -368,33 +389,24 @@ const WEAVES = [
     bg:"repeating-linear-gradient(180deg,var(--ink) 0 3.5px,transparent 3.5px 9px)" },
 ];
 
-// Each set is a builder: given n, return n distinguishable marks, or null when
-// the set cannot stretch that far (the picker then hides it).
+// Every set varies along exactly ONE dimension — all colours, all shapes, or
+// all patterns. Crossing two dimensions (a red triangle beside a blue triangle
+// beside a red circle) makes the board much harder to read than it is to solve.
+// A set returns null when it cannot produce n marks; the picker then hides it.
 const MARKSETS = {
   classic: { name:"Colour", build(n){
-    if (n <= HUES.length) return HUES.slice(0, n).map(h => ({ ...h, kind:"colour" }));
-    // Past nine hues, cross colour with shape — 4x4 covers a 16 grid exactly.
-    const s = Math.ceil(n / 4);
-    if (s > SHAPES.length) return null;
-    const out = [];
-    for (let i = 0; i < n; i++){
-      const h = HUES[i % 4], sh = SHAPES[(i / 4) | 0];
-      out.push({ ...h, kind:"colour", clip:sh.clip, label:h.label + " " + sh.label });
-    }
-    return out;
+    if (n > HUES.length) return null;
+    return HUES.slice(0, n).map(h => ({ ...h, kind:"colour" }));
   }},
   shapes: { name:"Shapes", build(n){
-    const s = Math.ceil(n / 4);
-    if (s > SHAPES.length) return null;
-    const out = [];
-    for (let i = 0; i < n; i++){
-      const h = HUES[i % 4], sh = SHAPES[(i / 4) | 0];
-      out.push({ ...h, kind:"colour", clip:sh.clip, label:h.label + " " + sh.label });
-    }
-    return out;
+    if (n > SHAPES.length) return null;
+    return SHAPES.slice(0, n).map(sh => ({
+      kind:"colour", hex:"var(--ink)", clip:sh.clip,
+      label:sh.label, emoji:[sh.glyph, sh.glyph],
+    }));
   }},
   ink: { name:"Patterns", build(n){
-    if (n > WEAVES.length) return null;          // monochrome only stretches so far
+    if (n > WEAVES.length) return null;
     return WEAVES.slice(0, n).map(w => ({
       kind:"pattern", bg:w.bg, label:w.label, emoji:[w.glyph, w.glyph],
     }));
