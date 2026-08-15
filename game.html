@@ -638,6 +638,282 @@ function generatePuzzle(seed, n, givens, boxless){
   return { solution, puzzle, givens:puzzle.map(v => v !== null) };
 }
 
+/* ================= difficulty rater ================= */
+
+// The units a value must be unique within: rows, columns, and boxes unless the
+// ruleset has none.
+function unitsOf(n, boxless){
+  const U = [];
+  for (let r = 0; r < n; r++) U.push(Array.from({ length:n }, (_, c) => r * n + c));
+  for (let c = 0; c < n; c++) U.push(Array.from({ length:n }, (_, r) => r * n + c));
+  if (!boxless){
+    const { bw, bh } = boxDims(n), per = n / bw;
+    for (let b = 0; b < n; b++){
+      const r0 = ((b / per) | 0) * bh, c0 = (b % per) * bw, cells = [];
+      for (let r = r0; r < r0 + bh; r++)
+        for (let c = c0; c < c0 + bw; c++) cells.push(r * n + c);
+      U.push(cells);
+    }
+  }
+  return U;
+}
+
+// How hard a puzzle actually is, measured by the cheapest technique that
+// cracks it. Given count is only a proxy for this, and a poor one: at 4x4,
+// puzzles with 8, 6 and 4 givens are all solvable by the very first technique.
+//
+//   T0  naked single  — a cell with one candidate left
+//   T1  hidden single — a value with only one home in a unit
+//   T2  locked candidates — a value confined to one row/column within a box,
+//                           eliminating it elsewhere in that line (boxes only)
+//   T3  none of the above suffice; the solver would have to guess
+//
+// `stalls` counts how often the cheaper techniques ran dry, which separates a
+// puzzle needing one clever step from one needing many.
+function rateDifficulty(puzzle, n, boxless){
+  const U = unitsOf(n, boxless), FULL = (1 << n) - 1;
+  const g = puzzle.slice();
+  const cellUnits = Array.from({ length:n * n }, () => []);
+  U.forEach(u => u.forEach(i => cellUnits[i].push(u)));
+
+  const empty = i => g[i] === null || g[i] === undefined;
+  const candidates = () => g.map((v, i) => {
+    if (!empty(i)) return 0;
+    let used = 0;
+    for (const u of cellUnits[i]) for (const j of u) if (!empty(j)) used |= 1 << g[j];
+    return FULL & ~used;
+  });
+
+  let tier = 0, stalls = 0;
+  for (;;){
+    const cand = candidates();
+
+    let moved = false;
+    for (let i = 0; i < n * n; i++){                       // T0
+      if (!empty(i)) continue;
+      const c = cand[i];
+      if (c === 0) return { tier:3, stalls:stalls + 1, solved:false };
+      if ((c & (c - 1)) === 0){ g[i] = 31 - Math.clz32(c); moved = true; }
+    }
+    if (moved) continue;
+
+    for (const u of U){                                    // T1
+      for (let v = 0; v < n && !moved; v++){
+        const bit = 1 << v;
+        let spot = -1, count = 0, placed = false;
+        for (const i of u){
+          if (g[i] === v){ placed = true; break; }
+          if (empty(i) && (cand[i] & bit)){ count++; spot = i; }
+        }
+        if (!placed && count === 1){ g[spot] = v; moved = true; tier = Math.max(tier, 1); }
+      }
+      if (moved) break;
+    }
+    if (moved) continue;
+
+    if (!boxless && lockedCandidates(g, cand, n, U, FULL)){ // T2
+      tier = Math.max(tier, 2);
+      stalls++;
+      continue;
+    }
+
+    if (g.every(v => v !== null && v !== undefined)) return { tier, stalls, solved:true };
+    return { tier:3, stalls:stalls + 1, solved:false };     // T3
+  }
+}
+
+// Locked candidates: inside one box a value may only sit in a single row or
+// column. That does not place anything by itself, but it rules the value out
+// of the rest of that line, which often unblocks a single. Returns true if it
+// managed to place something after the elimination.
+function lockedCandidates(g, cand, n, U, FULL){
+  const { bw, bh } = boxDims(n), per = n / bw;
+  const empty = i => g[i] === null || g[i] === undefined;
+
+  for (let b = 0; b < n; b++){
+    const r0 = ((b / per) | 0) * bh, c0 = (b % per) * bw;
+    for (let v = 0; v < n; v++){
+      const bit = 1 << v, rows = new Set(), cols = new Set();
+      let any = false, already = false;
+      for (let r = r0; r < r0 + bh; r++)
+        for (let c = c0; c < c0 + bw; c++){
+          const i = r * n + c;
+          if (g[i] === v) already = true;
+          if (empty(i) && (cand[i] & bit)){ rows.add(r); cols.add(c); any = true; }
+        }
+      if (already || !any) continue;
+
+      // Confined to one line -> eliminate from the rest of that line, then see
+      // whether any cell is down to a single candidate.
+      const sweep = (cells) => {
+        for (const i of cells){
+          const r = (i / n) | 0, c = i % n;
+          if (r >= r0 && r < r0 + bh && c >= c0 && c < c0 + bw) continue;  // inside the box
+          if (!empty(i)) continue;
+          cand[i] &= ~bit;
+          if (cand[i] && (cand[i] & (cand[i] - 1)) === 0){
+            g[i] = 31 - Math.clz32(cand[i]);
+            return true;
+          }
+        }
+        return false;
+      };
+      if (rows.size === 1){
+        const r = [...rows][0];
+        if (sweep(Array.from({ length:n }, (_, c) => r * n + c))) return true;
+      }
+      if (cols.size === 1){
+        const c = [...cols][0];
+        if (sweep(Array.from({ length:n }, (_, r) => r * n + c))) return true;
+      }
+    }
+  }
+  return false;
+}
+
+/* ================= progression ================= */
+
+// ---- tuning block ----------------------------------------------------------
+// These are estimates until real play data exists. Everything about how the
+// ladder feels is in these six numbers; change them here and nowhere else.
+const TUNE = {
+  secPerCellBase: 1.10,   // seconds to fill one cell on a tiny grid
+  secPerCellSize: 0.05,   // extra seconds per cell for each step up in n
+  tierFactor: [1.0, 1.0, 1.35, 1.8],   // indexed by rater tier
+  generosityFloor: 1.25,  // time limit never drops below this multiple of par
+  generositySpan: 1.35,   // extra generosity at level 1, decaying away
+  generosityDecay: 140,   // levels for that extra to fall by 1/e
+  stageRelief: 0.15,      // sawtooth: each stage opens slightly kinder
+};
+// ---------------------------------------------------------------------------
+
+const LEVELS_PER_STAGE = 10, STAGES_PER_WORLD = 10;
+const LEVELS_PER_WORLD = LEVELS_PER_STAGE * STAGES_PER_WORLD;
+
+// Each world opens with a real unlock, not only a repaint. Configs are ordered
+// easiest-first; a stage walks up this pool.
+// Deliberately absent: 16x16 below ~140 givens and 12x12 Latin. Both sit past a
+// generation-cost cliff (seconds, not milliseconds) — see CHROMOKU.md.
+const WORLDS = [
+  // `pool` lists a world's configurations easiest-first; `ramp` maps each of
+  // the ten stages onto one of them. The explicit ramp is the level design —
+  // a proportional mapping spread new mechanics too thinly and left whole
+  // worlds sitting below the previous world's difficulty.
+  { name:"Sunrise", tint:"#f5a623", unlock:"4×4 and 6×6",
+    ramp:[0,0,1,1,2,2,2,3,3,3], pool:[
+      { n:4, boxless:false, layers:1, givens:8  },
+      { n:4, boxless:false, layers:1, givens:6  },
+      { n:6, boxless:false, layers:1, givens:16 },
+      { n:6, boxless:false, layers:1, givens:13 },
+  ]},
+  { name:"Tide", tint:"#3498db", unlock:"9×9 and shape marks",
+    ramp:[0,1,1,1,2,2,2,3,3,3], pool:[
+      { n:6, boxless:false, layers:1, givens:13 },
+      { n:9, boxless:false, layers:1, givens:38 },
+      { n:9, boxless:false, layers:1, givens:34 },
+      { n:9, boxless:false, layers:1, givens:30 },
+  ]},
+  // Latin lands here, not earlier: measured harder than Sudoku at equal size
+  // (85% vs 100% solvable by singles at 9x9), despite needing more givens.
+  { name:"Lattice", tint:"#7d5fff", unlock:"Latin rules",
+    ramp:[0,1,2,3,3,4,4,5,5,5], pool:[
+      { n:5,  boxless:true, layers:1, givens:12 },
+      { n:7,  boxless:true, layers:1, givens:24 },
+      { n:7,  boxless:true, layers:1, givens:21 },
+      { n:9,  boxless:true, layers:1, givens:38 },
+      { n:9,  boxless:true, layers:1, givens:34 },
+      { n:10, boxless:true, layers:1, givens:50 },
+  ]},
+  { name:"Echo", tint:"#16a085", unlock:"Double layering",
+    ramp:[0,1,1,2,2,3,3,4,4,4], pool:[
+      { n:4, boxless:false, layers:2, givens:6  },
+      { n:6, boxless:false, layers:2, givens:14 },
+      { n:6, boxless:false, layers:2, givens:12 },
+      { n:9, boxless:false, layers:2, givens:38 },
+      { n:9, boxless:false, layers:2, givens:34 },
+  ]},
+  { name:"Prism", tint:"#e74c3c", unlock:"everything, combined",
+    ramp:[0,1,1,2,2,3,3,4,4,4], pool:[
+      { n:9,  boxless:false, layers:1, givens:30 },
+      { n:10, boxless:true,  layers:1, givens:48 },
+      { n:9,  boxless:false, layers:2, givens:34 },
+      { n:9,  boxless:true,  layers:2, givens:36 },
+      { n:10, boxless:true,  layers:2, givens:50 },
+  ]},
+];
+
+const worldOf = level => Math.min(WORLDS.length, Math.floor((level - 1) / LEVELS_PER_WORLD) + 1);
+const stageOf = level => Math.floor(((level - 1) % LEVELS_PER_WORLD) / LEVELS_PER_STAGE) + 1;
+const stepOf  = level => ((level - 1) % LEVELS_PER_STAGE) + 1;
+
+// A level's configuration is a pure function of its number, so level N is the
+// same puzzle for everyone and no table has to be maintained.
+function levelConfig(level){
+  const w = worldOf(level), stage = stageOf(level), step = stepOf(level);
+  const world = WORLDS[w - 1];
+  const pool = world.pool;
+
+  // The ramp says which config each stage uses; the last step of a stage is a
+  // boss that borrows the next entry as a preview of what is coming.
+  const base = world.ramp[stage - 1];
+  const idx = step === LEVELS_PER_STAGE ? Math.min(pool.length - 1, base + 1) : base;
+  const cfg = pool[idx];
+
+  // Trimming givens only changes difficulty where the grid is big enough to
+  // hold reasoning depth; below 9x9 it just means more typing.
+  const trim = cfg.n >= 9 ? Math.floor((step - 1) / 3) : 0;
+  const givens = Math.max(cfg.givens - trim, Math.ceil(cfg.n * cfg.n * 0.25));
+
+  return { ...cfg, givens, level, world:w, stage, step,
+           boss:step === LEVELS_PER_STAGE, theme:world };
+}
+
+const levelSeed = level => level * 7919 + 13;
+
+// Work estimate, in seconds. Difficulty at small sizes cannot come from the
+// puzzle, so it has to come from the clock — this is what the clock is set by.
+function parSeconds(cfg, tier){
+  const cells = (cfg.n * cfg.n - cfg.givens) * cfg.layers;
+  const perCell = TUNE.secPerCellBase + TUNE.secPerCellSize * cfg.n;
+  return cells * perCell * TUNE.tierFactor[Math.min(tier, 3)];
+}
+
+// Generosity decays across the run, and each stage opens with a little relief
+// that fades over its ten levels — a sawtooth rather than a grind.
+function generosity(level){
+  const decay = TUNE.generosityFloor
+              + TUNE.generositySpan * Math.exp(-level / TUNE.generosityDecay);
+  const relief = TUNE.stageRelief * (1 - (stepOf(level) - 1) / (LEVELS_PER_STAGE - 1));
+  return decay + relief;
+}
+
+// Everything needed to play a level: the puzzle, its measured difficulty, and
+// the clock it has to be beaten against.
+function buildLevel(level){
+  const cfg = levelConfig(level);
+
+  // Prefer a puzzle that plain logic can finish. A tier-3 board is uniquely
+  // solvable but only by guessing, which reads as unfair rather than hard, so
+  // try a few alternative seeds before settling for one.
+  let layers = [], rated = [], tier = 3;
+  for (let attempt = 0; attempt < 6; attempt++){
+    const cand = [], cr = [];
+    for (let L = 0; L < cfg.layers; L++){
+      const p = generatePuzzle(levelSeed(level) + attempt * 104729 + L * 7919,
+                               cfg.n, cfg.givens, cfg.boxless);
+      cand.push(p);
+      cr.push(rateDifficulty(p.puzzle, cfg.n, cfg.boxless));
+    }
+    const t = Math.max(...cr.map(r => r.tier));
+    if (attempt === 0 || t < tier){ layers = cand; rated = cr; tier = t; }
+    if (tier < 3) break;
+  }
+  const stalls = rated.reduce((s, r) => s + r.stalls, 0);
+
+  const par = parSeconds(cfg, tier);
+  return { cfg, layers, tier, stalls, par, limit: par * generosity(level) };
+}
+
 /* ================= state ================= */
 
 const state = {
@@ -1269,7 +1545,8 @@ loadDifficulty(diffOf(load(LS_LAST, "easy")).id);
 if (!load(LS_HELP, false)) showHelp();
 
 // Exposed for verification in the console.
-window.CHROMOKU = { state, DIFFS, TIERS, MARKSETS, generatePuzzle, countSolutions,
+window.CHROMOKU = { state, DIFFS, TIERS, MARKSETS, buildLevel, levelConfig,
+                    rateDifficulty, parSeconds, generosity, WORLDS, TUNE, generatePuzzle, countSolutions,
                     randomSolvedGrid, boxDims, mulberry32 };
 </script>
 </html>

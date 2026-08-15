@@ -117,6 +117,52 @@ exist but need construction; random search will not find them.
 - Box gaps must be roughly 3× the gaps inside a box or the boxes vanish. This
   was missed twice: once at 4×4, again at 9×9.
 
+## Progression (phase 1 — engine only, no level UI yet)
+
+Levels sit alongside the daily, which is unchanged. A level's configuration is a
+pure function of its number, so level N is identical for everyone and there is
+no table to maintain.
+
+**The rater** grades a puzzle by the cheapest technique that cracks it: T0 naked
+singles, T1 hidden singles, T2 locked candidates (boxes only), T3 needs
+guessing. This is the real difficulty signal — given count is a poor proxy, and
+below 9×9 it measures nothing at all.
+
+**Par time** is estimated from work — cells to fill × seconds per cell × a tier
+factor — and the time limit is par × a generosity that decays from 2.6× at level
+1 toward a 1.25× floor, with a small sawtooth so each stage opens kinder than it
+ends. All of it lives in one `TUNE` block. **Those constants are guesses until
+real play data exists.**
+
+**Measured over levels 1–500** (`scratchpad/curve.js`):
+
+| World | Levels | Unlock | Mean par | Peak |
+|---|---|---|---|---|
+| Sunrise | 1–100 | 4×4, 6×6 | 23s | 32s |
+| Tide | 101–200 | 9×9, shapes | 71s | 84s |
+| Lattice | 201–300 | Latin | 64s | 134s |
+| Echo | 301–400 | Double | 103s | 155s |
+| Prism | 401–500 | combinations | 134s | 170s |
+
+Par trends up at 0.27 s/level, generosity trends down, world peaks rise
+monotonically, no level takes over 35ms to build, and every level of all 500 is
+uniquely solvable.
+
+**Two things the first curve got wrong**, both invisible until measured:
+
+- Worlds 3 and 4 *regressed* — introducing a mechanic on a small board dropped
+  difficulty below the previous world and left it there. Fixed by giving each
+  world an explicit stage→config `ramp` rather than spreading its pool evenly.
+  The assertion that caught it is world-peak monotonicity plus "must climb back
+  past the previous world's mean within 40 levels"; a plain positive overall
+  slope passed happily while two worlds sagged.
+- 39 of 500 levels needed guessing. A tier-3 board is uniquely solvable but only
+  by trial, which reads as unfair rather than hard. `buildLevel` now tries up to
+  six alternative seeds for a logic-solvable puzzle: 39 → 1.
+
+Still to build: lives and the timer fail state (5 lives, one per 20 minutes,
+expiry costs a life, retry replays the same level), and the level UI.
+
 ## Open
 
 - **Share badge.** Text sharing spoils the answer, and emoji cannot nest a mark
