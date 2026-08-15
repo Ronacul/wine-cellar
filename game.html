@@ -122,22 +122,26 @@ h1{
    clean block of colour. */
 .board.done .fill{inset:0; border-radius:8px; transition:inset .25s,border-radius .25s}
 
-/* Inner layer: a second, unrelated puzzle drawn inside the same squares.
-   Both given and placed marks are solid discs — an outline read as unfinished.
-   The given/placed cue is size, matching the outer layer, where givens are
-   likewise the bolder of the two.
+/* Inner layer: a second, unrelated puzzle drawn inside the same squares. A
+   square inside a square — literally a smaller version of the same board, which
+   is the plainest reading of the idea. Varying the inner shape is held back as
+   a reward/difficulty lever rather than spent on the default.
+   Both given and placed marks are solid; the cue is size, matching the outer
+   layer, where givens are likewise the bolder of the two.
    Centred via inset, not translate: the pop animation drives transform and
    would otherwise knock the mark off centre while it plays. */
 .dot{
-  position:absolute; inset:33%; border-radius:50%; background:var(--c);
+  position:absolute; inset:31%; border-radius:3px; background:var(--c);
   box-shadow:0 0 0 2px rgba(0,0,0,.28);
 }
-.dot.given{inset:26%; box-shadow:0 0 0 2px rgba(0,0,0,.28),0 0 0 3.5px var(--cell-given)}
-.board.done .dot{inset:26%}
+.dot.given{inset:24%; box-shadow:0 0 0 2px rgba(0,0,0,.28),0 0 0 3.5px var(--cell-given)}
+.board.done .dot{inset:24%}
 
 /* ================= palette ================= */
 /* Row gap has to clear the key labels, which hang below the first row. */
 .palette{display:flex; flex-direction:column; gap:26px; align-items:center}
+/* No number labels past 4 marks, so rows can sit closer. */
+.palette.tight{gap:10px}
 /* Must never wrap — a wrapped eraser collides with the key labels below. */
 .prow{display:flex; gap:clamp(7px,2.5vw,10px); align-items:center; justify-content:center; flex-wrap:nowrap}
 /* Past four marks a single row cannot hold them at a tappable size, so wrap —
@@ -148,7 +152,9 @@ h1{
    outrank .swatch's own background and shadow. */
 .swatch.spacer{background:none; box-shadow:none; visibility:hidden; pointer-events:none}
 /* Inner-layer swatches mirror the board: a ring, not a filled square. */
-.swatch.inner{background:var(--c); border-radius:50%; box-shadow:var(--shadow)}
+.swatch.inner{background:var(--c); border-radius:7px; box-shadow:var(--shadow)}
+.swatch.inner::after{content:""; position:absolute; inset:26%; border-radius:3px;
+  box-shadow:0 0 0 2px rgba(255,255,255,.55)}
 .swatch.inner.on{box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--ring)}
 .swatch{
   width:clamp(44px,12.5vw,52px); aspect-ratio:1; border-radius:14px; background:var(--c);
@@ -171,6 +177,15 @@ h1{
 .seg{display:flex; gap:4px; background:var(--panel2); padding:3px; border-radius:10px; margin-bottom:16px}
 .seg button{flex:1; font-size:12px; font-weight:600; padding:8px 4px; border-radius:7px; color:var(--ink-dim)}
 .seg button.on{background:var(--panel); color:var(--ink); box-shadow:var(--shadow)}
+.dbg{display:flex; gap:6px; margin-bottom:14px}
+.dbg input{
+  flex:1; font-family:var(--mono); font-size:12px; padding:8px 10px; border-radius:8px;
+  border:1px solid var(--line-2); background:var(--panel2); color:var(--ink);
+}
+.dbg button{
+  font-size:12px; font-weight:600; padding:8px 12px; border-radius:8px;
+  background:var(--panel2); color:var(--ink-dim);
+}
 .fld{font-size:9.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.07em; margin-bottom:6px}
 .pal-prev{display:flex; gap:5px; justify-content:center; margin-top:6px}
 .pal-prev i{width:21px; height:21px; border-radius:5px; display:block}
@@ -300,10 +315,10 @@ const TILE = "9px 9px";
 // Primitive pools. A mark set combines these to produce however many
 // distinguishable marks a grid size needs — 4, 9, 16, whatever comes next.
 const HUES = [
-  { hex:"#e74c3c", emoji:["🟥","🔴"], label:"Red"    },
-  { hex:"#3498db", emoji:["🟦","🔵"], label:"Blue"   },
-  { hex:"#27ae60", emoji:["🟩","🟢"], label:"Green"  },
-  { hex:"#f1c40f", emoji:["🟨","🟡"], label:"Yellow" },
+  { hex:"#e74c3c", emoji:["🟥","🟥"], label:"Red"    },
+  { hex:"#3498db", emoji:["🟦","🟦"], label:"Blue"   },
+  { hex:"#27ae60", emoji:["🟩","🟩"], label:"Green"  },
+  { hex:"#f1c40f", emoji:["🟨","🟨"], label:"Yellow" },
   { hex:"#9b59b6", emoji:["🟪","🟣"], label:"Purple" },
   { hex:"#e67e22", emoji:["🟧","🟠"], label:"Orange" },
   { hex:"#16a085", emoji:["🟦","🔵"], label:"Teal"   },
@@ -426,6 +441,7 @@ const LS_THEME = "chromoku.theme.v1";
 const LS_HELP  = "chromoku.seen-help.v1";
 const LS_LAST  = "chromoku.last-diff.v1";
 const LS_PAL   = "chromoku.palette.v1";
+const LS_DAY   = "chromoku.debug-day.v1";   // debug: pin the daily puzzle to a date
 
 // Box dimensions for a given grid size. 4→2x2, 6→3x2, 9→3x3.
 function boxDims(n){
@@ -638,7 +654,12 @@ document.addEventListener("visibilitychange", () => {
 
 /* ================= game setup ================= */
 
+const dayToISO = d => new Date(EPOCH + (d - 1) * 86400000).toISOString().slice(0, 10);
+const isoToDay = iso => Math.floor((Date.parse(iso + "T00:00:00Z") - EPOCH) / 86400000) + 1;
+
 function dayNumber(){
+  const pinned = load(LS_DAY, null);
+  if (pinned !== null) return pinned;
   const now = new Date();
   const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
   return Math.floor((today - EPOCH) / 86400000) + 1;
@@ -803,14 +824,22 @@ function renderPalette(){
       + c.label + (L > 0 ? " (inner)" : "") + '">'
       + (L === 0 && state.n <= 4 ? '<span class="k">' + (i + 1) + "</span>" : "")
       + "</button>"
-    ).join("");
+    );
     const eraser = L === 0
       ? '<button class="swatch erase' + (state.erase ? " on" : "")
         + '" data-erase="1" aria-label="Erase">✕</button>'
       : '<span class="swatch spacer" aria-hidden="true"></span>';
-    rows += '<div class="prow' + (state.n > 4 ? " wrap" : "") + '">' + swatches + eraser + "</div>";
+    // Split into equal rows rather than letting flex-wrap strand one button on
+    // a line of its own — 10 buttons read as 5+5, not 8+2.
+    const all = swatches.concat([eraser]);
+    const nRows = Math.ceil(all.length / 6);
+    const perRow = Math.ceil(all.length / nRows);
+    for (let k = 0; k < all.length; k += perRow)
+      rows += '<div class="prow' + (state.n > 4 ? " wrap" : "") + '">'
+            + all.slice(k, k + perRow).join("") + "</div>";
   }
   const p = document.getElementById("palette");
+  p.className = "palette pal-pad" + (state.n > 4 ? " tight" : "");
   p.innerHTML = rows;
   p.querySelectorAll("[data-c]").forEach(b => {
     b.onclick = () => {
@@ -1110,6 +1139,11 @@ function showSettings(){
     + '<div class="fld">Marks</div><div class="seg">' + palOpts + "</div>"
     + '<div class="fld">Theme</div>'
     + seg([["auto","Auto"],["light","Light"],["dark","Dark"]], theme)
+    + '<div class="fld">Debug — puzzle date</div>'
+    + '<div class="dbg"><input type="date" id="dbgDate" value="' + dayToISO(state.day) + '">'
+    + '<button id="dbgToday">Today</button></div>'
+    + '<p class="lede" style="margin-top:-8px">Puzzle #' + state.day
+    + (load(LS_DAY, null) !== null ? " · pinned" : " · live") + "</p>"
     + '<button class="btn" onclick="closeModal()">Done</button>'
   );
 
@@ -1123,6 +1157,17 @@ function showSettings(){
   m.querySelectorAll("[data-th]").forEach(b => {
     b.onclick = () => { save(LS_THEME, b.dataset.th); applyTheme(); showSettings(); };
   });
+  m.querySelector("#dbgDate").onchange = e => {
+    const d = isoToDay(e.target.value);
+    if (!isFinite(d)) return;
+    save(LS_DAY, d); state.day = d;
+    loadDifficulty(state.diff); showSettings();
+  };
+  m.querySelector("#dbgToday").onclick = () => {
+    try { localStorage.removeItem(LS_DAY); } catch {}
+    state.day = dayNumber();
+    loadDifficulty(state.diff); showSettings();
+  };
 }
 
 /* ================= init ================= */
