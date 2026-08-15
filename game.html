@@ -111,6 +111,9 @@ h1{
 /* Givens sit flush to the edge; your own placements are inset with a visible
    margin. That contrast is what tells you which squares are locked. */
 .fill{position:absolute; inset:7px; border-radius:6px; background:var(--c)}
+/* Pattern marks bring their own ground and image via inline style; the outline
+   keeps a light pattern from dissolving into a light empty cell. */
+.fill.pat{box-shadow:inset 0 0 0 1.5px var(--line-2)}
 .cell.given{background:var(--cell-given)}
 .cell.given .fill{inset:0; border-radius:8px}
 /* On completion every square locks flush, so the finished board reads as one
@@ -158,10 +161,19 @@ h1{
   position:absolute; bottom:-17px; left:0; right:0; text-align:center;
   font-family:var(--mono); font-size:9px; color:var(--ink-faint);
 }
+.swatch.pat{box-shadow:var(--shadow),inset 0 0 0 1.5px var(--line-2)}
+.swatch.pat.on{box-shadow:inset 0 0 0 1.5px var(--line-2),0 0 0 3px var(--bg),0 0 0 5px var(--ring)}
 .swatch.erase{
   background:var(--panel); border:1.5px solid var(--line-2); color:var(--ink-dim);
   display:grid; place-items:center; font-size:19px;
 }
+/* settings */
+.seg{display:flex; gap:4px; background:var(--panel2); padding:3px; border-radius:10px; margin-bottom:16px}
+.seg button{flex:1; font-size:12px; font-weight:600; padding:8px 4px; border-radius:7px; color:var(--ink-dim)}
+.seg button.on{background:var(--panel); color:var(--ink); box-shadow:var(--shadow)}
+.fld{font-size:9.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.07em; margin-bottom:6px}
+.pal-prev{display:flex; gap:5px; justify-content:center; margin-top:6px}
+.pal-prev i{width:21px; height:21px; border-radius:5px; display:block}
 .pal-pad{padding-bottom:20px}
 
 /* ================= modal ================= */
@@ -249,7 +261,7 @@ h1{
   </div>
   <div class="hdr-r">
     <span class="timer" id="timer">0:00</span>
-    <button class="icon-btn" id="btnTheme" aria-label="Toggle theme">◐</button>
+    <button class="icon-btn" id="btnSettings" aria-label="Settings">⚙</button>
   </div>
 </header>
 
@@ -273,16 +285,46 @@ const EPOCH = Date.UTC(2026, 7, 15);          // 15 Aug 2026 = puzzle #1
 // Every colour reference routes through here so palette unlocks are additive
 // later. `emoji` is indexed by layer: squares for the outer grid, circles for
 // the inner one, so a shared result stays readable as two separate puzzles.
+// A mark is anything four-way distinguishable — colour is just one choice.
+// Pattern sets are monochrome, so they stay playable with any colour vision.
+const TILE = "9px 9px";
 const PALETTES = {
-  classic: { name:"Classic", colors:[
+  classic: { name:"Colour", kind:"colour", marks:[
     { hex:"#e74c3c", emoji:["🟥","🔴"], label:"Red"    },
     { hex:"#3498db", emoji:["🟦","🔵"], label:"Blue"   },
     { hex:"#27ae60", emoji:["🟩","🟢"], label:"Green"  },
     { hex:"#f1c40f", emoji:["🟨","🟡"], label:"Yellow" },
   ]},
+  ink: { name:"Patterns", kind:"pattern", marks:[
+    { label:"Diagonals", emoji:["▨","🔴"],
+      bg:"repeating-linear-gradient(45deg,var(--ink) 0 2px,transparent 2px 7px)" },
+    { label:"Bars", emoji:["▤","🔵"],
+      bg:"repeating-linear-gradient(180deg,var(--ink) 0 2px,transparent 2px 7px)" },
+    { label:"Hatch", emoji:["▦","🟢"],
+      bg:"repeating-linear-gradient(0deg,var(--ink) 0 1.5px,transparent 1.5px 9px),"
+       + "repeating-linear-gradient(90deg,var(--ink) 0 1.5px,transparent 1.5px 9px)" },
+    { label:"Dots", emoji:["⠿","🟡"],
+      bg:"radial-gradient(var(--ink) 2px,transparent 2.5px)" },
+  ]},
 };
 let activePalette = "classic";
-const palette = () => PALETTES[activePalette].colors;
+const palette = () => PALETTES[activePalette].marks;
+const isPattern = () => PALETTES[activePalette].kind === "pattern";
+
+// Inline style for a mark. Patterns need a ground of their own, since the
+// pattern is drawn in ink and would otherwise sit on the empty-cell colour.
+function markStyle(i){
+  const m = palette()[i];
+  if (!isPattern()) return "--c:" + m.hex;
+  return "background-color:var(--panel2);background-image:" + m.bg
+       + ";background-size:" + TILE;
+}
+
+// The inner layer always uses colour: its marks are a third the width of a
+// square, and a hatch or dot pattern turns to mush at that size.
+const innerMarks = () => PALETTES.classic.marks;
+const styleFor = (L, i) => L > 0 ? "--c:" + innerMarks()[i].hex : markStyle(i);
+const emojiFor = (L, i) => L > 0 ? innerMarks()[i].emoji[1] : palette()[i].emoji[0];
 
 // Difficulty is a table, not branching logic — a future difficulty algorithm
 // replaces these numbers without touching the generator.
@@ -304,6 +346,7 @@ const LS_STATS = "chromoku.stats.v1";
 const LS_THEME = "chromoku.theme.v1";
 const LS_HELP  = "chromoku.seen-help.v1";
 const LS_LAST  = "chromoku.last-diff.v1";
+const LS_PAL   = "chromoku.palette.v1";
 
 // Box dimensions for a given grid size. 4→2x2, 6→3x2, 9→3x3.
 function boxDims(n){
@@ -613,17 +656,16 @@ function renderBoard(){
 // Layer 0 fills the square itself; each further layer draws a mark inside it.
 // `animate` is the layer index that was just placed, or -1.
 function cellInner(i, animate){
-  const cols = palette();
   let out = "";
   const v0 = state.layers[0].grid[i];
   if (v0 !== null && v0 !== undefined)
-    out += '<div class="fill' + (animate === 0 ? " new" : "")
-         + '" style="--c:' + cols[v0].hex + '"></div>';
+    out += '<div class="fill' + (isPattern() ? " pat" : "") + (animate === 0 ? " new" : "")
+         + '" style="' + styleFor(0, v0) + '"></div>';
   for (let L = 1; L < state.layers.length; L++){
     const v = state.layers[L].grid[i];
     if (v === null || v === undefined) continue;
     out += '<div class="dot' + (state.layers[L].givens[i] ? " given" : "")
-         + (animate === L ? " new" : "") + '" style="--c:' + cols[v].hex + '"></div>';
+         + (animate === L ? " new" : "") + '" style="' + styleFor(L, v) + '"></div>';
   }
   return out;
 }
@@ -635,10 +677,11 @@ function renderPalette(){
   const sel = state.sel;
   let rows = "";
   for (let L = 0; L < state.layers.length; L++){
-    const swatches = cols.map((c, i) =>
-      '<button class="swatch' + (L > 0 ? " inner" : "")
+    const marks = L > 0 ? innerMarks() : cols;
+    const swatches = marks.map((c, i) =>
+      '<button class="swatch' + (L > 0 ? " inner" : (isPattern() ? " pat" : ""))
       + (sel && sel.layer === L && sel.colour === i ? " on" : "")
-      + '" data-l="' + L + '" data-c="' + i + '" style="--c:' + c.hex + '" aria-label="'
+      + '" data-l="' + L + '" data-c="' + i + '" style="' + styleFor(L, i) + '" aria-label="'
       + c.label + (L > 0 ? " (inner)" : "") + '">'
       + (L === 0 ? '<span class="k">' + (i + 1) + "</span>" : "")
       + "</button>"
@@ -767,10 +810,10 @@ function win(){
 /* ================= share ================= */
 
 function emojiGrid(L){
-  const n = state.n, cols = palette(), g = state.layers[L].grid;
+  const n = state.n, g = state.layers[L].grid;
   let out = "";
   for (let r = 0; r < n; r++){
-    for (let c = 0; c < n; c++) out += cols[g[r * n + c]].emoji[Math.min(L, 1)];
+    for (let c = 0; c < n; c++) out += emojiFor(L, g[r * n + c]);
     if (r < n - 1) out += "\n";
   }
   return out;
@@ -894,21 +937,51 @@ function applyTheme(){
   if (t === "auto") document.documentElement.removeAttribute("data-theme");
   else document.documentElement.setAttribute("data-theme", t);
 }
-function cycleTheme(){
-  const order = ["auto", "light", "dark"];
-  const next = order[(order.indexOf(load(LS_THEME, "auto")) + 1) % 3];
-  save(LS_THEME, next);
-  applyTheme();
-  toast("Theme: " + next);
+
+function showSettings(){
+  const theme = load(LS_THEME, "auto");
+  // Attribute is data-th, not data-theme: the latter also matches <html>.
+  const seg = (opts, cur) => '<div class="seg">' + opts.map(o =>
+    '<button class="' + (o[0] === cur ? "on" : "") + '" data-th="' + o[0] + '">'
+    + o[1] + "</button>").join("") + "</div>";
+
+  const palOpts = Object.entries(PALETTES).map(([id, p]) => {
+    const prev = p.marks.map((_, i) =>
+      '<i style="' + (p.kind === "pattern"
+        // Same tile size as the board — a smaller one clips the gradient period.
+        ? "background-color:var(--panel2);background-image:" + p.marks[i].bg
+          + ";background-size:" + TILE + ";box-shadow:inset 0 0 0 1px var(--line-2)"
+        : "background:" + p.marks[i].hex) + '"></i>').join("");
+    return '<button class="' + (id === activePalette ? "on" : "") + '" data-pal="' + id + '">'
+      + p.name + '<span class="pal-prev">' + prev + "</span></button>";
+  }).join("");
+
+  openModal(
+    "<h2>Settings</h2>"
+    + '<p class="lede">Patterns work without relying on colour vision.</p>'
+    + '<div class="fld">Marks</div><div class="seg">' + palOpts + "</div>"
+    + '<div class="fld">Theme</div>'
+    + seg([["auto","Auto"],["light","Light"],["dark","Dark"]], theme)
+    + '<button class="btn" onclick="closeModal()">Done</button>'
+  );
+
+  const m = document.getElementById("modal");
+  m.querySelectorAll("[data-pal]").forEach(b => {
+    b.onclick = () => { activePalette = b.dataset.pal; save(LS_PAL, activePalette); render(); showSettings(); };
+  });
+  m.querySelectorAll("[data-th]").forEach(b => {
+    b.onclick = () => { save(LS_THEME, b.dataset.th); applyTheme(); showSettings(); };
+  });
 }
 
 /* ================= init ================= */
 
 document.getElementById("btnHelp").onclick  = showHelp;
 document.getElementById("btnStats").onclick = showStats;
-document.getElementById("btnTheme").onclick = cycleTheme;
+document.getElementById("btnSettings").onclick = showSettings;
 
 applyTheme();
+activePalette = PALETTES[load(LS_PAL, "classic")] ? load(LS_PAL, "classic") : "classic";
 state.day = dayNumber();
 loadDifficulty(diffOf(load(LS_LAST, "easy")).id);
 if (!load(LS_HELP, false)) showHelp();
