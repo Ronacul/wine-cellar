@@ -99,6 +99,39 @@ h1{
 .diff.on{background:var(--panel); color:var(--ink); box-shadow:var(--shadow)}
 .diff .tick{opacity:.55; font-size:10px}
 
+/* ================= level mode ================= */
+.levelbar{
+  flex:1; display:flex; align-items:center; gap:10px; min-width:0;
+  background:var(--panel2); border-radius:11px; padding:7px 9px;
+}
+.lvl-c{flex:1; display:flex; flex-direction:column; line-height:1.15}
+.lvl-c b{font-size:14px; font-weight:700; white-space:nowrap}
+.lvl-sub{
+  font-family:var(--mono); font-size:9.5px; color:var(--ink-faint); white-space:nowrap;
+  text-transform:uppercase; letter-spacing:.06em; margin-top:2px;
+}
+.hearts{display:flex; gap:2px; font-size:13px; color:var(--ink-faint)}
+.hearts .on{color:var(--error)}
+.hearts.big{justify-content:center; font-size:26px; gap:5px; margin-bottom:16px}
+/* The clock is the only way to lose, so it gets a bar rather than just digits. */
+.tbarwrap{
+  width:100%; max-width:400px; height:5px; border-radius:3px;
+  background:var(--panel2); overflow:hidden; margin-top:-16px;
+}
+.tbar-fill{
+  height:100%; width:100%; border-radius:3px; background:var(--ink-dim);
+  transition:width .25s linear, background .3s;
+}
+.tbar-fill.warn{background:#d4842a}
+.tbar-fill.danger{background:var(--error)}
+.timer.warn{color:#d4842a}
+.timer.danger{color:var(--error); font-weight:600}
+.stars-big{
+  text-align:center; font-size:34px; letter-spacing:6px; margin:2px 0 16px;
+  color:var(--line-2);
+}
+.stars-big .on{color:#f1c40f}
+
 /* ================= board ================= */
 .play{
   flex:1; width:100%; display:flex; flex-direction:column;
@@ -302,7 +335,9 @@ h1{
     <div class="diffs" id="diffs"></div>
     <button class="dbl" id="latinToggle">Latin</button>
     <button class="dbl" id="dblToggle">Double</button>
+    <button class="dbl" id="lvlToggle">Levels</button>
   </div>
+  <div class="tbarwrap" id="tbarwrap" style="display:none"><div class="tbar-fill" id="tbar"></div></div>
   <div class="board-wrap"><div class="board" id="board"></div></div>
   <div class="palette pal-pad" id="palette"></div>
 </div>
@@ -483,6 +518,7 @@ const LS_LAST  = "chromoku.last-diff.v1";
 const LS_PAL   = "chromoku.palette.v1";
 const LS_DBL   = "chromoku.double.v1";
 const LS_LATIN = "chromoku.latin.v1";
+const LS_PROG  = "chromoku.progress.v1";
 const LS_DAY   = "chromoku.debug-day.v1";   // debug: pin the daily puzzle to a date
 
 // Box dimensions for a given grid size. 4→2x2, 6→3x2, 9→3x3.
@@ -914,6 +950,27 @@ function buildLevel(level){
   return { cfg, layers, tier, stalls, par, limit: par * generosity(level) };
 }
 
+/* ================= progression state ================= */
+
+const LIVES_MAX = 5, LIVES_REGEN_MS = 20 * 60 * 1000;
+
+const blankProgress = () => ({ level:1, lives:LIVES_MAX, livesAt:Date.now(), stars:{}, best:{} });
+
+// Lives refill on a clock, so the count has to be recomputed from a timestamp
+// rather than ticked — otherwise closing the tab pauses the regeneration.
+function progress(){
+  const p = load(LS_PROG, null) || blankProgress();
+  if (p.lives >= LIVES_MAX){ p.lives = LIVES_MAX; p.livesAt = Date.now(); return p; }
+  const gained = Math.floor((Date.now() - p.livesAt) / LIVES_REGEN_MS);
+  if (gained > 0){
+    p.lives = Math.min(LIVES_MAX, p.lives + gained);
+    p.livesAt = p.lives >= LIVES_MAX ? Date.now() : p.livesAt + gained * LIVES_REGEN_MS;
+  }
+  return p;
+}
+const saveProgress2 = p => save(LS_PROG, p);
+const nextLifeMs = p => p.lives >= LIVES_MAX ? 0 : LIVES_REGEN_MS - (Date.now() - p.livesAt);
+
 /* ================= state ================= */
 
 const state = {
@@ -921,6 +978,9 @@ const state = {
   layers:[],               // [{ grid, solution, givens }] — one per overlaid puzzle
   sel:null,                // { layer, colour } or null
   erase:false,
+  mode:"daily",            // "daily" | "levels"
+  lvl:null,                // active level record from buildLevel()
+  limitMs:0,               // countdown budget for the active level
   latin:false,             // ruleset axis: no boxes, rows and columns only
   dbl:false,               // layering axis: applies to whichever tier is selected
   practice:false,          // a re-rollable puzzle, outside the daily record
@@ -968,7 +1028,22 @@ function fmtTime(ms){
   return mm + ":" + String(ss).padStart(2, "0");
 }
 setInterval(() => { if (state.since) tickTimer(); }, 250);
-function tickTimer(){ document.getElementById("timer").textContent = fmtTime(elapsedMs()); }
+function tickTimer(){
+  const el = document.getElementById("timer");
+  if (state.mode !== "levels"){ el.textContent = fmtTime(elapsedMs()); return; }
+
+  const left = Math.max(0, state.limitMs - elapsedMs());
+  el.textContent = fmtTime(left);
+  el.className = "timer" + (left < 10000 ? " danger" : left < 30000 ? " warn" : "");
+
+  const bar = document.getElementById("tbar");
+  if (bar){
+    const frac = state.limitMs ? left / state.limitMs : 1;
+    bar.style.width = (frac * 100).toFixed(2) + "%";
+    bar.className = "tbar-fill" + (frac < 0.12 ? " danger" : frac < 0.34 ? " warn" : "");
+  }
+  if (left <= 0 && !state.done && state.started) failLevel();
+}
 
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) { stopTimer(); saveProgress(); }
@@ -1024,6 +1099,38 @@ function loadDifficulty(id, fresh){
   tickTimer();
 }
 
+// Loads level n into the same board machinery the daily uses, so rendering,
+// interaction and win detection are shared rather than duplicated.
+function loadLevel(n){
+  stopTimer();
+  const p = progress();
+  const lv = buildLevel(n);
+  state.mode = "levels";
+  state.lvl = lv;
+  state.n = lv.cfg.n;
+  state.latin = lv.cfg.boxless;
+  state.dbl = lv.cfg.layers > 1;
+  state.practice = true;          // levels keep their own record, not the daily one
+  buildMarks();
+
+  state.layers = lv.layers.map(x => ({
+    grid:x.puzzle.slice(), solution:x.solution.slice(), givens:x.givens.slice(),
+  }));
+  state.limitMs = lv.limit * 1000;
+  state.elapsed = 0; state.since = null; state.started = false;
+  state.mistakes = 0; state.done = false; state.sel = null; state.erase = false;
+
+  saveProgress2(Object.assign(p, { level:n }));
+  render();
+  tickTimer();
+}
+
+function enterDaily(){
+  state.mode = "daily"; state.lvl = null; state.practice = false;
+  state.latin = load(LS_LATIN, false); state.dbl = load(LS_DBL, false);
+  loadDifficulty(diffOf(load(LS_LAST, "easy")).id);
+}
+
 /* ================= conflicts ================= */
 
 function conflictsAt(L, idx){
@@ -1061,13 +1168,45 @@ function isSolved(){
 
 /* ================= rendering ================= */
 
-function render(){ renderDiffs(); renderBoard(); renderPalette(); renderSub(); }
+function render(){
+  if (state.mode === "levels") renderLevelBar(); else renderDiffs();
+  renderBoard(); renderPalette(); renderSub();
+}
+
+const heartsHTML = p => Array.from({ length:LIVES_MAX }, (_, i) =>
+  '<span class="' + (i < p.lives ? "on" : "") + '">♥</span>').join("");
+
+function renderLevelBar(){
+  const lv = state.lvl, p = progress();
+  const stars = p.stars[String(lv.cfg.level)] || 0;
+  const c = lv.cfg;
+  const tag = c.n + "×" + c.n + (c.boxless ? " Latin" : "") + (c.layers > 1 ? " ×2" : "");
+  document.getElementById("diffs").outerHTML =
+    '<div class="levelbar" id="diffs">'
+    + '<div class="lvl-l"><button class="icon-btn" id="lvBack" aria-label="Back to daily">←</button></div>'
+    + '<div class="lvl-c"><b>Level ' + c.level + "</b>"
+    + '<span class="lvl-sub">' + c.theme.name + " · " + tag + (c.boss ? " · boss" : "") + "</span></div>"
+    + '<div class="hearts">' + heartsHTML(p) + "</div>"
+    + "</div>";
+  const tw = document.getElementById("tbarwrap");
+  if (tw) tw.style.display = "";
+  document.getElementById("lvBack").onclick = enterDaily;
+  // The axis toggles belong to the daily; a level chooses its own config.
+  for (const id of ["latinToggle", "dblToggle", "lvlToggle"]){
+    const b = document.getElementById(id);
+    if (b) b.style.display = "none";
+  }
+  const box = document.getElementById("diffs");
+  if (box) box.dataset.stars = stars;
+}
 
 function renderSub(){
   document.getElementById("sub").textContent =
-    (state.practice ? "Practice" : "#" + state.day) + " · "
-    + (state.latin ? "Latin " : "") + diffOf(state.diff).label
-    + (state.dbl ? " · Double" : "");
+    state.mode === "levels"
+      ? "Stage " + state.lvl.cfg.stage + " · step " + state.lvl.cfg.step
+      : (state.practice ? "Practice" : "#" + state.day) + " · "
+        + (state.latin ? "Latin " : "") + diffOf(state.diff).label
+        + (state.dbl ? " · Double" : "");
 }
 
 function renderDiffs(){
@@ -1078,6 +1217,14 @@ function renderDiffs(){
     return '<button class="diff' + (d.id === state.diff ? " on" : "") + '" data-diff="' + d.id + '">'
       + d.label + (done ? ' <span class="tick">✓</span>' : "") + "</button>";
   }).join("");
+  for (const id of ["latinToggle", "dblToggle", "lvlToggle"]){
+    const b = document.getElementById(id);
+    if (b) b.style.display = "";
+  }
+  const lb = document.getElementById("lvlToggle");
+  if (lb) lb.onclick = () => loadLevel(progress().level);
+  const tw = document.getElementById("tbarwrap");
+  if (tw) tw.style.display = "none";
   const lt = document.getElementById("latinToggle");
   lt.className = "dbl" + (state.latin ? " on" : "");
   lt.textContent = state.latin ? "Latin ✓" : "Latin";
@@ -1285,6 +1432,7 @@ function win(){
   saveProgress();
   tickTimer();          // freeze the header on the final time, not the last tick
 
+  if (state.mode === "levels"){ winLevel(); return; }
   if (state.practice){ markWon(); setTimeout(showWin, 1100); return; }
 
   const st = load(LS_STATS, blankStats());
@@ -1301,6 +1449,69 @@ function win(){
   markWon();
   renderDiffs();
   setTimeout(showWin, 1100);
+}
+
+// Stars reward beating par, so there is a reason to replay a cleared level.
+function starsFor(secs, par){ return secs <= par ? 3 : secs <= par * 1.4 ? 2 : 1; }
+
+function winLevel(){
+  const lv = state.lvl, secs = Math.round(elapsedMs() / 1000);
+  const st = starsFor(secs, lv.par);
+  const p = progress();
+  const key = String(lv.cfg.level);
+  p.stars[key] = Math.max(p.stars[key] || 0, st);
+  if (!p.best[key] || secs < p.best[key]) p.best[key] = secs;
+  p.level = Math.max(p.level, lv.cfg.level + 1);
+  saveProgress2(p);
+
+  markWon();
+  setTimeout(() => {
+    openModal(
+      "<h2>Level " + lv.cfg.level + " cleared</h2>"
+      + '<p class="lede">' + lv.cfg.theme.name + " · stage " + lv.cfg.stage
+      + (lv.cfg.boss ? " · boss" : "") + "</p>"
+      + '<div class="stars-big">' + [1,2,3].map(i =>
+          '<span class="' + (i <= st ? "on" : "") + '">★</span>').join("") + "</div>"
+      + '<div class="stats">'
+      + '<div class="stat"><div class="n">' + fmtTime(secs * 1000) + '</div><div class="l">Your time</div></div>'
+      + '<div class="stat"><div class="n">' + fmtTime(lv.par * 1000) + '</div><div class="l">Par</div></div>'
+      + '<div class="stat"><div class="n">' + progress().lives + '</div><div class="l">Lives</div></div>'
+      + "</div>"
+      + '<button class="btn" id="mNext">Next level</button>'
+      + '<button class="btn ghost" id="mRetry">Replay</button>'
+    );
+    document.getElementById("mNext").onclick = () => { closeModal(); loadLevel(lv.cfg.level + 1); };
+    document.getElementById("mRetry").onclick = () => { closeModal(); loadLevel(lv.cfg.level); };
+  }, 1100);
+}
+
+// Failure is the clock, never a mistake — conflicts stay advisory, which keeps
+// the puzzle forgiving while still giving the run something to lose.
+function failLevel(){
+  stopTimer();
+  state.done = true;
+  const p = progress();
+  p.lives = Math.max(0, p.lives - 1);
+  if (p.lives === LIVES_MAX - 1 && !p.livesAt) p.livesAt = Date.now();
+  if (p.lives < LIVES_MAX) p.livesAt = p.livesAt || Date.now();
+  saveProgress2(p);
+  renderLevelBar();
+
+  const out = p.lives <= 0;
+  openModal(
+    "<h2>Out of time</h2>"
+    + '<p class="lede">Level ' + state.lvl.cfg.level + " · par was "
+    + fmtTime(state.lvl.par * 1000) + ".</p>"
+    + '<div class="hearts big">' + heartsHTML(p) + "</div>"
+    + (out
+        ? '<p class="lede">No lives left. One returns in ' + fmtTime(nextLifeMs(p)) + ".</p>"
+          + '<button class="btn" id="mBack">Back to daily</button>'
+        : '<button class="btn" id="mRetry">Try again</button>'
+          + '<button class="btn ghost" id="mBack">Back to daily</button>')
+  );
+  const r = document.getElementById("mRetry");
+  if (r) r.onclick = () => { closeModal(); loadLevel(state.lvl.cfg.level); };
+  document.getElementById("mBack").onclick = () => { closeModal(); enterDaily(); };
 }
 
 /* ================= share ================= */
