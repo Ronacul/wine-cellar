@@ -79,10 +79,12 @@ h1{
 /* ================= difficulty ================= */
 .diffs{
   display:flex; gap:4px; background:var(--panel2); padding:3px;
-  border-radius:11px;
+  border-radius:11px; max-width:100%; overflow-x:auto; scrollbar-width:none;
 }
+.diffs::-webkit-scrollbar{display:none}
+.diff{flex:0 0 auto}
 .diff{
-  font-size:12px; font-weight:600; padding:6px 16px; border-radius:8px;
+  font-size:12px; font-weight:600; padding:6px 14px; border-radius:8px; white-space:nowrap;
   color:var(--ink-dim); transition:background .15s,color .15s;
 }
 .diff.on{background:var(--panel); color:var(--ink); box-shadow:var(--shadow)}
@@ -97,12 +99,12 @@ h1{
 /* Gap between boxes is 3x the gap inside them — that ratio is the only thing
    making the four 2x2 boxes legible, so it has to stay exaggerated. */
 .board{
-  display:grid; gap:12px; aspect-ratio:1; padding:12px;
+  display:grid; gap:var(--bgap,12px); aspect-ratio:1; padding:var(--bgap,12px);
   background:var(--board); border-radius:18px;
 }
-.box{display:grid; gap:4px}
+.box{display:grid; gap:var(--cgap,4px)}
 .cell{
-  position:relative; background:var(--cell); border-radius:8px;
+  position:relative; background:var(--cell); border-radius:var(--crad,8px);
   transition:background .12s;
 }
 .cell:not(.given){cursor:pointer}
@@ -110,7 +112,7 @@ h1{
 
 /* Givens sit flush to the edge; your own placements are inset with a visible
    margin. That contrast is what tells you which squares are locked. */
-.fill{position:absolute; inset:7px; border-radius:6px; background:var(--c)}
+.fill{position:absolute; inset:var(--fin,7px); border-radius:6px; background:var(--c)}
 /* Pattern marks bring their own ground and image via inline style; the outline
    keeps a light pattern from dissolving into a light empty cell. */
 .fill.pat{box-shadow:inset 0 0 0 1.5px var(--line-2)}
@@ -121,35 +123,33 @@ h1{
 .board.done .fill{inset:0; border-radius:8px; transition:inset .25s,border-radius .25s}
 
 /* Inner layer: a second, unrelated puzzle drawn inside the same squares.
-   Given = solid disc, yours = ring. Same read as the outer layer (locked marks
-   are solid, yours are open), so the rule only has to be learned once. */
-/* Centred via inset, not translate — the pop animation drives transform and
+   Both given and placed marks are solid discs — an outline read as unfinished.
+   The given/placed cue is size, matching the outer layer, where givens are
+   likewise the bolder of the two.
+   Centred via inset, not translate: the pop animation drives transform and
    would otherwise knock the mark off centre while it plays. */
 .dot{
-  position:absolute; inset:31%; border-radius:50%;
+  position:absolute; inset:33%; border-radius:50%; background:var(--c);
   box-shadow:0 0 0 2px rgba(0,0,0,.28);
 }
-.dot.given{background:var(--c)}
-.dot:not(.given){
-  background:transparent;
-  box-shadow:inset 0 0 0 4px var(--c), 0 0 0 2px rgba(0,0,0,.28);
-}
-.board.done .dot{background:var(--c); box-shadow:0 0 0 2px rgba(0,0,0,.28)}
+.dot.given{inset:26%; box-shadow:0 0 0 2px rgba(0,0,0,.28),0 0 0 3.5px var(--cell-given)}
+.board.done .dot{inset:26%}
 
 /* ================= palette ================= */
 /* Row gap has to clear the key labels, which hang below the first row. */
 .palette{display:flex; flex-direction:column; gap:26px; align-items:center}
 /* Must never wrap — a wrapped eraser collides with the key labels below. */
 .prow{display:flex; gap:clamp(7px,2.5vw,10px); align-items:center; justify-content:center; flex-wrap:nowrap}
+/* Past four marks a single row cannot hold them at a tappable size, so wrap —
+   and drop the number labels, which are what made wrapping collide before. */
+.prow.wrap{flex-wrap:wrap; gap:7px; max-width:340px}
+.prow.wrap .swatch{width:clamp(34px,9vw,42px)}
 /* Holds the eraser column open on the inner row. Needs the compound selector to
    outrank .swatch's own background and shadow. */
 .swatch.spacer{background:none; box-shadow:none; visibility:hidden; pointer-events:none}
 /* Inner-layer swatches mirror the board: a ring, not a filled square. */
-.swatch.inner{
-  background:var(--panel); border-radius:50%;
-  box-shadow:inset 0 0 0 6px var(--c), 0 0 0 1px var(--line);
-}
-.swatch.inner.on{box-shadow:inset 0 0 0 6px var(--c),0 0 0 3px var(--bg),0 0 0 5px var(--ring)}
+.swatch.inner{background:var(--c); border-radius:50%; box-shadow:var(--shadow)}
+.swatch.inner.on{box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--ring)}
 .swatch{
   width:clamp(44px,12.5vw,52px); aspect-ratio:1; border-radius:14px; background:var(--c);
   position:relative; transition:transform .12s;
@@ -209,6 +209,13 @@ h1{
 .times{border-top:1px solid var(--line); padding-top:14px; margin-bottom:18px}
 .time-row{display:flex; justify-content:space-between; font-size:12.5px; padding:5px 0}
 .time-row span:last-child{font-family:var(--mono); color:var(--ink-dim)}
+.mini-wrap{display:flex; justify-content:center; margin-bottom:18px}
+.board.mini{
+  width:180px; gap:6px; padding:6px; border-radius:11px;
+}
+.board.mini .box{gap:2px}
+.board.mini .cell{border-radius:4px}
+.board.mini .fill{border-radius:4px}
 .share-box{
   font-family:var(--mono); font-size:19px; line-height:1.2; text-align:center;
   background:var(--panel2); border-radius:11px; padding:16px; margin-bottom:16px;
@@ -288,43 +295,110 @@ const EPOCH = Date.UTC(2026, 7, 15);          // 15 Aug 2026 = puzzle #1
 // A mark is anything four-way distinguishable — colour is just one choice.
 // Pattern sets are monochrome, so they stay playable with any colour vision.
 const TILE = "9px 9px";
-const PALETTES = {
-  classic: { name:"Colour", kind:"colour", marks:[
-    { hex:"#e74c3c", emoji:["🟥","🔴"], label:"Red"    },
-    { hex:"#3498db", emoji:["🟦","🔵"], label:"Blue"   },
-    { hex:"#27ae60", emoji:["🟩","🟢"], label:"Green"  },
-    { hex:"#f1c40f", emoji:["🟨","🟡"], label:"Yellow" },
-  ]},
-  ink: { name:"Patterns", kind:"pattern", marks:[
-    { label:"Diagonals", emoji:["▨","🔴"],
-      bg:"repeating-linear-gradient(45deg,var(--ink) 0 2px,transparent 2px 7px)" },
-    { label:"Bars", emoji:["▤","🔵"],
-      bg:"repeating-linear-gradient(180deg,var(--ink) 0 2px,transparent 2px 7px)" },
-    { label:"Hatch", emoji:["▦","🟢"],
-      bg:"repeating-linear-gradient(0deg,var(--ink) 0 1.5px,transparent 1.5px 9px),"
-       + "repeating-linear-gradient(90deg,var(--ink) 0 1.5px,transparent 1.5px 9px)" },
-    { label:"Dots", emoji:["⠿","🟡"],
-      bg:"radial-gradient(var(--ink) 2px,transparent 2.5px)" },
-  ]},
+
+// Primitive pools. A mark set combines these to produce however many
+// distinguishable marks a grid size needs — 4, 9, 16, whatever comes next.
+const HUES = [
+  { hex:"#e74c3c", emoji:["🟥","🔴"], label:"Red"    },
+  { hex:"#3498db", emoji:["🟦","🔵"], label:"Blue"   },
+  { hex:"#27ae60", emoji:["🟩","🟢"], label:"Green"  },
+  { hex:"#f1c40f", emoji:["🟨","🟡"], label:"Yellow" },
+  { hex:"#9b59b6", emoji:["🟪","🟣"], label:"Purple" },
+  { hex:"#e67e22", emoji:["🟧","🟠"], label:"Orange" },
+  { hex:"#16a085", emoji:["🟦","🔵"], label:"Teal"   },
+  { hex:"#7f8c8d", emoji:["⬜","⚪"], label:"Grey"   },
+  { hex:"#6d4c41", emoji:["🟫","🟤"], label:"Brown"  },
+];
+// clip-path lets a shape be one CSS property, so it composes with any fill.
+const SHAPES = [
+  { label:"Square",   clip:"inset(2%)" },   // sharp corners, vs the circle
+  { label:"Circle",   clip:"circle(50%)" },
+  { label:"Triangle", clip:"polygon(50% 4%,96% 96%,4% 96%)" },
+  { label:"Diamond",  clip:"polygon(50% 2%,98% 50%,50% 98%,2% 50%)" },
+];
+const WEAVES = [
+  { label:"Diagonals", glyph:"▨",
+    bg:"repeating-linear-gradient(45deg,var(--ink) 0 2px,transparent 2px 7px)" },
+  { label:"Bars", glyph:"▤",
+    bg:"repeating-linear-gradient(180deg,var(--ink) 0 2px,transparent 2px 7px)" },
+  { label:"Hatch", glyph:"▦",
+    bg:"repeating-linear-gradient(0deg,var(--ink) 0 1.5px,transparent 1.5px 9px),"
+     + "repeating-linear-gradient(90deg,var(--ink) 0 1.5px,transparent 1.5px 9px)" },
+  { label:"Dots", glyph:"⠿",
+    bg:"radial-gradient(var(--ink) 2px,transparent 2.5px)" },
+  { label:"Back-diagonals", glyph:"▧",
+    bg:"repeating-linear-gradient(-45deg,var(--ink) 0 2px,transparent 2px 7px)" },
+  { label:"Columns", glyph:"▥",
+    bg:"repeating-linear-gradient(90deg,var(--ink) 0 2px,transparent 2px 7px)" },
+  { label:"Weave", glyph:"▩",
+    bg:"repeating-linear-gradient(45deg,var(--ink) 0 1.5px,transparent 1.5px 6px),"
+     + "repeating-linear-gradient(-45deg,var(--ink) 0 1.5px,transparent 1.5px 6px)" },
+  { label:"Rings", glyph:"◍",
+    bg:"radial-gradient(circle,transparent 1px,var(--ink) 1.2px,var(--ink) 2px,transparent 2.2px)" },
+  { label:"Wide bars", glyph:"▬",
+    bg:"repeating-linear-gradient(180deg,var(--ink) 0 3.5px,transparent 3.5px 9px)" },
+];
+
+// Each set is a builder: given n, return n distinguishable marks, or null when
+// the set cannot stretch that far (the picker then hides it).
+const MARKSETS = {
+  classic: { name:"Colour", build(n){
+    if (n <= HUES.length) return HUES.slice(0, n).map(h => ({ ...h, kind:"colour" }));
+    // Past nine hues, cross colour with shape — 4x4 covers a 16 grid exactly.
+    const s = Math.ceil(n / 4);
+    if (s > SHAPES.length) return null;
+    const out = [];
+    for (let i = 0; i < n; i++){
+      const h = HUES[i % 4], sh = SHAPES[(i / 4) | 0];
+      out.push({ ...h, kind:"colour", clip:sh.clip, label:h.label + " " + sh.label });
+    }
+    return out;
+  }},
+  shapes: { name:"Shapes", build(n){
+    const s = Math.ceil(n / 4);
+    if (s > SHAPES.length) return null;
+    const out = [];
+    for (let i = 0; i < n; i++){
+      const h = HUES[i % 4], sh = SHAPES[(i / 4) | 0];
+      out.push({ ...h, kind:"colour", clip:sh.clip, label:h.label + " " + sh.label });
+    }
+    return out;
+  }},
+  ink: { name:"Patterns", build(n){
+    if (n > WEAVES.length) return null;          // monochrome only stretches so far
+    return WEAVES.slice(0, n).map(w => ({
+      kind:"pattern", bg:w.bg, label:w.label, emoji:[w.glyph, w.glyph],
+    }));
+  }},
 };
+
 let activePalette = "classic";
-const palette = () => PALETTES[activePalette].marks;
-const isPattern = () => PALETTES[activePalette].kind === "pattern";
+let MARKS = [];                                   // built for the current grid size
+function buildMarks(){
+  MARKS = MARKSETS[activePalette].build(state.n) || MARKSETS.classic.build(state.n);
+  INNER = MARKSETS.classic.build(state.n);
+}
+const palette = () => MARKS;
+const isPattern = () => MARKS.length > 0 && MARKS[0].kind === "pattern";
+const setFits = (id, n) => !!MARKSETS[id].build(n);
 
 // Inline style for a mark. Patterns need a ground of their own, since the
 // pattern is drawn in ink and would otherwise sit on the empty-cell colour.
-function markStyle(i){
-  const m = palette()[i];
-  if (!isPattern()) return "--c:" + m.hex;
+function markStyle(m){
+  // Shaped marks square off their corners, or a rounded square and a circle
+  // are almost the same silhouette at swatch size.
+  const clip = m.clip ? ";clip-path:" + m.clip + ";border-radius:3px" : "";
+  if (m.kind !== "pattern") return "--c:" + m.hex + clip;
   return "background-color:var(--panel2);background-image:" + m.bg
-       + ";background-size:" + TILE;
+       + ";background-size:" + TILE + clip;
 }
 
 // The inner layer always uses colour: its marks are a third the width of a
 // square, and a hatch or dot pattern turns to mush at that size.
-const innerMarks = () => PALETTES.classic.marks;
-const styleFor = (L, i) => L > 0 ? "--c:" + innerMarks()[i].hex : markStyle(i);
-const emojiFor = (L, i) => L > 0 ? innerMarks()[i].emoji[1] : palette()[i].emoji[0];
+let INNER = [];
+const innerMarks = () => INNER;
+const styleFor = (L, i) => markStyle((L > 0 ? INNER : MARKS)[i]);
+const emojiFor = (L, i) => (L > 0 ? INNER[i].emoji[1] : MARKS[i].emoji[0]);
 
 // Difficulty is a table, not branching logic — a future difficulty algorithm
 // replaces these numbers without touching the generator.
@@ -332,10 +406,14 @@ const emojiFor = (L, i) => L > 0 ? innerMarks()[i].emoji[1] : palette()[i].emoji
 // The two are deliberately unrelated: the difficulty is perceptual (holding two
 // overlaid grids apart by eye), not deductive.
 const DIFFS = [
-  { id:"easy",   label:"Easy",   n:4, givens:8, layers:1 },
-  { id:"medium", label:"Medium", n:4, givens:6, layers:1 },
-  { id:"hard",   label:"Hard",   n:4, givens:4, layers:1 },
-  { id:"double", label:"Double", n:4, givens:6, layers:2 },
+  { id:"easy",   label:"Easy",   n:4, givens:8,  layers:1 },
+  { id:"medium", label:"Medium", n:4, givens:6,  layers:1 },
+  { id:"hard",   label:"Hard",   n:4, givens:4,  layers:1 },
+  { id:"double", label:"Double", n:4, givens:6,  layers:2 },
+  { id:"nine",   label:"9×9",    n:9, givens:30, layers:1 },
+  // 16x16 stays near 140 givens: below that the uniqueness check climbs from
+  // ~0.2s to tens of seconds, which is not something to do on page load.
+  { id:"sixteen", label:"16×16", n:16, givens:140, layers:1 },
 ];
 const layerCount = d => d.layers || 1;
 const diffOf = id => DIFFS.find(d => d.id === id) || DIFFS[0];
@@ -412,63 +490,90 @@ function legal(grid, n, idx, val){
   return true;
 }
 
-// Backtracking solver. Short-circuits once `cap` solutions are found, so the
-// uniqueness check only ever needs cap = 2.
+// Bitmask solver that always branches on the most-constrained cell. Same
+// contract as the naive version, but the pruning is what makes big grids
+// possible at all: 9x9 at 25 givens goes from ~7.6s to ~4ms.
 function countSolutions(grid, n, cap){
+  const { bw, bh } = boxDims(n), FULL = (1 << n) - 1, per = n / bw;
   const g = grid.slice();
+  const rows = new Array(n).fill(0), cols = new Array(n).fill(0), box = new Array(n).fill(0);
+  const bi = new Int32Array(n * n);
+  for (let i = 0; i < n * n; i++) bi[i] = ((((i / n) | 0) / bh) | 0) * per + (((i % n) / bw) | 0);
+  for (let i = 0; i < n * n; i++){
+    const v = g[i];
+    if (v !== null && v !== undefined){
+      const b = 1 << v;
+      rows[(i / n) | 0] |= b; cols[i % n] |= b; box[bi[i]] |= b;
+    }
+  }
   let found = 0;
   (function rec(){
     if (found >= cap) return;
-    const i = g.indexOf(null);
-    if (i === -1){ found++; return; }
-    for (let v = 0; v < n; v++){
-      if (legal(g, n, i, v)){
-        g[i] = v;
-        rec();
-        g[i] = null;
-        if (found >= cap) return;
-      }
+    let best = -1, bestMask = 0, bestCnt = n + 1;
+    for (let i = 0; i < n * n; i++){
+      if (g[i] !== null && g[i] !== undefined) continue;
+      const avail = FULL & ~(rows[(i / n) | 0] | cols[i % n] | box[bi[i]]);
+      if (avail === 0) return;                 // dead end, prune the whole branch
+      let cnt = 0, x = avail;
+      while (x){ x &= x - 1; cnt++; }
+      if (cnt < bestCnt){ bestCnt = cnt; best = i; bestMask = avail; if (cnt === 1) break; }
+    }
+    if (best === -1){ found++; return; }       // no empties left — a solution
+    const r = (best / n) | 0, c = best % n, b = bi[best];
+    let mask = bestMask;
+    while (mask){
+      const bit = mask & -mask; mask ^= bit;
+      g[best] = 31 - Math.clz32(bit);
+      rows[r] |= bit; cols[c] |= bit; box[b] |= bit;
+      rec();
+      rows[r] &= ~bit; cols[c] &= ~bit; box[b] &= ~bit; g[best] = null;
+      if (found >= cap) return;
     }
   })();
   return found;
 }
 
-// Spread `total` givens across boxes as evenly as the count allows, then pick
-// that many random cells inside each box.
-function selectGivens(n, total, rng){
-  const { bw, bh } = boxDims(n);
-  const boxes = n;
-  const perBox = new Array(boxes).fill(Math.floor(total / boxes));
-  for (const b of shuffled([...Array(boxes).keys()], rng).slice(0, total % boxes)) perBox[b]++;
 
-  const keep = new Array(n * n).fill(false);
-  const boxesPerRow = n / bw;
-  for (let b = 0; b < boxes; b++){
-    const r0 = Math.floor(b / boxesPerRow) * bh, c0 = (b % boxesPerRow) * bw;
-    const cells = [];
+// Cells to try removing, round-robined across boxes so the givens that survive
+// stay spread over the board instead of clumping into a few boxes.
+function removalOrder(n, rng){
+  const { bw, bh } = boxDims(n), per = n / bw, buckets = [];
+  for (let b = 0; b < n; b++){
+    const r0 = ((b / per) | 0) * bh, c0 = (b % per) * bw, cells = [];
     for (let r = r0; r < r0 + bh; r++)
       for (let c = c0; c < c0 + bw; c++) cells.push(r * n + c);
-    for (const i of shuffled(cells, rng).slice(0, perBox[b])) keep[i] = true;
+    buckets.push(shuffled(cells, rng));
   }
-  return keep;
+  const order = [];
+  for (let k = 0; k < n; k++)
+    for (const b of shuffled([...Array(n).keys()], rng))
+      if (buckets[b][k] !== undefined) order.push(buckets[b][k]);
+  return order;
 }
 
-// Full pipeline. Retries the carve until the puzzle has exactly one solution;
-// an ambiguous puzzle is an unwinnable puzzle, so this check is not optional.
+// Carve down from a solved board, keeping any removal that leaves the puzzle
+// uniquely solvable and undoing the rest. Uniqueness therefore holds at every
+// step — an ambiguous puzzle is an unwinnable puzzle, so it is never optional.
+// Carving down beats carving out at random: it does one solve per cell instead
+// of retrying whole hopeless boards, which is the difference between 4ms and
+// several seconds once the grid is bigger than 4x4.
 function generatePuzzle(seed, n, givens){
   const rng = mulberry32(seed);
   const solution = randomSolvedGrid(n, rng);
-  let want = givens;
+  const puzzle = solution.slice();
+  const target = n * n - givens;
+  let removed = 0;
 
-  for (let attempt = 0; attempt < 400; attempt++){
-    const keep = selectGivens(n, want, rng);
-    const puzzle = solution.map((v, i) => keep[i] ? v : null);
-    if (countSolutions(puzzle, n, 2) === 1) return { solution, puzzle, givens:keep };
-    // Very sparse boards are often ambiguous; loosen rather than fail.
-    if (attempt > 0 && attempt % 150 === 0 && want < n * n) want++;
+  for (const i of removalOrder(n, rng)){
+    if (removed >= target) break;
+    const keep = puzzle[i];
+    puzzle[i] = null;
+    if (countSolutions(puzzle, n, 2) === 1) removed++;
+    else puzzle[i] = keep;               // that removal made it ambiguous
   }
-  // Unreachable in practice — fall back to a fully revealed board.
-  return { solution, puzzle:solution.slice(), givens:solution.map(() => true) };
+  // May finish with more givens than asked if the board resists further
+  // removal; that is a harmless floor, never an unsolvable board.
+  return { solution, puzzle, givens:puzzle.map(v => v !== null) };
 }
 
 /* ================= state ================= */
@@ -541,6 +646,7 @@ function loadDifficulty(id){
   state.diff = id;
   const cfg = diffOf(id);
   state.n = cfg.n;
+  buildMarks();               // mark count follows grid size
 
   const saved = loadDaily()[id];
   if (saved && saved.layers){
@@ -643,6 +749,12 @@ function renderBoard(){
   }
 
   const board = document.getElementById("board");
+  // Gaps shrink as the grid grows, or a 16x16 would be all gutter and no cell.
+  const sc = n <= 4 ? [12, 4, 8] : n <= 9 ? [11, 2, 5] : [7, 1, 3];
+  board.style.setProperty("--bgap", sc[0] + "px");
+  board.style.setProperty("--cgap", sc[1] + "px");
+  board.style.setProperty("--crad", sc[2] + "px");
+  board.style.setProperty("--fin", (n <= 4 ? 7 : n <= 9 ? 4 : 2) + "px");
   board.style.gridTemplateColumns = "repeat(" + boxesPerRow + ",1fr)";
   board.style.gridTemplateRows = "repeat(" + boxRows + ",1fr)";
   board.classList.remove("done");
@@ -683,14 +795,14 @@ function renderPalette(){
       + (sel && sel.layer === L && sel.colour === i ? " on" : "")
       + '" data-l="' + L + '" data-c="' + i + '" style="' + styleFor(L, i) + '" aria-label="'
       + c.label + (L > 0 ? " (inner)" : "") + '">'
-      + (L === 0 ? '<span class="k">' + (i + 1) + "</span>" : "")
+      + (L === 0 && state.n <= 4 ? '<span class="k">' + (i + 1) + "</span>" : "")
       + "</button>"
     ).join("");
     const eraser = L === 0
       ? '<button class="swatch erase' + (state.erase ? " on" : "")
         + '" data-erase="1" aria-label="Erase">✕</button>'
       : '<span class="swatch spacer" aria-hidden="true"></span>';
-    rows += '<div class="prow">' + swatches + eraser + "</div>";
+    rows += '<div class="prow' + (state.n > 4 ? " wrap" : "") + '">' + swatches + eraser + "</div>";
   }
   const p = document.getElementById("palette");
   p.innerHTML = rows;
@@ -775,7 +887,7 @@ document.addEventListener("keydown", e => {
   }
   // 1-4 pick outer colours; hold Shift for the inner layer.
   const k = parseInt(e.key === "!" ? 1 : e.key === "@" ? 2 : e.key === "#" ? 3 : e.key === "$" ? 4 : e.key, 10);
-  if (k >= 1 && k <= state.n){
+  if (k >= 1 && k <= Math.min(state.n, 9)){
     const layer = e.shiftKey && state.layers.length > 1 ? 1 : 0;
     state.sel = { layer, colour:k - 1 };
     state.erase = false; renderPalette();
@@ -819,11 +931,13 @@ function emojiGrid(L){
   return out;
 }
 
+// One grid, not a stack of them. Emoji cannot nest a mark inside a mark, so
+// text sharing carries the outer layer; the in-app solved view shows the true
+// nested board. Reworking this into a badge that does not spoil the answer is
+// still open.
 function shareText(){
-  let out = SHARE_NAME + " #" + state.day + " · " + diffOf(state.diff).label + " ✨\n"
-          + "⏱️ " + fmtTime(elapsedMs()) + "\n\n";
-  out += state.layers.map((_, L) => emojiGrid(L)).join("\n\n");
-  return out + "\n";
+  return SHARE_NAME + " #" + state.day + " · " + diffOf(state.diff).label + " ✨\n"
+       + "⏱️ " + fmtTime(elapsedMs()) + "\n\n" + emojiGrid(0) + "\n";
 }
 
 async function copyShare(){
@@ -900,14 +1014,37 @@ function showStats(){
   );
 }
 
+// The finished board as one grid with every layer nested in place, rather than
+// a stack of separate grids. This is the thing worth showing off.
+function miniBoard(){
+  const n = state.n, { bw, bh } = boxDims(n);
+  let html = "";
+  for (let b = 0; b < n; b++){
+    const r0 = ((b / (n / bw)) | 0) * bh, c0 = (b % (n / bw)) * bw;
+    let inner = "";
+    for (let r = r0; r < r0 + bh; r++)
+      for (let c = c0; c < c0 + bw; c++){
+        const i = r * n + c;
+        let marks = '<div class="fill' + (isPattern() ? " pat" : "")
+                  + '" style="' + styleFor(0, state.layers[0].grid[i]) + '"></div>';
+        for (let L = 1; L < state.layers.length; L++)
+          marks += '<div class="dot given" style="' + styleFor(L, state.layers[L].grid[i]) + '"></div>';
+        inner += '<div class="cell">' + marks + "</div>";
+      }
+    html += '<div class="box" style="grid-template-columns:repeat(' + bw + ',1fr);'
+          + "grid-template-rows:repeat(" + bh + ',1fr)">' + inner + "</div>";
+  }
+  return '<div class="board mini done" style="grid-template-columns:repeat(' + (n / bw)
+       + ",1fr);grid-template-rows:repeat(" + (n / bh) + ',1fr)">' + html + "</div>";
+}
+
 function showWin(){
-  const grid = state.layers.map((_, L) => emojiGrid(L)).join("\n\n");
   const st = load(LS_STATS, blankStats());
   openModal(
     "<h2>Solved</h2>"
     + '<p class="lede">' + SHARE_NAME + " #" + state.day + " · " + diffOf(state.diff).label + "</p>"
     + '<div class="win-time">' + fmtTime(elapsedMs()) + "</div>"
-    + '<div class="share-box">' + grid + "</div>"
+    + '<div class="mini-wrap">' + miniBoard() + "</div>"
     + '<div class="stats">'
     + '<div class="stat"><div class="n">' + st.streak + '</div><div class="l">Streak</div></div>'
     + '<div class="stat"><div class="n">' + st.played + '</div><div class="l">Solved</div></div>'
@@ -945,15 +1082,18 @@ function showSettings(){
     '<button class="' + (o[0] === cur ? "on" : "") + '" data-th="' + o[0] + '">'
     + o[1] + "</button>").join("") + "</div>";
 
-  const palOpts = Object.entries(PALETTES).map(([id, p]) => {
-    const prev = p.marks.map((_, i) =>
-      '<i style="' + (p.kind === "pattern"
+  // Only offer sets that can actually produce enough marks for this grid.
+  const usable = Object.entries(MARKSETS).filter(([id]) => setFits(id, state.n));
+  const palOpts = usable.map(([id, s]) => {
+    const prev = s.build(Math.min(4, state.n)).map(mk =>
+      '<i style="' + (mk.kind === "pattern"
         // Same tile size as the board — a smaller one clips the gradient period.
-        ? "background-color:var(--panel2);background-image:" + p.marks[i].bg
+        ? "background-color:var(--panel2);background-image:" + mk.bg
           + ";background-size:" + TILE + ";box-shadow:inset 0 0 0 1px var(--line-2)"
-        : "background:" + p.marks[i].hex) + '"></i>').join("");
+        : "background:" + mk.hex)
+      + (mk.clip ? ";clip-path:" + mk.clip : "") + '"></i>').join("");
     return '<button class="' + (id === activePalette ? "on" : "") + '" data-pal="' + id + '">'
-      + p.name + '<span class="pal-prev">' + prev + "</span></button>";
+      + s.name + '<span class="pal-prev">' + prev + "</span></button>";
   }).join("");
 
   openModal(
@@ -967,7 +1107,10 @@ function showSettings(){
 
   const m = document.getElementById("modal");
   m.querySelectorAll("[data-pal]").forEach(b => {
-    b.onclick = () => { activePalette = b.dataset.pal; save(LS_PAL, activePalette); render(); showSettings(); };
+    b.onclick = () => {
+      activePalette = b.dataset.pal; save(LS_PAL, activePalette);
+      buildMarks(); render(); showSettings();
+    };
   });
   m.querySelectorAll("[data-th]").forEach(b => {
     b.onclick = () => { save(LS_THEME, b.dataset.th); applyTheme(); showSettings(); };
@@ -981,12 +1124,13 @@ document.getElementById("btnStats").onclick = showStats;
 document.getElementById("btnSettings").onclick = showSettings;
 
 applyTheme();
-activePalette = PALETTES[load(LS_PAL, "classic")] ? load(LS_PAL, "classic") : "classic";
+activePalette = MARKSETS[load(LS_PAL, "classic")] ? load(LS_PAL, "classic") : "classic";
 state.day = dayNumber();
 loadDifficulty(diffOf(load(LS_LAST, "easy")).id);
 if (!load(LS_HELP, false)) showHelp();
 
 // Exposed for verification in the console.
-window.CHROMOKU = { state, generatePuzzle, countSolutions, randomSolvedGrid, boxDims, mulberry32 };
+window.CHROMOKU = { state, DIFFS, MARKSETS, generatePuzzle, countSolutions,
+                    randomSolvedGrid, boxDims, mulberry32 };
 </script>
 </html>
