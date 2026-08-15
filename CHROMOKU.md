@@ -136,19 +136,42 @@ real play data exists.**
 
 **Measured over levels 1–500** (`scratchpad/curve.js`):
 
-| World | Levels | Unlock | Mean par | Peak |
+| World | Levels | Unlock | Mean par | Peak (p90) |
 |---|---|---|---|---|
-| Sunrise | 1–100 | 4×4, 6×6 | 23s | 32s |
-| Tide | 101–200 | 9×9, shapes | 71s | 84s |
-| Lattice | 201–300 | Latin | 64s | 134s |
-| Echo | 301–400 | Double | 103s | 155s |
-| Prism | 401–500 | combinations | 134s | 170s |
+| Sunrise | 1–100 | 4×4 up to 9×9 | 34s | 67s |
+| Tide | 101–200 | 9×9, shape marks | 73s | 87s |
+| Lattice | 201–300 | Latin | 73s | 107s |
+| Echo | 301–400 | Double | 98s | 152s |
+| Prism | 401–500 | combinations | 156s | 203s |
+
+**Rhythm.** Step 5 of every stage is a *peek*: a deliberately gentle taste of
+what the next world brings, drawn from that world's declared `preview`. Step 10
+is a boss borrowing the next entry from the current world's own pool. The clock
+tightens in visible steps at every stage boundary rather than sliding
+imperceptibly per level, so "the timer got tighter" is something a player can
+notice.
+
+A preview must advertise what is *new*, not merely what is bigger. Pulling the
+next world's first configuration blindly put a 9×9 at level 5, four levels after
+the player's first 4×4 — a wall dressed as an invitation. Tide's preview is now
+a 4×4 in shape marks: same size, new idea.
 
 Par trends up at 0.27 s/level, generosity trends down, world peaks rise
 monotonically, no level takes over 35ms to build, and every level of all 500 is
 uniquely solvable.
 
-**Two things the first curve got wrong**, both invisible until measured:
+**Known bias in the rater.** The technique ladder is box-centric — locked
+candidates need boxes, so a Latin board can never rate above T1 however hard it
+is. Measured, Latin needs deeper reasoning far more often at equal size (85% vs
+100% solvable by singles at 9×9). `TUNE.latinFactor` carries that measurement
+until the rater grows a technique that works without boxes; naked and hidden
+pairs would be the natural addition.
+
+**World peaks are compared at the 90th percentile, not the maximum.** A max over
+100 levels is decided by a single outlier tier bump and says little about how
+hard a world actually gets.
+
+**Three things the curve got wrong**, all invisible until measured:
 
 - Worlds 3 and 4 *regressed* — introducing a mechanic on a small board dropped
   difficulty below the previous world and left it there. Fixed by giving each
@@ -156,6 +179,10 @@ uniquely solvable.
   The assertion that caught it is world-peak monotonicity plus "must climb back
   past the previous world's mean within 40 levels"; a plain positive overall
   slope passed happily while two worlds sagged.
+- The opening was flat: levels 1–20 were one identical 4×4, in exactly the
+  window where a player decides whether to continue. World 1 now changes
+  configuration every ten levels and reaches 9×9 by level 71; par at level 30 is
+  2.7× par at level 1.
 - 39 of 500 levels needed guessing. A tier-3 board is uniquely solvable but only
   by trial, which reads as unfair rather than hard. `buildLevel` now tries up to
   six alternative seeds for a logic-solvable puzzle: 39 → 1.

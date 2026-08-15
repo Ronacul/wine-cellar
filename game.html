@@ -106,6 +106,9 @@ h1{
 }
 .lvl-c{flex:1; display:flex; flex-direction:column; line-height:1.15}
 .lvl-c b{font-size:14px; font-weight:700; white-space:nowrap}
+/* A peek borrows the next world's mechanic, so it says whose. */
+.pk{font-size:9px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+  background:var(--ink); color:var(--bg); border-radius:5px; padding:2px 5px; vertical-align:2px}
 .lvl-sub{
   font-family:var(--mono); font-size:9.5px; color:var(--ink-faint); white-space:nowrap;
   text-transform:uppercase; letter-spacing:.06em; margin-top:2px;
@@ -816,14 +819,20 @@ const TUNE = {
   secPerCellBase: 1.10,   // seconds to fill one cell on a tiny grid
   secPerCellSize: 0.05,   // extra seconds per cell for each step up in n
   tierFactor: [1.0, 1.0, 1.35, 1.8],   // indexed by rater tier
+  // The tier ladder is box-centric — locked candidates need boxes, so a Latin
+  // board can never rate above T1 however hard it is. Measured, Latin needs
+  // deeper reasoning far more often at equal size (85% vs 100% solvable by
+  // singles at 9x9; 82% vs 99% at 10x10). This factor carries that measurement
+  // until the rater grows a technique that applies without boxes.
+  latinFactor: 1.22,
   generosityFloor: 1.25,  // time limit never drops below this multiple of par
   generositySpan: 1.35,   // extra generosity at level 1, decaying away
-  generosityDecay: 140,   // levels for that extra to fall by 1/e
-  stageRelief: 0.15,      // sawtooth: each stage opens slightly kinder
+  generosityDecayBlocks: 14,  // blocks of ten for that extra to fall by 1/e
+  peekRelief: 0.35,       // preview levels get a kinder clock, being tasters
 };
 // ---------------------------------------------------------------------------
 
-const LEVELS_PER_STAGE = 10, STAGES_PER_WORLD = 10;
+const LEVELS_PER_STAGE = 10, STAGES_PER_WORLD = 10, PEEK_STEP = 5;
 const LEVELS_PER_WORLD = LEVELS_PER_STAGE * STAGES_PER_WORLD;
 
 // Each world opens with a real unlock, not only a repaint. Configs are ordered
@@ -835,32 +844,43 @@ const WORLDS = [
   // the ten stages onto one of them. The explicit ramp is the level design —
   // a proportional mapping spread new mechanics too thinly and left whole
   // worlds sitting below the previous world's difficulty.
-  { name:"Sunrise", tint:"#f5a623", unlock:"4×4 and 6×6",
-    ramp:[0,0,1,1,2,2,2,3,3,3], pool:[
+  // Something changes every ten levels rather than every twenty: the first
+  // twenty used to be one identical 4x4, which is the worst possible place for
+  // the ladder to stand still.
+  { name:"Sunrise", tint:"#f5a623", unlock:"4×4 up to 9×9",
+    ramp:[0,1,2,3,3,4,4,5,5,5], pool:[
       { n:4, boxless:false, layers:1, givens:8  },
       { n:4, boxless:false, layers:1, givens:6  },
+      { n:4, boxless:false, layers:1, givens:4  },
       { n:6, boxless:false, layers:1, givens:16 },
       { n:6, boxless:false, layers:1, givens:13 },
+      { n:9, boxless:false, layers:1, givens:40 },
   ]},
   { name:"Tide", tint:"#3498db", unlock:"9×9 and shape marks",
-    ramp:[0,1,1,1,2,2,2,3,3,3], pool:[
-      { n:6, boxless:false, layers:1, givens:13 },
+    // Tide's novelty a beginner can appreciate is the mark set, not the size.
+    preview:{ n:4, boxless:false, layers:1, givens:8, markSet:"shapes" },
+    ramp:[0,0,1,1,2,2,2,3,3,3], pool:[
       { n:9, boxless:false, layers:1, givens:38 },
       { n:9, boxless:false, layers:1, givens:34 },
-      { n:9, boxless:false, layers:1, givens:30 },
+      { n:9, boxless:false, layers:1, givens:31 },
+      { n:9, boxless:false, layers:1, givens:28 },
   ]},
   // Latin lands here, not earlier: measured harder than Sudoku at equal size
   // (85% vs 100% solvable by singles at 9x9), despite needing more givens.
   { name:"Lattice", tint:"#7d5fff", unlock:"Latin rules",
-    ramp:[0,1,2,3,3,4,4,5,5,5], pool:[
+    preview:{ n:5, boxless:true, layers:1, givens:14 },
+    ramp:[0,1,2,3,3,4,4,5,5,6], pool:[
       { n:5,  boxless:true, layers:1, givens:12 },
       { n:7,  boxless:true, layers:1, givens:24 },
       { n:7,  boxless:true, layers:1, givens:21 },
       { n:9,  boxless:true, layers:1, givens:38 },
       { n:9,  boxless:true, layers:1, givens:34 },
       { n:10, boxless:true, layers:1, givens:50 },
+      // Tide now runs 9x9 the whole way, so Latin needs a ceiling above it.
+      { n:10, boxless:true, layers:1, givens:45 },
   ]},
   { name:"Echo", tint:"#16a085", unlock:"Double layering",
+    preview:{ n:4, boxless:false, layers:2, givens:8 },
     ramp:[0,1,1,2,2,3,3,4,4,4], pool:[
       { n:4, boxless:false, layers:2, givens:6  },
       { n:6, boxless:false, layers:2, givens:14 },
@@ -869,6 +889,8 @@ const WORLDS = [
       { n:9, boxless:false, layers:2, givens:34 },
   ]},
   { name:"Prism", tint:"#e74c3c", unlock:"everything, combined",
+    // Prism's novelty is two mechanics at once, tasted on a small board.
+    preview:{ n:6, boxless:true, layers:2, givens:20 },
     ramp:[0,1,1,2,2,3,3,4,4,4], pool:[
       { n:9,  boxless:false, layers:1, givens:30 },
       { n:10, boxless:true,  layers:1, givens:48 },
@@ -889,19 +911,27 @@ function levelConfig(level){
   const world = WORLDS[w - 1];
   const pool = world.pool;
 
-  // The ramp says which config each stage uses; the last step of a stage is a
-  // boss that borrows the next entry as a preview of what is coming.
+  // The ramp says which config each stage uses. Two steps break the pattern:
+  // step 10 is a boss borrowing the next entry from this world, and step 5 is a
+  // peek at the *next* world's easiest entry — a brief, deliberately gentle
+  // taste of a mechanic the player has not unlocked yet, so the ladder advertises
+  // what is coming instead of asking for faith.
   const base = world.ramp[stage - 1];
-  const idx = step === LEVELS_PER_STAGE ? Math.min(pool.length - 1, base + 1) : base;
-  const cfg = pool[idx];
+  const ahead = WORLDS[w];                       // the world after this one
+  const peek = step === PEEK_STEP && !!(ahead && ahead.preview);
+  const cfg = peek
+    ? ahead.preview
+    : pool[step === LEVELS_PER_STAGE ? Math.min(pool.length - 1, base + 1) : base];
 
   // Trimming givens only changes difficulty where the grid is big enough to
-  // hold reasoning depth; below 9x9 it just means more typing.
-  const trim = cfg.n >= 9 ? Math.floor((step - 1) / 3) : 0;
+  // hold reasoning depth; below 9x9 it just means more typing. A peek keeps its
+  // full complement — it is meant to intrigue, not to punish.
+  const trim = !peek && cfg.n >= 9 ? Math.floor((step - 1) / 3) : 0;
   const givens = Math.max(cfg.givens - trim, Math.ceil(cfg.n * cfg.n * 0.25));
 
-  return { ...cfg, givens, level, world:w, stage, step,
-           boss:step === LEVELS_PER_STAGE, theme:world };
+  return { ...cfg, givens, level, world:w, stage, step, peek,
+           boss:step === LEVELS_PER_STAGE, theme:world,
+           peekOf: peek ? WORLDS[w].name : null, markSet: cfg.markSet || null };
 }
 
 const levelSeed = level => level * 7919 + 13;
@@ -911,16 +941,20 @@ const levelSeed = level => level * 7919 + 13;
 function parSeconds(cfg, tier){
   const cells = (cfg.n * cfg.n - cfg.givens) * cfg.layers;
   const perCell = TUNE.secPerCellBase + TUNE.secPerCellSize * cfg.n;
-  return cells * perCell * TUNE.tierFactor[Math.min(tier, 3)];
+  return cells * perCell * TUNE.tierFactor[Math.min(tier, 3)]
+       * (cfg.boxless ? TUNE.latinFactor : 1);
 }
 
 // Generosity decays across the run, and each stage opens with a little relief
 // that fades over its ten levels — a sawtooth rather than a grind.
-function generosity(level){
-  const decay = TUNE.generosityFloor
-              + TUNE.generositySpan * Math.exp(-level / TUNE.generosityDecay);
-  const relief = TUNE.stageRelief * (1 - (stepOf(level) - 1) / (LEVELS_PER_STAGE - 1));
-  return decay + relief;
+// The clock tightens in visible steps every ten levels rather than sliding
+// imperceptibly each level, so "the timer got tighter" is an event a player can
+// notice. Peek levels get their relief on top.
+function generosity(level, peek){
+  const block = Math.floor((level - 1) / LEVELS_PER_STAGE);
+  const base = TUNE.generosityFloor
+             + TUNE.generositySpan * Math.exp(-block / TUNE.generosityDecayBlocks);
+  return base + (peek ? TUNE.peekRelief : 0);
 }
 
 // Everything needed to play a level: the puzzle, its measured difficulty, and
@@ -947,7 +981,7 @@ function buildLevel(level){
   const stalls = rated.reduce((s, r) => s + r.stalls, 0);
 
   const par = parSeconds(cfg, tier);
-  return { cfg, layers, tier, stalls, par, limit: par * generosity(level) };
+  return { cfg, layers, tier, stalls, par, limit: par * generosity(level, cfg.peek) };
 }
 
 /* ================= progression state ================= */
@@ -1111,6 +1145,10 @@ function loadLevel(n){
   state.latin = lv.cfg.boxless;
   state.dbl = lv.cfg.layers > 1;
   state.practice = true;          // levels keep their own record, not the daily one
+  // A preview can advertise a mark set as well as a rule; restore the player's
+  // own choice as soon as the level ends.
+  const chosen = load(LS_PAL, "classic");
+  activePalette = lv.cfg.markSet && MARKSETS[lv.cfg.markSet] ? lv.cfg.markSet : chosen;
   buildMarks();
 
   state.layers = lv.layers.map(x => ({
@@ -1184,8 +1222,10 @@ function renderLevelBar(){
   document.getElementById("diffs").outerHTML =
     '<div class="levelbar" id="diffs">'
     + '<div class="lvl-l"><button class="icon-btn" id="lvBack" aria-label="Back to daily">←</button></div>'
-    + '<div class="lvl-c"><b>Level ' + c.level + "</b>"
-    + '<span class="lvl-sub">' + c.theme.name + " · " + tag + (c.boss ? " · boss" : "") + "</span></div>"
+    + '<div class="lvl-c"><b>Level ' + c.level
+    + (c.peek ? ' <span class="pk">' + (c.peekOf || "ahead") + "</span>" : "") + "</b>"
+    + '<span class="lvl-sub">' + (c.peek ? "Preview" : c.theme.name) + " · " + tag
+    + (c.boss ? " · boss" : "") + "</span></div>"
     + '<div class="hearts">' + heartsHTML(p) + "</div>"
     + "</div>";
   const tw = document.getElementById("tbarwrap");
