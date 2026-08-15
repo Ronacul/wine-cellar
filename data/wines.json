@@ -6127,5 +6127,27 @@
     "location": "",
     "notes": "Chardonnay and Pinot Noir blend. A premier, highly acclaimed California sparkling wine with crisp acidity, fine mousse, and notes of green apple, pear, and toasted brioche.",
     "imagePath": "images/mss75yte5bvwl.jpg"
+  },
+  {
+    "id": "msuvogwwopuef",
+    "added": "2026-08-15",
+    "producer": "Paul Bouchard",
+    "name": "Saint-Émilion",
+    "vintage": "1983",
+    "type": "Red",
+    "qty": 1,
+    "region": "Saint-Émilion, Bordeaux, France",
+    "drinkFrom": "1988",
+    "drinkTo": "1998",
+    "shelfSection": "",
+    "binCode": "",
+    "titi": true,
+    "fire": 0,
+    "pairings": "roasted lamb, grilled duck breast, beef stew, aged cheeses",
+    "source": "",
+    "price": "~$45 CAD (est.)",
+    "location": "",
+    "notes": "A blend of Merlot and Cabernet Franc. This is a basic négociant bottling from a decent Bordeaux vintage; it is now far past its prime and likely faded, showing tertiary characters of dried leaves, leather, and cedar.",
+    "imagePath": "images/msuvogwwopuef.jpg"
   }
 ]
