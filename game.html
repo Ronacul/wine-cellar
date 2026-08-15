@@ -117,9 +117,36 @@ h1{
    clean block of colour. */
 .board.done .fill{inset:0; border-radius:8px; transition:inset .25s,border-radius .25s}
 
+/* Inner layer: a second, unrelated puzzle drawn inside the same squares.
+   Given = solid disc, yours = ring. Same read as the outer layer (locked marks
+   are solid, yours are open), so the rule only has to be learned once. */
+/* Centred via inset, not translate — the pop animation drives transform and
+   would otherwise knock the mark off centre while it plays. */
+.dot{
+  position:absolute; inset:31%; border-radius:50%;
+  box-shadow:0 0 0 2px rgba(0,0,0,.28);
+}
+.dot.given{background:var(--c)}
+.dot:not(.given){
+  background:transparent;
+  box-shadow:inset 0 0 0 4px var(--c), 0 0 0 2px rgba(0,0,0,.28);
+}
+.board.done .dot{background:var(--c); box-shadow:0 0 0 2px rgba(0,0,0,.28)}
+
 /* ================= palette ================= */
+/* Row gap has to clear the key labels, which hang below the first row. */
+.palette{display:flex; flex-direction:column; gap:26px; align-items:center}
 /* Must never wrap — a wrapped eraser collides with the key labels below. */
-.palette{display:flex; gap:clamp(7px,2.5vw,10px); align-items:center; justify-content:center; flex-wrap:nowrap}
+.prow{display:flex; gap:clamp(7px,2.5vw,10px); align-items:center; justify-content:center; flex-wrap:nowrap}
+/* Holds the eraser column open on the inner row. Needs the compound selector to
+   outrank .swatch's own background and shadow. */
+.swatch.spacer{background:none; box-shadow:none; visibility:hidden; pointer-events:none}
+/* Inner-layer swatches mirror the board: a ring, not a filled square. */
+.swatch.inner{
+  background:var(--panel); border-radius:50%;
+  box-shadow:inset 0 0 0 6px var(--c), 0 0 0 1px var(--line);
+}
+.swatch.inner.on{box-shadow:inset 0 0 0 6px var(--c),0 0 0 3px var(--bg),0 0 0 5px var(--ring)}
 .swatch{
   width:clamp(44px,12.5vw,52px); aspect-ratio:1; border-radius:14px; background:var(--c);
   position:relative; transition:transform .12s;
@@ -194,7 +221,7 @@ h1{
 @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-4px)}40%{transform:translateX(4px)}60%{transform:translateX(-2px)}80%{transform:translateX(2px)}}
 @keyframes wave{0%,100%{transform:scale(1)}45%{transform:scale(1.16)}}
 @media (prefers-reduced-motion:no-preference){
-  .fill.new{animation:pop .22s cubic-bezier(.34,1.4,.64,1)}
+  .fill.new,.dot.new{animation:pop .22s cubic-bezier(.34,1.4,.64,1)}
   .cell.bad{animation:shake .3s}
   .cell.bad .fill{box-shadow:inset 0 0 0 3px var(--error)}
   .cell.won{animation:wave .5s ease-in-out}
@@ -243,13 +270,15 @@ h1{
 const SHARE_NAME = "Chromoku";
 const EPOCH = Date.UTC(2026, 7, 15);          // 15 Aug 2026 = puzzle #1
 
-// Every colour reference routes through here so palette unlocks are additive later.
+// Every colour reference routes through here so palette unlocks are additive
+// later. `emoji` is indexed by layer: squares for the outer grid, circles for
+// the inner one, so a shared result stays readable as two separate puzzles.
 const PALETTES = {
   classic: { name:"Classic", colors:[
-    { hex:"#e74c3c", emoji:"🟥", label:"Red"    },
-    { hex:"#3498db", emoji:"🟦", label:"Blue"   },
-    { hex:"#27ae60", emoji:"🟩", label:"Green"  },
-    { hex:"#f1c40f", emoji:"🟨", label:"Yellow" },
+    { hex:"#e74c3c", emoji:["🟥","🔴"], label:"Red"    },
+    { hex:"#3498db", emoji:["🟦","🔵"], label:"Blue"   },
+    { hex:"#27ae60", emoji:["🟩","🟢"], label:"Green"  },
+    { hex:"#f1c40f", emoji:["🟨","🟡"], label:"Yellow" },
   ]},
 };
 let activePalette = "classic";
@@ -257,18 +286,24 @@ const palette = () => PALETTES[activePalette].colors;
 
 // Difficulty is a table, not branching logic — a future difficulty algorithm
 // replaces these numbers without touching the generator.
+// `layers: 2` runs a second, entirely independent puzzle on the inner squares.
+// The two are deliberately unrelated: the difficulty is perceptual (holding two
+// overlaid grids apart by eye), not deductive.
 const DIFFS = [
-  { id:"easy",   label:"Easy",   n:4, givens:8 },
-  { id:"medium", label:"Medium", n:4, givens:6 },
-  { id:"hard",   label:"Hard",   n:4, givens:4 },
+  { id:"easy",   label:"Easy",   n:4, givens:8, layers:1 },
+  { id:"medium", label:"Medium", n:4, givens:6, layers:1 },
+  { id:"hard",   label:"Hard",   n:4, givens:4, layers:1 },
+  { id:"double", label:"Double", n:4, givens:6, layers:2 },
 ];
+const layerCount = d => d.layers || 1;
 const diffOf = id => DIFFS.find(d => d.id === id) || DIFFS[0];
 const diffIndex = id => DIFFS.findIndex(d => d.id === id);
 
-const LS_DAILY = "chromoku.daily.v1";
+const LS_DAILY = "chromoku.daily.v2";   // v2: per-layer state
 const LS_STATS = "chromoku.stats.v1";
 const LS_THEME = "chromoku.theme.v1";
 const LS_HELP  = "chromoku.seen-help.v1";
+const LS_LAST  = "chromoku.last-diff.v1";
 
 // Box dimensions for a given grid size. 4→2x2, 6→3x2, 9→3x3.
 function boxDims(n){
@@ -397,8 +432,9 @@ function generatePuzzle(seed, n, givens){
 
 const state = {
   n:4, diff:"easy", day:0,
-  grid:[], solution:[], givens:[],
-  sel:null, erase:false,
+  layers:[],               // [{ grid, solution, givens }] — one per overlaid puzzle
+  sel:null,                // { layer, colour } or null
+  erase:false,
   mistakes:0,              // foundation for a lives/ads gate later
   done:false,
   elapsed:0, since:null,   // timestamp-based, so the clock never drifts
@@ -423,7 +459,7 @@ function loadDaily(){
 function saveProgress(){
   const d = loadDaily();
   d[state.diff] = {
-    grid:state.grid, solution:state.solution, givens:state.givens,
+    layers:state.layers,
     elapsed:elapsedMs(), done:state.done, mistakes:state.mistakes,
   };
   save(LS_DAILY, d);
@@ -464,31 +500,34 @@ function loadDifficulty(id){
   state.n = cfg.n;
 
   const saved = loadDaily()[id];
-  if (saved){
-    state.grid = saved.grid.slice();
-    state.solution = saved.solution.slice();
-    state.givens = saved.givens.slice();
+  if (saved && saved.layers){
+    state.layers = saved.layers.map(L => ({
+      grid:L.grid.slice(), solution:L.solution.slice(), givens:L.givens.slice(),
+    }));
     state.elapsed = saved.elapsed || 0;
     state.mistakes = saved.mistakes || 0;
     state.done = !!saved.done;
     state.started = state.elapsed > 0;
   } else {
-    const seed = state.day * 10 + diffIndex(id);
-    const p = generatePuzzle(seed, cfg.n, cfg.givens);
-    state.grid = p.puzzle.slice();
-    state.solution = p.solution.slice();
-    state.givens = p.givens.slice();
+    // Each layer is its own puzzle with its own seed — unrelated by design.
+    const base = state.day * 10 + diffIndex(id);
+    state.layers = [];
+    for (let L = 0; L < layerCount(cfg); L++){
+      const p = generatePuzzle(base + L * 7919, cfg.n, cfg.givens);
+      state.layers.push({ grid:p.puzzle.slice(), solution:p.solution.slice(), givens:p.givens.slice() });
+    }
     state.elapsed = 0; state.mistakes = 0; state.done = false; state.started = false;
   }
   state.since = null; state.sel = null; state.erase = false;
+  save(LS_LAST, id);          // come back to the tier you were last playing
   render();
   tickTimer();
 }
 
 /* ================= conflicts ================= */
 
-function conflictsAt(idx){
-  const n = state.n, g = state.grid, v = g[idx];
+function conflictsAt(L, idx){
+  const n = state.n, g = state.layers[L].grid, v = g[idx];
   const out = new Set();
   if (v === null || v === undefined) return out;
   const { bw, bh } = boxDims(n);
@@ -507,11 +546,14 @@ function conflictsAt(idx){
   return out;
 }
 
-// Complete + no violations. Checked against the rules rather than the stored
-// solution, so the win condition is self-contained.
+// Every layer complete with no violations. Checked against the rules rather
+// than the stored solution, so the win condition is self-contained.
 function isSolved(){
-  if (state.grid.some(v => v === null || v === undefined)) return false;
-  for (let i = 0; i < state.grid.length; i++) if (conflictsAt(i).size) return false;
+  for (let L = 0; L < state.layers.length; L++){
+    const g = state.layers[L].grid;
+    if (g.some(v => v === null || v === undefined)) return false;
+    for (let i = 0; i < g.length; i++) if (conflictsAt(L, i).size) return false;
+  }
   return true;
 }
 
@@ -541,7 +583,6 @@ function renderDiffs(){
 function renderBoard(){
   const n = state.n, { bw, bh } = boxDims(n);
   const boxesPerRow = n / bw, boxRows = n / bh;
-  const cols = palette();
   let html = "";
 
   for (let b = 0; b < n; b++){
@@ -549,10 +590,9 @@ function renderBoard(){
     let inner = "";
     for (let r = r0; r < r0 + bh; r++){
       for (let c = c0; c < c0 + bw; c++){
-        const i = r * n + c, v = state.grid[i];
-        const filled = v !== null && v !== undefined;
-        const fill = filled ? '<div class="fill" style="--c:' + cols[v].hex + '"></div>' : "";
-        inner +='<div class="cell' + (state.givens[i] ? " given" : "") + '" data-i="' + i + '">' + fill + "</div>";
+        const i = r * n + c;
+        inner += '<div class="cell' + (state.layers[0].givens[i] ? " given" : "")
+               + '" data-i="' + i + '">' + cellInner(i) + "</div>";
       }
     }
     html += '<div class="box" style="grid-template-columns:repeat(' + bw + ',1fr);'
@@ -570,31 +610,65 @@ function renderBoard(){
   if (state.done) markWon();
 }
 
+// Layer 0 fills the square itself; each further layer draws a mark inside it.
+// `animate` is the layer index that was just placed, or -1.
+function cellInner(i, animate){
+  const cols = palette();
+  let out = "";
+  const v0 = state.layers[0].grid[i];
+  if (v0 !== null && v0 !== undefined)
+    out += '<div class="fill' + (animate === 0 ? " new" : "")
+         + '" style="--c:' + cols[v0].hex + '"></div>';
+  for (let L = 1; L < state.layers.length; L++){
+    const v = state.layers[L].grid[i];
+    if (v === null || v === undefined) continue;
+    out += '<div class="dot' + (state.layers[L].givens[i] ? " given" : "")
+         + (animate === L ? " new" : "") + '" style="--c:' + cols[v].hex + '"></div>';
+  }
+  return out;
+}
+
+// One row of swatches per layer. Which row you pick from decides which layer
+// you are placing into — no mode toggle to forget about.
 function renderPalette(){
   const cols = palette();
-  let html = cols.map((c, i) =>
-    '<button class="swatch' + (state.sel === i ? " on" : "") + '" data-c="' + i + '" '
-    + 'style="--c:' + c.hex + '" aria-label="' + c.label + '"><span class="k">'
-    + (i + 1) + "</span></button>"
-  ).join("");
-  html += '<button class="swatch erase' + (state.erase ? " on" : "") + '" data-erase="1" aria-label="Erase">✕</button>';
+  const sel = state.sel;
+  let rows = "";
+  for (let L = 0; L < state.layers.length; L++){
+    const swatches = cols.map((c, i) =>
+      '<button class="swatch' + (L > 0 ? " inner" : "")
+      + (sel && sel.layer === L && sel.colour === i ? " on" : "")
+      + '" data-l="' + L + '" data-c="' + i + '" style="--c:' + c.hex + '" aria-label="'
+      + c.label + (L > 0 ? " (inner)" : "") + '">'
+      + (L === 0 ? '<span class="k">' + (i + 1) + "</span>" : "")
+      + "</button>"
+    ).join("");
+    const eraser = L === 0
+      ? '<button class="swatch erase' + (state.erase ? " on" : "")
+        + '" data-erase="1" aria-label="Erase">✕</button>'
+      : '<span class="swatch spacer" aria-hidden="true"></span>';
+    rows += '<div class="prow">' + swatches + eraser + "</div>";
+  }
   const p = document.getElementById("palette");
-  p.innerHTML = html;
+  p.innerHTML = rows;
   p.querySelectorAll("[data-c]").forEach(b => {
-    b.onclick = () => { const i = +b.dataset.c; state.sel = state.sel === i ? null : i; state.erase = false; renderPalette(); };
+    b.onclick = () => {
+      const L = +b.dataset.l, i = +b.dataset.c;
+      const same = sel && sel.layer === L && sel.colour === i;
+      state.sel = same ? null : { layer:L, colour:i };
+      state.erase = false;
+      renderPalette();
+    };
   });
-  p.querySelector("[data-erase]").onclick = () => {
-    state.erase = !state.erase; state.sel = null; renderPalette();
-  };
+  const er = p.querySelector("[data-erase]");
+  if (er) er.onclick = () => { state.erase = !state.erase; state.sel = null; renderPalette(); };
 }
 
 function cellEl(i){ return document.querySelector('[data-i="' + i + '"]'); }
 
 function paintCell(i, animate){
   const el = cellEl(i); if (!el) return;
-  const v = state.grid[i];
-  if (v === null || v === undefined){ el.innerHTML = ""; return; }
-  el.innerHTML = '<div class="fill' + (animate ? " new" : "") + '" style="--c:' + palette()[v].hex + '"></div>';
+  el.innerHTML = cellInner(i, animate);
 }
 
 function flashConflicts(set){
@@ -618,13 +692,13 @@ function markWon(){
 /* ================= interaction ================= */
 
 // Single chokepoint for every placement — a lives system or ad gate attaches here.
-function placeColour(i, val){
-  state.grid[i] = val;
+function placeColour(L, i, val){
+  state.layers[L].grid[i] = val;
   startTimer();
-  paintCell(i, val !== null);
+  paintCell(i, val !== null ? L : -1);
 
   if (val !== null){
-    const bad = conflictsAt(i);
+    const bad = conflictsAt(L, i);
     if (bad.size){ state.mistakes++; flashConflicts(bad); }
   }
   saveProgress();
@@ -633,10 +707,22 @@ function placeColour(i, val){
 }
 
 function onCell(i){
-  if (state.done || state.givens[i]) return;
-  if (state.erase){ if (state.grid[i] !== null) placeColour(i, null); return; }
+  if (state.done) return;
+
+  if (state.erase){
+    // Clears every unlocked layer in the square, so one tap undoes the square.
+    let cleared = false;
+    state.layers.forEach((L, li) => {
+      if (!L.givens[i] && L.grid[i] !== null){ L.grid[i] = null; cleared = true; }
+    });
+    if (cleared){ paintCell(i, -1); saveProgress(); }
+    return;
+  }
+
   if (state.sel === null){ toast("Pick a colour first"); return; }
-  placeColour(i, state.grid[i] === state.sel ? null : state.sel);
+  const { layer, colour } = state.sel;
+  if (state.layers[layer].givens[i]) return;
+  placeColour(layer, i, state.layers[layer].grid[i] === colour ? null : colour);
 }
 
 document.addEventListener("keydown", e => {
@@ -644,8 +730,13 @@ document.addEventListener("keydown", e => {
     if (e.key === "Escape") closeModal();
     return;
   }
-  const k = parseInt(e.key, 10);
-  if (k >= 1 && k <= state.n){ state.sel = k - 1; state.erase = false; renderPalette(); }
+  // 1-4 pick outer colours; hold Shift for the inner layer.
+  const k = parseInt(e.key === "!" ? 1 : e.key === "@" ? 2 : e.key === "#" ? 3 : e.key === "$" ? 4 : e.key, 10);
+  if (k >= 1 && k <= state.n){
+    const layer = e.shiftKey && state.layers.length > 1 ? 1 : 0;
+    state.sel = { layer, colour:k - 1 };
+    state.erase = false; renderPalette();
+  }
   else if (e.key === "Backspace" || e.key === "Delete"){ state.erase = true; state.sel = null; renderPalette(); }
 });
 
@@ -675,15 +766,21 @@ function win(){
 
 /* ================= share ================= */
 
-function shareText(){
-  const n = state.n, e = palette();
-  let out = SHARE_NAME + " #" + state.day + " · " + diffOf(state.diff).label + " ✨\n"
-          + "⏱️ " + fmtTime(elapsedMs()) + "\n\n";
+function emojiGrid(L){
+  const n = state.n, cols = palette(), g = state.layers[L].grid;
+  let out = "";
   for (let r = 0; r < n; r++){
-    for (let c = 0; c < n; c++) out += e[state.grid[r * n + c]].emoji;
-    out += "\n";
+    for (let c = 0; c < n; c++) out += cols[g[r * n + c]].emoji[Math.min(L, 1)];
+    if (r < n - 1) out += "\n";
   }
   return out;
+}
+
+function shareText(){
+  let out = SHARE_NAME + " #" + state.day + " · " + diffOf(state.diff).label + " ✨\n"
+          + "⏱️ " + fmtTime(elapsedMs()) + "\n\n";
+  out += state.layers.map((_, L) => emojiGrid(L)).join("\n\n");
+  return out + "\n";
 }
 
 async function copyShare(){
@@ -727,6 +824,9 @@ function showHelp(){
     + "again to clear it.</span></li>"
     + '<li><span class="bullet"></span><span>Colours already on the board fill their square '
     + "edge to edge — those are fixed. Yours sit slightly inset.</span></li>"
+    + '<li><span class="bullet"></span><span><b>Double</b> adds a second puzzle on the inner '
+    + "circles. It is completely separate from the outer one — same rules, its own answer. "
+    + "Solve both. The hard part is not letting them blur together.</span></li>"
     + "</ul>"
     + '<p class="lede">' + swatches + "<br><br>One new puzzle every day, at three difficulties. "
     + "Repeats shake at you, but never block you.</p>"
@@ -758,12 +858,7 @@ function showStats(){
 }
 
 function showWin(){
-  const n = state.n, e = palette();
-  let grid = "";
-  for (let r = 0; r < n; r++){
-    for (let c = 0; c < n; c++) grid += e[state.grid[r * n + c]].emoji;
-    if (r < n - 1) grid += "\n";
-  }
+  const grid = state.layers.map((_, L) => emojiGrid(L)).join("\n\n");
   const st = load(LS_STATS, blankStats());
   openModal(
     "<h2>Solved</h2>"
@@ -815,7 +910,7 @@ document.getElementById("btnTheme").onclick = cycleTheme;
 
 applyTheme();
 state.day = dayNumber();
-loadDifficulty("easy");
+loadDifficulty(diffOf(load(LS_LAST, "easy")).id);
 if (!load(LS_HELP, false)) showHelp();
 
 // Exposed for verification in the console.
