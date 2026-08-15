@@ -300,6 +300,7 @@ h1{
 <div class="play">
   <div class="tiers">
     <div class="diffs" id="diffs"></div>
+    <button class="dbl" id="latinToggle">Latin</button>
     <button class="dbl" id="dblToggle">Double</button>
   </div>
   <div class="board-wrap"><div class="board" id="board"></div></div>
@@ -435,20 +436,32 @@ const emojiFor = (L, i) => (L > 0 ? INNER[i].emoji[1] : MARKS[i].emoji[0]);
 // overlaid grids apart by eye), not deductive.
 // Size/difficulty tiers. Layering is a separate axis (see state.dbl) that
 // applies to any of them, rather than one more step on this ladder.
-const DIFFS = [
-  { id:"easy",    label:"Easy",   n:4,  givens:8   },
-  { id:"medium",  label:"Medium", n:4,  givens:6   },
-  { id:"hard",    label:"Hard",   n:4,  givens:4   },
-  { id:"nine",    label:"9×9",    n:9,  givens:30  },
-  // 16x16 stays near 140 givens: below that the uniqueness check climbs from
-  // ~0.2s to tens of seconds, which is not something to do on page load.
-  { id:"sixteen", label:"16×16",  n:16, givens:140 },
-];
+const TIERS = {
+  sudoku: [
+    { id:"easy",    label:"Easy",   n:4,  givens:8   },
+    { id:"medium",  label:"Medium", n:4,  givens:6   },
+    { id:"hard",    label:"Hard",   n:4,  givens:4   },
+    { id:"nine",    label:"9×9",    n:9,  givens:30  },
+    // 16x16 stays near 140 givens: below that the uniqueness check climbs from
+    // ~0.2s to tens of seconds, which is not something to do on page load.
+    { id:"sixteen", label:"16×16",  n:16, givens:140 },
+  ],
+  // Without boxes the grid size no longer has to factorise, so odd and prime
+  // sizes become available. Givens are set a little above the measured minimum
+  // for a unique solve (5x5 needs 8, 7x7 needs 18, 10x10 needs 42).
+  latin: [
+    { id:"l4",  label:"4×4",   n:4,  givens:7  },
+    { id:"l5",  label:"5×5",   n:5,  givens:11 },
+    { id:"l7",  label:"7×7",   n:7,  givens:22 },
+    { id:"l10", label:"10×10", n:10, givens:48 },
+  ],
+};
+const DIFFS = () => TIERS[state.latin ? "latin" : "sudoku"];
 const layerCount = () => state.dbl ? 2 : 1;
 // Each tier+layering combination is its own daily puzzle and its own record.
 const slot = (id, dbl) => id + (dbl ? "-x2" : "");
-const diffOf = id => DIFFS.find(d => d.id === id) || DIFFS[0];
-const diffIndex = id => DIFFS.findIndex(d => d.id === id);
+const diffOf = id => DIFFS().find(d => d.id === id) || DIFFS()[0];
+const diffIndex = id => DIFFS().findIndex(d => d.id === id);
 
 const LS_DAILY = "chromoku.daily.v2";   // v2: per-layer state
 const LS_STATS = "chromoku.stats.v1";
@@ -457,6 +470,7 @@ const LS_HELP  = "chromoku.seen-help.v1";
 const LS_LAST  = "chromoku.last-diff.v1";
 const LS_PAL   = "chromoku.palette.v1";
 const LS_DBL   = "chromoku.double.v1";
+const LS_LATIN = "chromoku.latin.v1";
 const LS_DAY   = "chromoku.debug-day.v1";   // debug: pin the daily puzzle to a date
 
 // Box dimensions for a given grid size. 4→2x2, 6→3x2, 9→3x3.
@@ -492,13 +506,13 @@ function shuffled(arr, rng){
 // order. Reaches the *entire* space of valid grids for any n — 288 for 4x4.
 // (Shuffling rows/columns of one canonical grid looks equivalent but is not:
 // it only ever reaches one of the three orbits, i.e. a third of the space.)
-function randomSolvedGrid(n, rng){
+function randomSolvedGrid(n, rng, boxless){
   const g = new Array(n * n).fill(null);
   (function rec(){
     const i = g.indexOf(null);
     if (i === -1) return true;
     for (const v of shuffled([...Array(n).keys()], rng)){
-      if (legal(g, n, i, v)){
+      if (legal(g, n, i, v, boxless)){
         g[i] = v;
         if (rec()) return true;
         g[i] = null;
@@ -509,13 +523,14 @@ function randomSolvedGrid(n, rng){
   return g;
 }
 
-function legal(grid, n, idx, val){
+function legal(grid, n, idx, val, boxless){
   const { bw, bh } = boxDims(n);
   const r = Math.floor(idx / n), c = idx % n;
   for (let i = 0; i < n; i++){
     if (i !== c && grid[r * n + i] === val) return false;
     if (i !== r && grid[i * n + c] === val) return false;
   }
+  if (boxless) return true;            // Latin: rows and columns only
   const r0 = Math.floor(r / bh) * bh, c0 = Math.floor(c / bw) * bw;
   for (let rr = r0; rr < r0 + bh; rr++)
     for (let cc = c0; cc < c0 + bw; cc++)
@@ -526,7 +541,7 @@ function legal(grid, n, idx, val){
 // Bitmask solver that always branches on the most-constrained cell. Same
 // contract as the naive version, but the pruning is what makes big grids
 // possible at all: 9x9 at 25 givens goes from ~7.6s to ~4ms.
-function countSolutions(grid, n, cap){
+function countSolutions(grid, n, cap, boxless){
   const { bw, bh } = boxDims(n), FULL = (1 << n) - 1, per = n / bw;
   const g = grid.slice();
   const rows = new Array(n).fill(0), cols = new Array(n).fill(0), box = new Array(n).fill(0);
@@ -536,7 +551,7 @@ function countSolutions(grid, n, cap){
     const v = g[i];
     if (v !== null && v !== undefined){
       const b = 1 << v;
-      rows[(i / n) | 0] |= b; cols[i % n] |= b; box[bi[i]] |= b;
+      rows[(i / n) | 0] |= b; cols[i % n] |= b; if (!boxless) box[bi[i]] |= b;
     }
   }
   let found = 0;
@@ -545,7 +560,7 @@ function countSolutions(grid, n, cap){
     let best = -1, bestMask = 0, bestCnt = n + 1;
     for (let i = 0; i < n * n; i++){
       if (g[i] !== null && g[i] !== undefined) continue;
-      const avail = FULL & ~(rows[(i / n) | 0] | cols[i % n] | box[bi[i]]);
+      const avail = FULL & ~(rows[(i / n) | 0] | cols[i % n] | (boxless ? 0 : box[bi[i]]));
       if (avail === 0) return;                 // dead end, prune the whole branch
       let cnt = 0, x = avail;
       while (x){ x &= x - 1; cnt++; }
@@ -557,9 +572,9 @@ function countSolutions(grid, n, cap){
     while (mask){
       const bit = mask & -mask; mask ^= bit;
       g[best] = 31 - Math.clz32(bit);
-      rows[r] |= bit; cols[c] |= bit; box[b] |= bit;
+      rows[r] |= bit; cols[c] |= bit; if (!boxless) box[b] |= bit;
       rec();
-      rows[r] &= ~bit; cols[c] &= ~bit; box[b] &= ~bit; g[best] = null;
+      rows[r] &= ~bit; cols[c] &= ~bit; if (!boxless) box[b] &= ~bit; g[best] = null;
       if (found >= cap) return;
     }
   })();
@@ -569,7 +584,9 @@ function countSolutions(grid, n, cap){
 
 // Cells to try removing, round-robined across boxes so the givens that survive
 // stay spread over the board instead of clumping into a few boxes.
-function removalOrder(n, rng){
+function removalOrder(n, rng, boxless){
+  // No boxes to balance across, so a plain shuffle is the right order.
+  if (boxless) return shuffled([...Array(n * n).keys()], rng);
   const { bw, bh } = boxDims(n), per = n / bw, buckets = [];
   for (let b = 0; b < n; b++){
     const r0 = ((b / per) | 0) * bh, c0 = (b % per) * bw, cells = [];
@@ -590,18 +607,18 @@ function removalOrder(n, rng){
 // Carving down beats carving out at random: it does one solve per cell instead
 // of retrying whole hopeless boards, which is the difference between 4ms and
 // several seconds once the grid is bigger than 4x4.
-function generatePuzzle(seed, n, givens){
+function generatePuzzle(seed, n, givens, boxless){
   const rng = mulberry32(seed);
-  const solution = randomSolvedGrid(n, rng);
+  const solution = randomSolvedGrid(n, rng, boxless);
   const puzzle = solution.slice();
   const target = n * n - givens;
   let removed = 0;
 
-  for (const i of removalOrder(n, rng)){
+  for (const i of removalOrder(n, rng, boxless)){
     if (removed >= target) break;
     const keep = puzzle[i];
     puzzle[i] = null;
-    if (countSolutions(puzzle, n, 2) === 1) removed++;
+    if (countSolutions(puzzle, n, 2, boxless) === 1) removed++;
     else puzzle[i] = keep;               // that removal made it ambiguous
   }
   // May finish with more givens than asked if the board resists further
@@ -616,6 +633,7 @@ const state = {
   layers:[],               // [{ grid, solution, givens }] — one per overlaid puzzle
   sel:null,                // { layer, colour } or null
   erase:false,
+  latin:false,             // ruleset axis: no boxes, rows and columns only
   dbl:false,               // layering axis: applies to whichever tier is selected
   practice:false,          // a re-rollable puzzle, outside the daily record
   mistakes:0,              // foundation for a lives/ads gate later
@@ -703,10 +721,11 @@ function loadDifficulty(id, fresh){
   } else {
     // Each layer is its own puzzle with its own seed — unrelated by design.
     const base = fresh ? ((Math.random() * 1e9) | 0)
-                       : state.day * 100 + diffIndex(id) * 2 + (state.dbl ? 1 : 0);
+                       : state.day * 1000 + (state.latin ? 500 : 0)
+                         + diffIndex(id) * 2 + (state.dbl ? 1 : 0);
     state.layers = [];
     for (let L = 0; L < layerCount(); L++){
-      const p = generatePuzzle(base + L * 7919, cfg.n, cfg.givens);
+      const p = generatePuzzle(base + L * 7919, cfg.n, cfg.givens, state.latin);
       state.layers.push({ grid:p.puzzle.slice(), solution:p.solution.slice(), givens:p.givens.slice() });
     }
     state.elapsed = 0; state.mistakes = 0; state.done = false; state.started = false;
@@ -729,12 +748,14 @@ function conflictsAt(L, idx){
     if (i !== c && g[r * n + i] === v) out.add(r * n + i);
     if (i !== r && g[i * n + c] === v) out.add(i * n + c);
   }
-  const r0 = Math.floor(r / bh) * bh, c0 = Math.floor(c / bw) * bw;
-  for (let rr = r0; rr < r0 + bh; rr++)
-    for (let cc = c0; cc < c0 + bw; cc++){
-      const j = rr * n + cc;
-      if (j !== idx && g[j] === v) out.add(j);
-    }
+  if (!state.latin){
+    const r0 = Math.floor(r / bh) * bh, c0 = Math.floor(c / bw) * bw;
+    for (let rr = r0; rr < r0 + bh; rr++)
+      for (let cc = c0; cc < c0 + bw; cc++){
+        const j = rr * n + cc;
+        if (j !== idx && g[j] === v) out.add(j);
+      }
+  }
   if (out.size) out.add(idx);
   return out;
 }
@@ -756,18 +777,26 @@ function render(){ renderDiffs(); renderBoard(); renderPalette(); renderSub(); }
 
 function renderSub(){
   document.getElementById("sub").textContent =
-    (state.practice ? "Practice" : "#" + state.day) + " · " + diffOf(state.diff).label
+    (state.practice ? "Practice" : "#" + state.day) + " · "
+    + (state.latin ? "Latin " : "") + diffOf(state.diff).label
     + (state.dbl ? " · Double" : "");
 }
 
 function renderDiffs(){
   const daily = loadDaily();
-  document.getElementById("diffs").innerHTML = DIFFS.map(d => {
+  document.getElementById("diffs").innerHTML = DIFFS().map(d => {
     const rec = daily[slot(d.id, state.dbl)];
     const done = rec && rec.done;
     return '<button class="diff' + (d.id === state.diff ? " on" : "") + '" data-diff="' + d.id + '">'
       + d.label + (done ? ' <span class="tick">✓</span>' : "") + "</button>";
   }).join("");
+  const lt = document.getElementById("latinToggle");
+  lt.className = "dbl" + (state.latin ? " on" : "");
+  lt.textContent = state.latin ? "Latin ✓" : "Latin";
+  lt.onclick = () => {
+    state.latin = !state.latin; save(LS_LATIN, state.latin);
+    loadDifficulty(DIFFS()[0].id);      // tier lists differ between rulesets
+  };
   const t = document.getElementById("dblToggle");
   t.className = "dbl" + (state.dbl ? " on" : "");
   t.textContent = state.dbl ? "Double ✓" : "Double";
@@ -781,8 +810,15 @@ function renderDiffs(){
 // box separation at any n without border bookkeeping.
 function renderBoard(){
   const n = state.n, { bw, bh } = boxDims(n);
-  const boxesPerRow = n / bw, boxRows = n / bh;
+  const boxesPerRow = state.latin ? n : n / bw, boxRows = state.latin ? n : n / bh;
   let html = "";
+
+  // Latin has no boxes, so the board is one flat grid of cells.
+  if (state.latin){
+    for (let i = 0; i < n * n; i++)
+      html += '<div class="cell' + (state.layers[0].givens[i] ? " given" : "")
+            + '" data-i="' + i + '">' + cellInner(i, -1) + "</div>";
+  } else
 
   for (let b = 0; b < n; b++){
     const r0 = Math.floor(b / boxesPerRow) * bh, c0 = (b % boxesPerRow) * bw;
@@ -1079,6 +1115,18 @@ function showStats(){
 function miniBoard(){
   const n = state.n, { bw, bh } = boxDims(n);
   let html = "";
+  const marksAt = i => {
+    let out = '<div class="fill' + (isPattern() ? " pat" : "")
+            + '" style="' + styleFor(0, state.layers[0].grid[i]) + '"></div>';
+    for (let L = 1; L < state.layers.length; L++)
+      out += '<div class="dot given" style="' + styleFor(L, state.layers[L].grid[i]) + '"></div>';
+    return out;
+  };
+  if (state.latin){
+    for (let i = 0; i < n * n; i++) html += '<div class="cell">' + marksAt(i) + "</div>";
+    return '<div class="board mini done" style="grid-template-columns:repeat(' + n
+         + ",1fr);grid-template-rows:repeat(" + n + ',1fr)">' + html + "</div>";
+  }
   for (let b = 0; b < n; b++){
     const r0 = ((b / (n / bw)) | 0) * bh, c0 = (b % (n / bw)) * bw;
     let inner = "";
@@ -1202,13 +1250,14 @@ document.getElementById("btnSettings").onclick = showSettings;
 
 applyTheme();
 activePalette = MARKSETS[load(LS_PAL, "classic")] ? load(LS_PAL, "classic") : "classic";
+state.latin = load(LS_LATIN, false);
 state.dbl = load(LS_DBL, false);
 state.day = dayNumber();
 loadDifficulty(diffOf(load(LS_LAST, "easy")).id);
 if (!load(LS_HELP, false)) showHelp();
 
 // Exposed for verification in the console.
-window.CHROMOKU = { state, DIFFS, MARKSETS, generatePuzzle, countSolutions,
+window.CHROMOKU = { state, DIFFS, TIERS, MARKSETS, generatePuzzle, countSolutions,
                     randomSolvedGrid, boxDims, mulberry32 };
 </script>
 </html>
