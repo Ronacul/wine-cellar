@@ -1,0 +1,2740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#f7f7f8">
+<title>Chromoku</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<meta name="description" content="A daily colour-logic puzzle. No numbers.">
+<style>
+/* ================= tokens ================= */
+:root{
+  --bg:#f7f7f8; --panel:#fff; --panel2:#eeeef2;
+  --ink:#17172b; --ink-dim:#63637a; --ink-faint:#9c9caf;
+  --line:rgba(0,0,0,.10); --line-2:rgba(0,0,0,.18);
+  --cell:#fff; --cell-given:#e9e9f0; --board:rgba(0,0,0,.14);
+  --ring:#17172b; --shadow:0 1px 2px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.06);
+  --error:#e74c3c;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  --safe-b:env(safe-area-inset-bottom,0px);
+  --safe-t:env(safe-area-inset-top,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#14141f; --panel:#1e1e2e; --panel2:#282838;
+    --ink:#ececf4; --ink-dim:#9a9ab2; --ink-faint:#63637a;
+    --line:rgba(255,255,255,.11); --line-2:rgba(255,255,255,.20);
+    --cell:#252537; --cell-given:#32324a; --board:rgba(255,255,255,.16);
+    --ring:#ececf4; --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#14141f; --panel:#1e1e2e; --panel2:#282838;
+  --ink:#ececf4; --ink-dim:#9a9ab2; --ink-faint:#63637a;
+  --line:rgba(255,255,255,.11); --line-2:rgba(255,255,255,.20);
+  --cell:#252537; --cell-given:#32324a; --board:rgba(255,255,255,.16);
+  --ring:#ececf4; --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.25);
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink)}
+.app{
+  min-height:100vh; width:100%;
+  background:var(--bg); color:var(--ink); font-family:var(--sans);
+  -webkit-font-smoothing:antialiased; -webkit-tap-highlight-color:transparent;
+  display:flex; flex-direction:column; align-items:center;
+  padding:calc(var(--safe-t) + 8px) 12px calc(var(--safe-b) + 12px);
+}
+button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer}
+
+/* ================= header ================= */
+header{
+  width:100%; max-width:460px; display:grid;
+  grid-template-columns:1fr auto 1fr; align-items:center; gap:8px;
+  padding-bottom:10px; border-bottom:1px solid var(--line); margin-bottom:14px;
+}
+.hdr-l{display:flex;gap:2px}
+.hdr-r{display:flex;gap:2px;justify-content:flex-end;align-items:center}
+h1{
+  font-size:19px; font-weight:800; letter-spacing:-.03em; text-align:center;
+  line-height:1.1;
+}
+.sub{
+  font-family:var(--mono); font-size:10px; color:var(--ink-faint);
+  text-align:center; letter-spacing:.06em; text-transform:uppercase; margin-top:2px;
+}
+.icon-btn{
+  width:34px; height:34px; border-radius:9px; font-size:15px; color:var(--ink-dim);
+  display:grid; place-items:center; transition:background .15s,color .15s;
+}
+.icon-btn:hover{background:var(--panel2); color:var(--ink)}
+.icon-btn[disabled]{opacity:.35; cursor:default}
+.icon-btn[disabled]:hover{background:transparent; color:var(--ink-dim)}
+.timer{
+  font-family:var(--mono); font-size:14px; font-variant-numeric:tabular-nums;
+  color:var(--ink-dim); min-width:44px; text-align:right;
+}
+
+/* ================= difficulty ================= */
+.diffs{
+  display:flex; gap:4px; background:var(--panel2); padding:3px;
+  border-radius:11px; max-width:100%; overflow-x:auto; scrollbar-width:none;
+}
+.diffs::-webkit-scrollbar{display:none}
+.tiers{display:flex; gap:8px; align-items:center; max-width:100%}
+/* Layering is its own axis, so it sits outside the size ladder rather than
+   pretending to be one more step along it. */
+.dbl{
+  flex:0 0 auto; font-size:12px; font-weight:600; padding:9px 13px; border-radius:11px;
+  background:var(--panel2); color:var(--ink-dim); white-space:nowrap;
+  transition:background .15s,color .15s;
+}
+.dbl.on{background:var(--ink); color:var(--bg)}
+.diff{flex:0 0 auto}
+.diff{
+  font-size:12px; font-weight:600; padding:6px 14px; border-radius:8px; white-space:nowrap;
+  color:var(--ink-dim); transition:background .15s,color .15s;
+}
+.diff.on{background:var(--panel); color:var(--ink); box-shadow:var(--shadow)}
+.diff .tick{opacity:.55; font-size:10px}
+
+/* ================= level mode ================= */
+.levelbar{
+  flex:1; display:flex; align-items:center; gap:10px; min-width:0;
+  background:var(--panel2); border-radius:11px; padding:7px 9px;
+}
+.lvl-c{flex:1; display:flex; flex-direction:column; line-height:1.15}
+.lvl-c b{font-size:14px; font-weight:700; white-space:nowrap}
+/* A peek borrows the next world's mechanic, so it says whose. */
+.pk{font-size:9px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+  background:var(--ink); color:var(--bg); border-radius:5px; padding:2px 5px; vertical-align:2px}
+.lvl-sub{
+  font-family:var(--mono); font-size:9.5px; color:var(--ink-faint); white-space:nowrap;
+  text-transform:uppercase; letter-spacing:.06em; margin-top:2px;
+}
+.hearts{display:flex; gap:2px; font-size:13px; color:var(--ink-faint)}
+.hearts .on{color:var(--error)}
+.hearts.big{justify-content:center; font-size:26px; gap:5px; margin-bottom:16px}
+/* Countdown to next heart; hidden when full via empty textContent. */
+.regen{
+  font-family:var(--mono); font-size:9.5px; color:var(--ink-faint);
+  margin-left:5px; letter-spacing:.02em; font-variant-numeric:tabular-nums;
+}
+/* Stage path — ten dots under the level heading. Peek is a diamond, boss
+   a star; earned steps carry a small star badge, current step glows. */
+.path{
+  display:flex; gap:3px; align-items:center; margin-top:4px;
+  font-family:var(--mono); font-size:11px; color:var(--ink-faint); line-height:1;
+}
+.path .st{
+  position:relative; padding:1px 2px; opacity:.5;
+  transition:opacity .15s, color .15s;
+}
+.path .st.here{opacity:1; color:var(--ink); font-size:14px}
+.path .st.done{opacity:.85; color:var(--ok, #7da87b)}
+.path .st.boss{color:#c9a227}      /* honey/gold for boss */
+.path .st.peek{color:var(--ink-dim)}
+.path .st.here.boss{color:#c9a227}
+.path .stg{
+  position:absolute; top:-6px; right:-4px; font-size:6.5px; color:#c9a227;
+  letter-spacing:-1px;
+}
+.path .pips{
+  display:block; text-align:center; font-size:5px; line-height:1;
+  margin-top:-2px; letter-spacing:1px; color:currentColor; opacity:.7;
+}
+/* The clock is the only way to lose, so it gets a bar rather than just digits. */
+.tbarwrap{
+  width:100%; max-width:400px; height:5px; border-radius:3px;
+  background:var(--panel2); overflow:hidden; margin-top:-16px;
+}
+.tbar-fill{
+  height:100%; width:100%; border-radius:3px; background:var(--ink-dim);
+  transition:width .25s linear, background .3s;
+}
+.tbar-fill.warn{background:#d4842a}
+.tbar-fill.danger{background:var(--error)}
+.timer.warn{color:#d4842a}
+.timer.danger{color:var(--error); font-weight:600}
+.stars-big{
+  text-align:center; font-size:34px; letter-spacing:6px; margin:2px 0 16px;
+  color:var(--line-2);
+}
+.stars-big .on{color:#f1c40f}
+.crash{
+  position:fixed; inset:0; z-index:99; background:var(--bg); color:var(--ink);
+  display:flex; flex-direction:column; justify-content:center; gap:10px;
+  padding:28px; font-family:var(--sans);
+}
+.crash pre{
+  font-family:var(--mono); font-size:11px; color:var(--ink-dim);
+  background:var(--panel2); padding:10px; border-radius:8px;
+  white-space:pre-wrap; margin-bottom:8px;
+}
+
+/* ================= board ================= */
+.play{
+  flex:1; width:100%; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:26px;
+}
+.board-wrap{width:100%; max-width:min(86vw,360px)}
+/* Gap between boxes is 3x the gap inside them — that ratio is the only thing
+   making the four 2x2 boxes legible, so it has to stay exaggerated. */
+.board{
+  display:grid; gap:var(--bgap,12px); aspect-ratio:1; padding:var(--bgap,12px);
+  background:var(--board); border-radius:18px;
+}
+.box{display:grid; gap:var(--cgap,4px)}
+.cell{
+  position:relative; background:var(--cell); border-radius:var(--crad,8px);
+  transition:background .12s;
+}
+.cell:not(.given){cursor:pointer}
+.cell:not(.given):hover{background:var(--panel2)}
+
+/* Both givens and your placements now fill their cell edge-to-edge — the
+   corner shape is what tells them apart. Placements are rounded; givens are
+   near-square. That's a stronger cue in Double than the old size difference,
+   which stacked (small outer + smaller inner) and made guessed cells feel
+   half-committed. */
+.fill{position:absolute; inset:0; border-radius:12px; background:var(--c)}
+/* Pattern marks bring their own ground and image via inline style; the outline
+   keeps a light pattern from dissolving into a light empty cell. */
+.fill.pat{box-shadow:inset 0 0 0 1.5px var(--line-2)}
+.cell.given{background:var(--cell-given)}
+.cell.given .fill{border-radius:2px}
+/* On completion every square locks to the given look, so the finished board
+   reads as one clean block of colour. */
+.board.done .fill{border-radius:2px; transition:border-radius .25s}
+
+/* Inner layer: a second, unrelated puzzle drawn inside the same squares. A
+   square inside a square — literally a smaller version of the same board, which
+   is the plainest reading of the idea. Varying the inner shape is held back as
+   a reward/difficulty lever rather than spent on the default.
+   Given and placed marks share size; corner radius carries the cue, matching
+   the outer layer. The layered ring detaches the dot from a coloured outer
+   fill beneath it.
+   Centred via inset, not translate: the pop animation drives transform and
+   would otherwise knock the mark off centre while it plays. */
+.dot{
+  position:absolute; inset:24%; border-radius:8px; background:var(--c);
+  box-shadow:0 0 0 2px rgba(0,0,0,.28),0 0 0 3.5px var(--cell-given);
+}
+.dot.given{border-radius:0}
+.board.done .dot{border-radius:0; transition:border-radius .25s}
+
+/* ================= palette ================= */
+/* Row gap has to clear the key labels, which hang below the first row. */
+.palette{display:flex; flex-direction:column; gap:26px; align-items:center}
+/* No number labels past 4 marks, so rows can sit closer. */
+.palette.tight{gap:10px}
+/* Must never wrap — a wrapped eraser collides with the key labels below. */
+.prow{display:flex; gap:clamp(7px,2.5vw,10px); align-items:center; justify-content:center; flex-wrap:nowrap}
+/* Past four marks a single row cannot hold them at a tappable size, so wrap —
+   and drop the number labels, which are what made wrapping collide before. */
+.prow.wrap{flex-wrap:wrap; gap:7px; max-width:340px}
+.prow.wrap .swatch{width:clamp(38px,9vw,44px)}
+/* Holds the eraser column open on the inner row. Needs the compound selector to
+   outrank .swatch's own background and shadow. */
+.swatch.spacer{background:none; box-shadow:none; visibility:hidden; pointer-events:none}
+/* Inner-layer swatches mirror the board: a ring, not a filled square. */
+.swatch.inner{background:var(--c); border-radius:7px; box-shadow:var(--shadow)}
+.swatch.inner::after{content:""; position:absolute; inset:26%; border-radius:3px;
+  box-shadow:0 0 0 2px rgba(255,255,255,.55)}
+/* Selection ring uses the swatch's own colour so the eye tracks by hue, not
+   by a neutral outline that gets lost against similar palette backgrounds. */
+.swatch.inner.on{box-shadow:0 0 0 3px var(--bg),0 0 0 6px var(--c); transform:scale(1.06); z-index:1}
+.swatch{
+  width:clamp(48px,12.5vw,54px); aspect-ratio:1; border-radius:14px; background:var(--c);
+  position:relative; transition:transform .12s, box-shadow .12s;
+  box-shadow:var(--shadow);
+}
+.swatch:active{transform:scale(.93)}
+.swatch.on{box-shadow:0 0 0 3px var(--bg),0 0 0 6px var(--c); transform:scale(1.06); z-index:1}
+/* Completed marks recede so the player can scan for what's still needed. */
+.swatch.done{opacity:.35; transform:scale(.82); transition:opacity .2s, transform .2s}
+.swatch .k{
+  position:absolute; bottom:-17px; left:0; right:0; text-align:center;
+  font-family:var(--mono); font-size:9px; color:var(--ink-faint);
+}
+/* Remaining-count badge: how many of this mark still need to land on the
+   board. Sits over the top-right of the swatch, ink on a light plaque so it
+   reads over any hue / shape / pattern. Hidden at zero (the .done fade
+   already says "not this one"). */
+.swatch .cnt{
+  position:absolute; top:-6px; right:-6px; min-width:18px; height:18px;
+  padding:0 4px; border-radius:9px; background:var(--panel);
+  color:var(--ink); font-family:var(--sans); font-size:11px; font-weight:700;
+  line-height:18px; text-align:center; box-shadow:var(--shadow);
+  font-variant-numeric:tabular-nums; pointer-events:none;
+}
+.swatch.done .cnt{display:none}
+.swatch.pat{box-shadow:var(--shadow),inset 0 0 0 1.5px var(--line-2)}
+.swatch.pat.on{box-shadow:inset 0 0 0 1.5px var(--line-2),0 0 0 3px var(--bg),0 0 0 6px var(--ink); transform:scale(1.06); z-index:1}
+.swatch.erase{
+  background:var(--panel); border:1.5px solid var(--line-2); color:var(--ink-dim);
+  display:grid; place-items:center; font-size:19px;
+}
+/* settings */
+.seg{display:flex; gap:4px; background:var(--panel2); padding:3px; border-radius:10px; margin-bottom:16px}
+.seg button{flex:1; font-size:12px; font-weight:600; padding:8px 4px; border-radius:7px; color:var(--ink-dim)}
+.seg button.on{background:var(--panel); color:var(--ink); box-shadow:var(--shadow)}
+.dbg{display:flex; gap:6px; margin-bottom:14px}
+/* Development tools, hidden unless ?dev=1 */
+.dev-only{display:none}
+html.dev .dev-only{display:grid}
+.dbg input{
+  flex:1; font-family:var(--mono); font-size:12px; padding:8px 10px; border-radius:8px;
+  border:1px solid var(--line-2); background:var(--panel2); color:var(--ink);
+}
+.dbg button{
+  font-size:12px; font-weight:600; padding:8px 12px; border-radius:8px;
+  background:var(--panel2); color:var(--ink-dim);
+}
+.fld{font-size:9.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.07em; margin-bottom:6px}
+.pal-prev{display:flex; gap:5px; justify-content:center; margin-top:6px}
+.pal-prev i{width:21px; height:21px; border-radius:5px; display:block}
+.pal-pad{padding-bottom:20px}
+/* Toggle row — label + switch on one line */
+.toggle-row{
+  display:flex; justify-content:space-between; align-items:center;
+  padding:10px 0; border-bottom:1px solid var(--line);
+}
+.toggle-row:last-of-type{border-bottom:none}
+.toggle-lbl{font-size:13px; font-weight:600}
+.toggle-desc{font-size:11px; color:var(--ink-dim); margin-top:1px}
+.toggle-sw{
+  position:relative; width:44px; height:26px; border-radius:13px;
+  background:var(--panel2); border:1.5px solid var(--line-2);
+  transition:background .2s; flex:0 0 44px; cursor:pointer;
+}
+.toggle-sw::after{
+  content:""; position:absolute; top:2px; left:2px; width:20px; height:20px;
+  border-radius:10px; background:var(--ink-dim); transition:transform .2s, background .2s;
+}
+.toggle-sw.on{background:var(--ink)}
+.toggle-sw.on::after{transform:translateX(18px); background:var(--bg)}
+
+/* ================= modal ================= */
+.overlay{
+  position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:50;
+  display:grid; place-items:center; padding:20px;
+  animation:fade .18s ease-out;
+}
+.overlay.hide{display:none}
+.modal{
+  background:var(--panel); border-radius:18px; padding:24px 22px;
+  width:100%; max-width:360px; box-shadow:0 20px 60px rgba(0,0,0,.28);
+  max-height:86vh; overflow-y:auto;
+}
+.modal h2{font-size:20px; font-weight:800; letter-spacing:-.02em; margin-bottom:4px}
+.modal .lede{font-size:13px; color:var(--ink-dim); line-height:1.5; margin-bottom:16px}
+.modal ul{list-style:none; display:flex; flex-direction:column; gap:9px; margin-bottom:18px}
+.modal li{font-size:13.5px; line-height:1.45; display:flex; gap:9px; align-items:flex-start}
+.modal li b{font-weight:600}
+.bullet{
+  flex:0 0 6px; width:6px; height:6px; border-radius:2px; margin-top:6px; background:var(--ink-faint);
+}
+.btn{
+  width:100%; padding:13px; border-radius:11px; font-size:14px; font-weight:700;
+  background:var(--ink); color:var(--bg); transition:opacity .15s;
+}
+.btn:hover{opacity:.85}
+.btn.ghost{background:var(--panel2); color:var(--ink); margin-top:8px}
+.stats{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:18px}
+.stat{text-align:center}
+.stat .n{font-family:var(--mono); font-size:24px; font-weight:600; letter-spacing:-.03em}
+.stat .l{font-size:9.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.07em; margin-top:3px; line-height:1.3}
+.times{border-top:1px solid var(--line); padding-top:14px; margin-bottom:18px}
+.time-row{display:flex; justify-content:space-between; font-size:12.5px; padding:5px 0}
+.time-row span:last-child{font-family:var(--mono); color:var(--ink-dim)}
+.mini-wrap{display:flex; justify-content:center; margin-bottom:18px}
+.board.mini{
+  width:180px; gap:6px; padding:6px; border-radius:11px;
+}
+.board.mini .box{gap:2px}
+.board.mini .cell{border-radius:4px}
+.board.mini .fill{border-radius:4px}
+.share-box{
+  font-family:var(--mono); font-size:19px; line-height:1.2; text-align:center;
+  background:var(--panel2); border-radius:11px; padding:16px; margin-bottom:16px;
+  white-space:pre; letter-spacing:.02em;
+}
+.win-time{
+  font-family:var(--mono); font-size:34px; font-weight:600; text-align:center;
+  letter-spacing:-.03em; margin:6px 0 18px;
+}
+
+/* ================= toast ================= */
+.toast{
+  position:fixed; left:50%; bottom:calc(var(--safe-b) + 28px); transform:translateX(-50%);
+  background:var(--ink); color:var(--bg); font-size:13px; font-weight:600;
+  padding:10px 20px; border-radius:10px; z-index:60; animation:fade .15s ease-out;
+}
+.toast.hide{display:none}
+
+/* ================= animation ================= */
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@keyframes pop{0%{transform:scale(.4);opacity:.3}60%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-4px)}40%{transform:translateX(4px)}60%{transform:translateX(-2px)}80%{transform:translateX(2px)}}
+@keyframes wave{0%,100%{transform:scale(1)}45%{transform:scale(1.16)}}
+@media (prefers-reduced-motion:no-preference){
+  .fill.new,.dot.new{animation:pop .22s cubic-bezier(.34,1.4,.64,1)}
+  .cell.bad{animation:shake .3s}
+  .cell.bad .fill{box-shadow:inset 0 0 0 3px var(--error)}
+  .cell.won{animation:wave .5s ease-in-out}
+}
+@media (prefers-reduced-motion:reduce){
+  .cell.bad .fill{box-shadow:inset 0 0 0 3px var(--error)}
+}
+
+/* ================= completion fade ================= */
+/* Cells belonging to a completed unit (row/col/box) recede so the player's
+   eye moves to what still needs work.  Per-layer classes let Double mode
+   fade the outer fill while the inner dot stays bright, or vice versa. */
+.board.fade-done .cell.unit-done-0 .fill{opacity:.32; transition:opacity .35s}
+.board.fade-done .cell.unit-done-1 .dot{opacity:.32; transition:opacity .35s}
+/* Single-layer shorthand — unit-done without a suffix. */
+.board.fade-done .cell.unit-done .fill{opacity:.32; transition:opacity .35s}
+/* On win the whole board lights back up. */
+.board.done .cell .fill,.board.done .cell .dot{opacity:1!important}
+
+/* ================= sharp marks (no rounded corners on guesses) ================= */
+.board.sharp .cell:not(.given) .fill{border-radius:2px}
+.board.sharp .cell:not(.given) .dot{border-radius:0}
+
+/* ================= hint button ================= */
+.icon-btn.hint{font-size:16px}
+.icon-btn.hint .badge{
+  position:absolute; top:2px; right:2px; min-width:14px; height:14px; padding:0 3px;
+  border-radius:7px; background:var(--error); color:#fff; font-size:9px;
+  font-weight:700; line-height:14px; text-align:center; pointer-events:none;
+}
+/* hint option cards */
+.hint-opts{display:flex; flex-direction:column; gap:10px; margin-bottom:16px}
+.hint-opt{
+  display:flex; align-items:center; gap:12px; padding:14px;
+  background:var(--panel2); border-radius:12px; text-align:left;
+  transition:opacity .15s;
+}
+.hint-opt:disabled{opacity:.4; cursor:default}
+.hint-opt .h-icon{font-size:22px; flex:0 0 36px; text-align:center}
+.hint-opt .h-body{flex:1}
+.hint-opt .h-title{font-size:14px; font-weight:700; margin-bottom:2px}
+.hint-opt .h-desc{font-size:11.5px; color:var(--ink-dim); line-height:1.4}
+.hint-opt .h-count{
+  font-family:var(--mono); font-size:11px; color:var(--ink-faint);
+  flex:0 0 auto; text-align:right;
+}
+/* revealed-cell glow */
+.cell.revealed{background:rgba(241,196,15,.18)!important; transition:background .6s}
+/* share badge canvas */
+.badge-wrap{display:flex; justify-content:center; margin-bottom:16px}
+.badge-wrap canvas{max-width:100%; height:auto; border-radius:12px}
+/* timer frozen effect */
+.timer.frozen{color:#3498db!important; font-weight:700}
+@media (min-width:520px){
+  .board-wrap{max-width:400px}
+  h1{font-size:21px}
+}
+</style>
+
+<div class="app">
+<header>
+  <div class="hdr-l">
+    <button class="icon-btn" id="btnHelp" aria-label="How to play">?</button>
+    <button class="icon-btn" id="btnUndo" aria-label="Undo" disabled>↶</button>
+    <button class="icon-btn" id="btnStats" aria-label="Statistics">▤</button>
+  </div>
+  <div>
+    <h1>Chromoku</h1>
+    <div class="sub" id="sub"></div>
+  </div>
+  <div class="hdr-r">
+    <span class="timer" id="timer">0:00</span>
+    <button class="icon-btn hint" id="btnHint" aria-label="Hints" style="position:relative">💡</button>
+    <button class="icon-btn" id="btnMark" aria-label="Bookmark">☆</button>
+    <button class="icon-btn dev-only" id="btnNew" aria-label="New practice puzzle">⟳</button>
+    <button class="icon-btn" id="btnSettings" aria-label="Settings">⚙</button>
+  </div>
+</header>
+
+<div class="play">
+  <div class="tiers">
+    <div class="diffs" id="diffs"></div>
+    <button class="dbl" id="latinToggle">Latin</button>
+    <button class="dbl" id="dblToggle">Double</button>
+    <button class="dbl" id="lvlToggle">Levels</button>
+  </div>
+  <div class="tbarwrap" id="tbarwrap" style="display:none"><div class="tbar-fill" id="tbar"></div></div>
+  <div class="board-wrap"><div class="board" id="board"></div></div>
+  <div class="palette pal-pad" id="palette"></div>
+</div>
+
+<div class="overlay hide" id="overlay"><div class="modal" id="modal"></div></div>
+<div class="toast hide" id="toast"></div>
+</div>
+
+<script>
+"use strict";
+
+/* ================= config ================= */
+
+const SHARE_NAME = "Chromoku";
+const EPOCH = Date.UTC(2026, 7, 15);          // 15 Aug 2026 = puzzle #1
+
+// Every colour reference routes through here so palette unlocks are additive
+// later. `emoji` is indexed by layer: squares for the outer grid, circles for
+// the inner one, so a shared result stays readable as two separate puzzles.
+// A mark is anything four-way distinguishable — colour is just one choice.
+// Pattern sets are monochrome, so they stay playable with any colour vision.
+const TILE = "12px 12px";  // more negative space than 9x9
+
+// Primitive pools. A mark set combines these to produce however many
+// distinguishable marks a grid size needs — 4, 9, 16, whatever comes next.
+const HUES = [
+  { hex:"#e74c3c", emoji:["🟥","🟥"], label:"Red"     },
+  { hex:"#3498db", emoji:["🟦","🟦"], label:"Blue"    },
+  { hex:"#27ae60", emoji:["🟩","🟩"], label:"Green"   },
+  { hex:"#f1c40f", emoji:["🟨","🟨"], label:"Yellow"  },
+  { hex:"#9b59b6", emoji:["🟪","🟪"], label:"Purple"  },
+  { hex:"#e67e22", emoji:["🟧","🟧"], label:"Orange"  },
+  { hex:"#00b8d4", emoji:["🟦","🟦"], label:"Cyan"    },
+  { hex:"#8d99ae", emoji:["⬜","⬜"], label:"Grey"    },
+  { hex:"#6d4c41", emoji:["🟫","🟫"], label:"Brown"   },
+  { hex:"#ec7ab5", emoji:["🟪","🟪"], label:"Pink"    },
+  { hex:"#a3c72e", emoji:["🟩","🟩"], label:"Lime"    },
+  { hex:"#1f3a93", emoji:["🟦","🟦"], label:"Navy"    },
+  { hex:"#16a085", emoji:["🟦","🟦"], label:"Teal"    },
+  { hex:"#7d6608", emoji:["🟫","🟫"], label:"Olive"   },
+  { hex:"#c0392b", emoji:["🟥","🟥"], label:"Maroon"  },
+  { hex:"#2c3e50", emoji:["⬛","⬛"], label:"Slate"   },
+];
+
+// Shapes each get a distinct hue from HUES for visual variety, but the
+// rule is still shape-based — a red square never sits next to a blue square,
+// so a colour-only reader and a shape-only reader both solve. Colour is
+// redundant with shape here, not a second independent dimension.
+const SHAPES = [
+  { label:"Square",    glyph:"■", clip:"inset(2%)" },
+  { label:"Circle",    glyph:"●", clip:"circle(50%)" },
+  { label:"Triangle",  glyph:"▲", clip:"polygon(50% 4%,96% 96%,4% 96%)" },
+  { label:"Diamond",   glyph:"◆", clip:"polygon(50% 2%,98% 50%,50% 98%,2% 50%)" },
+  { label:"Star",      glyph:"★", clip:"polygon(50% 2%,61% 37%,98% 37%,68% 59%,79% 95%,50% 73%,21% 95%,32% 59%,2% 37%,39% 37%)" },
+  { label:"Pentagon",  glyph:"⬟", clip:"polygon(50% 2%,98% 38%,79% 96%,21% 96%,2% 38%)" },
+  { label:"Hexagon",   glyph:"⬢", clip:"polygon(25% 3%,75% 3%,98% 50%,75% 97%,25% 97%,2% 50%)" },
+  { label:"Cross",     glyph:"✚", clip:"polygon(34% 2%,66% 2%,66% 34%,98% 34%,98% 66%,66% 66%,66% 98%,34% 98%,34% 66%,2% 66%,2% 34%,34% 34%)" },
+  { label:"Down",      glyph:"▼", clip:"polygon(4% 4%,96% 4%,50% 96%)" },
+  { label:"Chevron",   glyph:"➤", clip:"polygon(4% 4%,50% 4%,96% 50%,50% 96%,4% 96%,42% 50%)" },
+  { label:"Trapezoid", glyph:"▰", clip:"polygon(22% 8%,78% 8%,98% 92%,2% 92%)" },
+  { label:"Rhomboid",  glyph:"▱", clip:"polygon(26% 6%,98% 6%,74% 94%,2% 94%)" },
+  { label:"Octagon",   glyph:"⯃", clip:"polygon(32% 2%,68% 2%,98% 32%,98% 68%,68% 98%,32% 98%,2% 68%,2% 32%)" },
+  { label:"Bowtie",    glyph:"⧗", clip:"polygon(6% 4%,94% 4%,6% 96%,94% 96%)" },
+  { label:"Arrow",     glyph:"➔", clip:"polygon(2% 34%,60% 34%,60% 8%,98% 50%,60% 92%,60% 66%,2% 66%)" },
+  { label:"Half",      glyph:"◗", clip:"polygon(50% 2%,98% 2%,98% 98%,50% 98%)" },
+];
+
+// Strokes and gaps tuned to sit inside a 12px tile — the eye needs about two
+// tile periods per cell to identify the motif, so thinner lines and bigger
+// gaps read more clearly on small cells than the older 9px tile did.
+const WEAVES = [
+  { label:"Diagonals", glyph:"▨",
+    bg:"repeating-linear-gradient(45deg,var(--ink) 0 1.5px,transparent 1.5px 10px)" },
+  { label:"Bars", glyph:"▤",
+    bg:"repeating-linear-gradient(180deg,var(--ink) 0 1.5px,transparent 1.5px 10px)" },
+  { label:"Hatch", glyph:"▦",
+    bg:"repeating-linear-gradient(0deg,var(--ink) 0 1.2px,transparent 1.2px 12px),"
+     + "repeating-linear-gradient(90deg,var(--ink) 0 1.2px,transparent 1.2px 12px)" },
+  { label:"Dots", glyph:"⠿",
+    bg:"radial-gradient(var(--ink) 1.8px,transparent 2.2px)" },
+  { label:"Back-diagonals", glyph:"▧",
+    bg:"repeating-linear-gradient(-45deg,var(--ink) 0 1.5px,transparent 1.5px 10px)" },
+  { label:"Columns", glyph:"▥",
+    bg:"repeating-linear-gradient(90deg,var(--ink) 0 1.5px,transparent 1.5px 10px)" },
+  { label:"Weave", glyph:"▩",
+    bg:"repeating-linear-gradient(45deg,var(--ink) 0 1.2px,transparent 1.2px 8px),"
+     + "repeating-linear-gradient(-45deg,var(--ink) 0 1.2px,transparent 1.2px 8px)" },
+  { label:"Rings", glyph:"◍",
+    bg:"radial-gradient(circle,transparent 1.2px,var(--ink) 1.4px,var(--ink) 2.2px,transparent 2.4px)" },
+  { label:"Wide bars", glyph:"▬",
+    bg:"repeating-linear-gradient(180deg,var(--ink) 0 3px,transparent 3px 12px)" },
+];
+
+// Every set varies along exactly ONE dimension — all colours, all shapes, or
+// all patterns. Crossing two dimensions (a red triangle beside a blue triangle
+// beside a red circle) makes the board much harder to read than it is to solve.
+// A set returns null when it cannot produce n marks; the picker then hides it.
+const MARKSETS = {
+  classic: { name:"Colour", build(n){
+    if (n > HUES.length) return null;
+    return HUES.slice(0, n).map(h => ({ ...h, kind:"colour" }));
+  }},
+  shapes: { name:"Shapes", build(n){
+    if (n > SHAPES.length) return null;
+    return SHAPES.slice(0, n).map((sh, i) => ({
+      kind:"colour", hex:(HUES[i] && HUES[i].hex) || "var(--ink)", clip:sh.clip,
+      label:sh.label, emoji:[sh.glyph, sh.glyph],
+    }));
+  }},
+  ink: { name:"Patterns", build(n){
+    if (n > WEAVES.length) return null;
+    return WEAVES.slice(0, n).map(w => ({
+      kind:"pattern", bg:w.bg, label:w.label, emoji:[w.glyph, w.glyph],
+    }));
+  }},
+};
+
+let activePalette = "classic";
+// Prompts and copy switch language based on the active mark set so the
+// game never says "colour" when the player is placing shapes or patterns.
+const markNoun = () => activePalette === "shapes" ? "shape"
+                     : activePalette === "ink" ? "pattern"
+                     : "colour";
+// Cycles inside a same-size run so 30 straight 4×4s don't feel identical.
+const MARK_ROTATION = ["classic", "shapes", "ink"];
+function rotatedMarkSet(level, n){
+  // Rotate only through sets that can actually produce n marks. Filtering
+  // first (rather than falling through inside the cycle) avoids the case
+  // where a size collapses two rotation slots onto the same set — e.g. ink
+  // has 9 weaves, so at 10x10 the ink slot fell back to classic and left
+  // whole 10-level stretches on one set.
+  const available = MARK_ROTATION.filter(id => MARKSETS[id].build(n));
+  if (!available.length) return "classic";
+  return available[Math.floor((level - 1) / 5) % available.length];
+}
+let MARKS = [];                                   // built for the current grid size
+function buildMarks(){
+  MARKS = MARKSETS[activePalette].build(state.n) || MARKSETS.classic.build(state.n);
+  INNER = MARKSETS.classic.build(state.n);
+}
+const palette = () => MARKS;
+const isPattern = () => MARKS.length > 0 && MARKS[0].kind === "pattern";
+const setFits = (id, n) => !!MARKSETS[id].build(n);
+
+// Inline style for a mark. Patterns need a ground of their own, since the
+// pattern is drawn in ink and would otherwise sit on the empty-cell colour.
+function markStyle(m){
+  // Shaped marks square off their corners, or a rounded square and a circle
+  // are almost the same silhouette at swatch size.
+  const clip = m.clip ? ";clip-path:" + m.clip + ";border-radius:3px" : "";
+  if (m.kind !== "pattern") return "--c:" + m.hex + clip;
+  return "background-color:var(--panel2);background-image:" + m.bg
+       + ";background-size:" + TILE + clip;
+}
+
+// The inner layer always uses colour: its marks are a third the width of a
+// square, and a hatch or dot pattern turns to mush at that size.
+let INNER = [];
+const innerMarks = () => INNER;
+const styleFor = (L, i) => markStyle((L > 0 ? INNER : MARKS)[i]);
+const emojiFor = (L, i) => (L > 0 ? INNER[i].emoji[1] : MARKS[i].emoji[0]);
+
+// Difficulty is a table, not branching logic — a future difficulty algorithm
+// replaces these numbers without touching the generator.
+// `layers: 2` runs a second, entirely independent puzzle on the inner squares.
+// The two are deliberately unrelated: the difficulty is perceptual (holding two
+// overlaid grids apart by eye), not deductive.
+// Size/difficulty tiers. Layering is a separate axis (see state.dbl) that
+// applies to any of them, rather than one more step on this ladder.
+const TIERS = {
+  sudoku: [
+    { id:"easy",    label:"Easy",   n:4,  givens:8   },
+    { id:"medium",  label:"Medium", n:4,  givens:6   },
+    { id:"hard",    label:"Hard",   n:4,  givens:4   },
+    { id:"nine",    label:"9×9",    n:9,  givens:30  },
+    // 16x16 stays near 140 givens: below that the uniqueness check climbs from
+    // ~0.2s to tens of seconds, which is not something to do on page load.
+    { id:"sixteen", label:"16×16",  n:16, givens:140 },
+  ],
+  // Without boxes the grid size no longer has to factorise, so odd and prime
+  // sizes become available. Givens are set a little above the measured minimum
+  // for a unique solve (5x5 needs 8, 7x7 needs 18, 10x10 needs 42).
+  latin: [
+    { id:"l4",  label:"4×4",   n:4,  givens:7  },
+    { id:"l5",  label:"5×5",   n:5,  givens:11 },
+    { id:"l7",  label:"7×7",   n:7,  givens:22 },
+    { id:"l10", label:"10×10", n:10, givens:48 },
+  ],
+};
+const DIFFS = () => TIERS[state.latin ? "latin" : "sudoku"];
+const layerCount = () => state.dbl ? 2 : 1;
+// Each tier+layering combination is its own daily puzzle and its own record.
+const slot = (id, dbl) => id + (dbl ? "-x2" : "");
+const diffOf = id => DIFFS().find(d => d.id === id) || DIFFS()[0];
+const diffIndex = id => DIFFS().findIndex(d => d.id === id);
+
+const LS_DAILY = "chromoku.daily.v2";   // v2: per-layer state
+const LS_STATS = "chromoku.stats.v1";
+const LS_THEME = "chromoku.theme.v1";
+const LS_HELP  = "chromoku.seen-help.v1";
+const LS_LAST  = "chromoku.last-diff.v1";
+const LS_PAL   = "chromoku.palette.v1";
+const LS_DBL   = "chromoku.double.v1";
+const LS_LATIN = "chromoku.latin.v1";
+const LS_PROG  = "chromoku.progress.v1";
+const LS_FADE  = "chromoku.fade-done.v1";    // toggle: fade completed units
+const LS_ROUND = "chromoku.round-marks.v1";  // toggle: rounded corners on guesses
+
+// The re-roll and the date picker are development tools. A player who finds the
+// date picker can skip the daily entirely, and unlimited re-rolls make it
+// meaningless. Enable with ?dev=1; the choice sticks so it survives navigation.
+const DEV = (() => {
+  try {
+    const q = new URLSearchParams(location.search).get("dev");
+    if (q !== null){ localStorage.setItem("chromoku.dev", q === "1" ? "1" : "0"); }
+    return localStorage.getItem("chromoku.dev") === "1";
+  } catch { return false; }
+})();
+const LS_DAY   = "chromoku.debug-day.v1";   // debug: pin the daily puzzle to a date
+
+// Box dimensions for a given grid size. 4→2x2, 6→3x2, 9→3x3.
+function boxDims(n, rotate){
+  const h = Math.floor(Math.sqrt(n));
+  for (let bh = h; bh >= 1; bh--) if (n % bh === 0) {
+    const dims = { bh, bw: n / bh };
+    return rotate && dims.bh !== dims.bw ? { bh: dims.bw, bw: dims.bh } : dims;
+  }
+  return { bh:1, bw:n };
+}
+
+/* ================= prng ================= */
+
+function mulberry32(seed){
+  let a = seed >>> 0;
+  return function(){
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function shuffled(arr, rng){
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(rng() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/* ================= puzzle engine (size-agnostic) ================= */
+
+// A random solved grid, built by filling an empty board with randomised value
+// order. Reaches the *entire* space of valid grids for any n — 288 for 4x4.
+// (Shuffling rows/columns of one canonical grid looks equivalent but is not:
+// it only ever reaches one of the three orbits, i.e. a third of the space.)
+function randomSolvedGrid(n, rng, boxless, rotate){
+  const g = new Array(n * n).fill(null);
+  (function rec(){
+    const i = g.indexOf(null);
+    if (i === -1) return true;
+    for (const v of shuffled([...Array(n).keys()], rng)){
+      if (legal(g, n, i, v, boxless, rotate)){
+        g[i] = v;
+        if (rec()) return true;
+        g[i] = null;
+      }
+    }
+    return false;
+  })();
+  return g;
+}
+
+function legal(grid, n, idx, val, boxless, rotate){
+  const { bw, bh } = boxDims(n, rotate);
+  const r = Math.floor(idx / n), c = idx % n;
+  for (let i = 0; i < n; i++){
+    if (i !== c && grid[r * n + i] === val) return false;
+    if (i !== r && grid[i * n + c] === val) return false;
+  }
+  if (boxless) return true;            // Latin: rows and columns only
+  const r0 = Math.floor(r / bh) * bh, c0 = Math.floor(c / bw) * bw;
+  for (let rr = r0; rr < r0 + bh; rr++)
+    for (let cc = c0; cc < c0 + bw; cc++)
+      if ((rr !== r || cc !== c) && grid[rr * n + cc] === val) return false;
+  return true;
+}
+
+// Bitmask solver that always branches on the most-constrained cell. Same
+// contract as the naive version, but the pruning is what makes big grids
+// possible at all: 9x9 at 25 givens goes from ~7.6s to ~4ms.
+function countSolutions(grid, n, cap, boxless, rotate){
+  const { bw, bh } = boxDims(n, rotate), FULL = (1 << n) - 1, per = n / bw;
+  const g = grid.slice();
+  const rows = new Array(n).fill(0), cols = new Array(n).fill(0), box = new Array(n).fill(0);
+  const bi = new Int32Array(n * n);
+  for (let i = 0; i < n * n; i++) bi[i] = ((((i / n) | 0) / bh) | 0) * per + (((i % n) / bw) | 0);
+  for (let i = 0; i < n * n; i++){
+    const v = g[i];
+    if (v !== null && v !== undefined){
+      const b = 1 << v;
+      rows[(i / n) | 0] |= b; cols[i % n] |= b; if (!boxless) box[bi[i]] |= b;
+    }
+  }
+  let found = 0;
+  (function rec(){
+    if (found >= cap) return;
+    let best = -1, bestMask = 0, bestCnt = n + 1;
+    for (let i = 0; i < n * n; i++){
+      if (g[i] !== null && g[i] !== undefined) continue;
+      const avail = FULL & ~(rows[(i / n) | 0] | cols[i % n] | (boxless ? 0 : box[bi[i]]));
+      if (avail === 0) return;                 // dead end, prune the whole branch
+      let cnt = 0, x = avail;
+      while (x){ x &= x - 1; cnt++; }
+      if (cnt < bestCnt){ bestCnt = cnt; best = i; bestMask = avail; if (cnt === 1) break; }
+    }
+    if (best === -1){ found++; return; }       // no empties left — a solution
+    const r = (best / n) | 0, c = best % n, b = bi[best];
+    let mask = bestMask;
+    while (mask){
+      const bit = mask & -mask; mask ^= bit;
+      g[best] = 31 - Math.clz32(bit);
+      rows[r] |= bit; cols[c] |= bit; if (!boxless) box[b] |= bit;
+      rec();
+      rows[r] &= ~bit; cols[c] &= ~bit; if (!boxless) box[b] &= ~bit; g[best] = null;
+      if (found >= cap) return;
+    }
+  })();
+  return found;
+}
+
+
+// Cells to try removing, round-robined across boxes so the givens that survive
+// stay spread over the board instead of clumping into a few boxes.
+function removalOrder(n, rng, boxless, rotate){
+  // No boxes to balance across, so a plain shuffle is the right order.
+  if (boxless) return shuffled([...Array(n * n).keys()], rng);
+  const { bw, bh } = boxDims(n, rotate), per = n / bw, buckets = [];
+  for (let b = 0; b < n; b++){
+    const r0 = ((b / per) | 0) * bh, c0 = (b % per) * bw, cells = [];
+    for (let r = r0; r < r0 + bh; r++)
+      for (let c = c0; c < c0 + bw; c++) cells.push(r * n + c);
+    buckets.push(shuffled(cells, rng));
+  }
+  const order = [];
+  for (let k = 0; k < n; k++)
+    for (const b of shuffled([...Array(n).keys()], rng))
+      if (buckets[b][k] !== undefined) order.push(buckets[b][k]);
+  return order;
+}
+
+// Carve down from a solved board, keeping any removal that leaves the puzzle
+// uniquely solvable and undoing the rest. Uniqueness therefore holds at every
+// step — an ambiguous puzzle is an unwinnable puzzle, so it is never optional.
+// Carving down beats carving out at random: it does one solve per cell instead
+// of retrying whole hopeless boards, which is the difference between 4ms and
+// several seconds once the grid is bigger than 4x4.
+function generatePuzzle(seed, n, givens, boxless, rotate){
+  const rng = mulberry32(seed);
+  const solution = randomSolvedGrid(n, rng, boxless, rotate);
+  const puzzle = solution.slice();
+  const target = n * n - givens;
+  let removed = 0;
+
+  for (const i of removalOrder(n, rng, boxless, rotate)){
+    if (removed >= target) break;
+    const keep = puzzle[i];
+    puzzle[i] = null;
+    if (countSolutions(puzzle, n, 2, boxless, rotate) === 1) removed++;
+    else puzzle[i] = keep;               // that removal made it ambiguous
+  }
+  // May finish with more givens than asked if the board resists further
+  // removal; that is a harmless floor, never an unsolvable board.
+  return { solution, puzzle, givens:puzzle.map(v => v !== null) };
+}
+
+/* ================= difficulty rater ================= */
+
+// The units a value must be unique within: rows, columns, and boxes unless the
+// ruleset has none.
+function unitsOf(n, boxless, rotate){
+  const U = [];
+  for (let r = 0; r < n; r++) U.push(Array.from({ length:n }, (_, c) => r * n + c));
+  for (let c = 0; c < n; c++) U.push(Array.from({ length:n }, (_, r) => r * n + c));
+  if (!boxless){
+    const { bw, bh } = boxDims(n, rotate), per = n / bw;
+    for (let b = 0; b < n; b++){
+      const r0 = ((b / per) | 0) * bh, c0 = (b % per) * bw, cells = [];
+      for (let r = r0; r < r0 + bh; r++)
+        for (let c = c0; c < c0 + bw; c++) cells.push(r * n + c);
+      U.push(cells);
+    }
+  }
+  return U;
+}
+
+// How hard a puzzle actually is, measured by the cheapest technique that
+// cracks it. Given count is only a proxy for this, and a poor one: at 4x4,
+// puzzles with 8, 6 and 4 givens are all solvable by the very first technique.
+//
+//   T0  naked single  — a cell with one candidate left
+//   T1  hidden single — a value with only one home in a unit
+//   T2  locked candidates — a value confined to one row/column within a box,
+//                           eliminating it elsewhere in that line (boxes only)
+//   T3  none of the above suffice; the solver would have to guess
+//
+// `stalls` counts how often the cheaper techniques ran dry, which separates a
+// puzzle needing one clever step from one needing many.
+function rateDifficulty(puzzle, n, boxless, rotate){
+  const U = unitsOf(n, boxless, rotate), FULL = (1 << n) - 1;
+  const g = puzzle.slice();
+  const cellUnits = Array.from({ length:n * n }, () => []);
+  U.forEach(u => u.forEach(i => cellUnits[i].push(u)));
+
+  const empty = i => g[i] === null || g[i] === undefined;
+  const candidates = () => g.map((v, i) => {
+    if (!empty(i)) return 0;
+    let used = 0;
+    for (const u of cellUnits[i]) for (const j of u) if (!empty(j)) used |= 1 << g[j];
+    return FULL & ~used;
+  });
+
+  let tier = 0, stalls = 0;
+  for (;;){
+    const cand = candidates();
+
+    let moved = false;
+    for (let i = 0; i < n * n; i++){                       // T0
+      if (!empty(i)) continue;
+      const c = cand[i];
+      if (c === 0) return { tier:3, stalls:stalls + 1, solved:false };
+      if ((c & (c - 1)) === 0){ g[i] = 31 - Math.clz32(c); moved = true; }
+    }
+    if (moved) continue;
+
+    for (const u of U){                                    // T1
+      for (let v = 0; v < n && !moved; v++){
+        const bit = 1 << v;
+        let spot = -1, count = 0, placed = false;
+        for (const i of u){
+          if (g[i] === v){ placed = true; break; }
+          if (empty(i) && (cand[i] & bit)){ count++; spot = i; }
+        }
+        if (!placed && count === 1){ g[spot] = v; moved = true; tier = Math.max(tier, 1); }
+      }
+      if (moved) break;
+    }
+    if (moved) continue;
+
+    // Naked and hidden pairs work without boxes, so Latin puzzles can now
+    // rate above T1. This is the technique that was missing.
+    if (nakedPairs(g, cand, n, U)){                        // T2
+      tier = Math.max(tier, 2);
+      stalls++;
+      continue;
+    }
+    if (hiddenPairs(g, cand, n, U)){                       // T2
+      tier = Math.max(tier, 2);
+      stalls++;
+      continue;
+    }
+
+    if (!boxless && lockedCandidates(g, cand, n, U, FULL, rotate)){ // T2
+      tier = Math.max(tier, 2);
+      stalls++;
+      continue;
+    }
+
+    if (g.every(v => v !== null && v !== undefined)) return { tier, stalls, solved:true };
+    return { tier:3, stalls:stalls + 1, solved:false };     // T3
+  }
+}
+
+// Locked candidates: inside one box a value may only sit in a single row or
+// column. That does not place anything by itself, but it rules the value out
+// of the rest of that line, which often unblocks a single. Returns true if it
+// managed to place something after the elimination.
+function lockedCandidates(g, cand, n, U, FULL, rotate){
+  const { bw, bh } = boxDims(n, rotate), per = n / bw;
+  const empty = i => g[i] === null || g[i] === undefined;
+
+  for (let b = 0; b < n; b++){
+    const r0 = ((b / per) | 0) * bh, c0 = (b % per) * bw;
+    for (let v = 0; v < n; v++){
+      const bit = 1 << v, rows = new Set(), cols = new Set();
+      let any = false, already = false;
+      for (let r = r0; r < r0 + bh; r++)
+        for (let c = c0; c < c0 + bw; c++){
+          const i = r * n + c;
+          if (g[i] === v) already = true;
+          if (empty(i) && (cand[i] & bit)){ rows.add(r); cols.add(c); any = true; }
+        }
+      if (already || !any) continue;
+
+      // Confined to one line -> eliminate from the rest of that line, then see
+      // whether any cell is down to a single candidate.
+      const sweep = (cells) => {
+        for (const i of cells){
+          const r = (i / n) | 0, c = i % n;
+          if (r >= r0 && r < r0 + bh && c >= c0 && c < c0 + bw) continue;  // inside the box
+          if (!empty(i)) continue;
+          cand[i] &= ~bit;
+          if (cand[i] && (cand[i] & (cand[i] - 1)) === 0){
+            g[i] = 31 - Math.clz32(cand[i]);
+            return true;
+          }
+        }
+        return false;
+      };
+      if (rows.size === 1){
+        const r = [...rows][0];
+        if (sweep(Array.from({ length:n }, (_, c) => r * n + c))) return true;
+      }
+      if (cols.size === 1){
+        const c = [...cols][0];
+        if (sweep(Array.from({ length:n }, (_, r) => r * n + c))) return true;
+      }
+    }
+  }
+  return false;
+}
+
+// Naked pairs: two cells in a unit that share the exact same two candidates.
+// Eliminating those two values from all other cells in the unit often unblocks
+// singles. Works for both Sudoku and Latin rulesets — no boxes needed.
+function nakedPairs(g, cand, n, U){
+  const empty = i => g[i] === null || g[i] === undefined;
+  let progress = false;
+  for (const u of U){
+    const twos = [];
+    for (const i of u){
+      if (!empty(i)) continue;
+      const c = cand[i];
+      if (!c) continue;
+      // Exactly two bits set?
+      if (c && (c & (c - 1)) !== 0){
+        let tmp = c, bits = 0;
+        while (tmp){ tmp &= tmp - 1; bits++; }
+        if (bits === 2) twos.push({ i, c });
+      }
+    }
+    for (let a = 0; a < twos.length; a++){
+      for (let b = a + 1; b < twos.length; b++){
+        if (twos[a].c !== twos[b].c) continue;
+        const mask = twos[a].c;
+        for (const i of u){
+          if (i === twos[a].i || i === twos[b].i || !empty(i)) continue;
+          if (cand[i] & mask){
+            cand[i] &= ~mask;
+            progress = true;
+            if (cand[i] && (cand[i] & (cand[i] - 1)) === 0){
+              g[i] = 31 - Math.clz32(cand[i]);
+            }
+          }
+        }
+      }
+    }
+  }
+  return progress;
+}
+
+// Hidden pairs: two values that both appear as candidates in exactly the same
+// two cells of a unit and nowhere else. Those cells can only be those two
+// values — everything else is eliminated from them.
+function hiddenPairs(g, cand, n, U){
+  const empty = i => g[i] === null || g[i] === undefined;
+  let progress = false;
+  for (const u of U){
+    for (let v1 = 0; v1 < n; v1++){
+      const b1 = 1 << v1;
+      const cells1 = [];
+      let placed1 = false;
+      for (const i of u){
+        if (g[i] === v1){ placed1 = true; break; }
+        if (empty(i) && (cand[i] & b1)) cells1.push(i);
+      }
+      if (placed1 || cells1.length !== 2) continue;
+      for (let v2 = v1 + 1; v2 < n; v2++){
+        const b2 = 1 << v2;
+        const cells2 = [];
+        let placed2 = false;
+        for (const i of u){
+          if (g[i] === v2){ placed2 = true; break; }
+          if (empty(i) && (cand[i] & b2)) cells2.push(i);
+        }
+        if (placed2 || cells2.length !== 2) continue;
+        if (cells1[0] === cells2[0] && cells1[1] === cells2[1]){
+          const mask = b1 | b2;
+          for (const i of [cells1[0], cells1[1]]){
+            if (cand[i] & ~mask){
+              cand[i] = mask;
+              progress = true;
+            }
+          }
+        }
+      }
+    }
+  }
+  return progress;
+}
+
+/* ================= progression ================= */
+
+// ---- tuning block ----------------------------------------------------------
+// These are estimates until real play data exists. Everything about how the
+// ladder feels is in these six numbers; change them here and nowhere else.
+const TUNE = {
+  // Per-technique seconds-per-cell. T0 placements are quick reads; T1 requires
+  // scanning a whole unit for the sole remaining home; T2 (pairs / locked
+  // candidates) demands real pattern recognition; T3 is trial-and-error.
+  secPerCell: [0.80, 1.40, 2.20, 3.00],   // indexed by rater tier
+  secPerCellSize: 0.04,   // extra seconds per cell for each step up in n
+  // With naked/hidden pairs the rater now reaches T2 for Latin puzzles. The
+  // remaining factor accounts for the perceptual load of a constraintless
+  // grid: no box boundaries to anchor the eye.
+  latinFactor: 1.15,
+  generosityFloor: 1.25,  // time limit never drops below this multiple of par
+  generositySpan: 1.35,   // extra generosity at level 1, decaying away
+  generosityDecayBlocks: 14,  // blocks of ten for that extra to fall by 1/e
+  peekRelief: 0.35,       // preview levels get a kinder clock, being tasters
+  // Per-size par tweaks in seconds. The linear per-cell model is monotone in
+  // n, so 4x4 cannot be tighter and 6x6 looser at the same time via the base
+  // coefficients alone; this is the escape hatch.
+  sizeParTweak: { 4: -1.5, 5: -0.5, 6: 1.0, 7: 0.5 },
+};
+// ---------------------------------------------------------------------------
+
+const LEVELS_PER_STAGE = 10, STAGES_PER_WORLD = 10, PEEK_STEP = 5;
+// Step-3 inner peek is retired: mark rotation now carries the variety role.
+
+const LEVELS_PER_WORLD = LEVELS_PER_STAGE * STAGES_PER_WORLD;
+
+// Each world opens with a real unlock, not only a repaint. Configs are ordered
+// easiest-first; a stage walks up this pool.
+// Deliberately absent: 16x16 below ~140 givens and 12x12 Latin. Both sit past a
+// generation-cost cliff (seconds, not milliseconds) — see CHROMOKU.md.
+const WORLDS = [
+  // `pool` lists a world's configurations easiest-first; `ramp` maps each of
+  // the ten stages onto one of them. The explicit ramp is the level design —
+  // a proportional mapping spread new mechanics too thinly and left whole
+  // worlds sitting below the previous world's difficulty.
+  // Something changes every ten levels rather than every twenty: the first
+  // twenty used to be one identical 4x4, which is the worst possible place for
+  // the ladder to stand still.
+  { name:"Sunrise", tint:"#f5a623", unlock:"4×4 up to 9×9",
+    // With mark rotation making each stage feel varied, each size can hold
+    // longer. Ramp still lands 9×9 by the end of the world. Stage 7 slips a
+    // 2×3-box variant in between the regular 6×6s — same puzzle rules, box
+    // shape flipped so the player has to look for a 2-wide-3-tall region.
+    ramp:[0,1,1,2,2,3,6,4,5,5], pool:[
+      { n:4, boxless:false, layers:1, givens:8  },
+      { n:4, boxless:false, layers:1, givens:6  },
+      { n:4, boxless:false, layers:1, givens:4  },
+      { n:6, boxless:false, layers:1, givens:16 },
+      { n:6, boxless:false, layers:1, givens:13 },
+      { n:9, boxless:false, layers:1, givens:40 },
+      { n:6, boxless:false, layers:1, givens:14, boxRotate:true },  // 2×3 boxes
+  ]},
+  { name:"Tide", tint:"#3498db", unlock:"9×9 and shape marks",
+    // Tide's novelty a beginner can appreciate is the mark set, not the size.
+    preview:{ n:4, boxless:false, layers:1, givens:8, markSet:"shapes" },
+    ramp:[0,0,1,1,2,2,2,3,3,3], pool:[
+      { n:9, boxless:false, layers:1, givens:38 },
+      { n:9, boxless:false, layers:1, givens:34 },
+      { n:9, boxless:false, layers:1, givens:31 },
+      { n:9, boxless:false, layers:1, givens:28 },
+  ]},
+  // Latin lands here, not earlier: measured harder than Sudoku at equal size
+  // (85% vs 100% solvable by singles at 9x9), despite needing more givens.
+  { name:"Lattice", tint:"#7d5fff", unlock:"Latin rules",
+    preview:{ n:5, boxless:true, layers:1, givens:14 },
+    ramp:[0,1,2,3,3,4,4,5,5,6], pool:[
+      { n:5,  boxless:true, layers:1, givens:12 },
+      { n:7,  boxless:true, layers:1, givens:24 },
+      { n:7,  boxless:true, layers:1, givens:21 },
+      { n:9,  boxless:true, layers:1, givens:38 },
+      { n:9,  boxless:true, layers:1, givens:34 },
+      { n:10, boxless:true, layers:1, givens:50 },
+      // Tide now runs 9x9 the whole way, so Latin needs a ceiling above it.
+      { n:10, boxless:true, layers:1, givens:45 },
+  ]},
+  { name:"Echo", tint:"#16a085", unlock:"Double layering",
+    preview:{ n:4, boxless:false, layers:2, givens:8 },
+    ramp:[0,1,1,2,2,3,3,4,4,4], pool:[
+      { n:4, boxless:false, layers:2, givens:6  },
+      { n:6, boxless:false, layers:2, givens:14 },
+      { n:6, boxless:false, layers:2, givens:12 },
+      { n:9, boxless:false, layers:2, givens:38 },
+      { n:9, boxless:false, layers:2, givens:34 },
+  ]},
+  { name:"Prism", tint:"#e74c3c", unlock:"everything, combined",
+    // Prism's novelty is two mechanics at once, tasted on a small board.
+    preview:{ n:6, boxless:true, layers:2, givens:20 },
+    ramp:[0,1,1,2,2,3,3,4,4,4], pool:[
+      { n:9,  boxless:false, layers:1, givens:30 },
+      { n:10, boxless:true,  layers:1, givens:48 },
+      { n:9,  boxless:false, layers:2, givens:34 },
+      { n:9,  boxless:true,  layers:2, givens:36 },
+      { n:10, boxless:true,  layers:2, givens:50 },
+  ]},
+];
+
+const worldOf = level => Math.min(WORLDS.length, Math.floor((level - 1) / LEVELS_PER_WORLD) + 1);
+const stageOf = level => Math.floor(((level - 1) % LEVELS_PER_WORLD) / LEVELS_PER_STAGE) + 1;
+const stepOf  = level => ((level - 1) % LEVELS_PER_STAGE) + 1;
+
+// A level's configuration is a pure function of its number, so level N is the
+// same puzzle for everyone and no table has to be maintained.
+function levelConfig(level){
+  const w = worldOf(level), stage = stageOf(level), step = stepOf(level);
+  const world = WORLDS[w - 1];
+  const pool = world.pool;
+
+  // The ramp says which config each stage uses. Two steps break the pattern:
+  // step 10 is a boss borrowing the next entry from this world, and step 5 is a
+  // peek at the *next* world's easiest entry — a brief, deliberately gentle
+  // taste of a mechanic the player has not unlocked yet, so the ladder advertises
+  // what is coming instead of asking for faith.
+  const base = world.ramp[stage - 1];
+  const ahead = WORLDS[w];                       // the world after this one
+  const peek = step === PEEK_STEP && !!(ahead && ahead.preview);
+  const cfg = peek
+    ? ahead.preview
+    : pool[step === LEVELS_PER_STAGE ? Math.min(pool.length - 1, base + 1) : base];
+
+  // Trimming givens only changes difficulty where the grid is big enough to
+  // hold reasoning depth; below 9x9 it just means more typing. A peek keeps its
+  // full complement — it is meant to intrigue, not to punish.
+  const trim = !peek && cfg.n >= 9 ? Math.floor((step - 1) / 3) : 0;
+  const givens = Math.max(cfg.givens - trim, Math.ceil(cfg.n * cfg.n * 0.25));
+
+  return { ...cfg, givens, level, world:w, stage, step, peek,
+           boss:step === LEVELS_PER_STAGE, theme:world,
+           peekOf: peek ? WORLDS[w].name : null,
+           markSet: cfg.markSet || null };
+}
+
+const levelSeed = level => level * 7919 + 13;
+
+// Work estimate, in seconds. Difficulty at small sizes cannot come from the
+// puzzle, so it has to come from the clock — this is what the clock is set by.
+function parSeconds(cfg, tier){
+  const cells = (cfg.n * cfg.n - cfg.givens) * cfg.layers;
+  const perCell = TUNE.secPerCell[Math.min(tier, 3)] + TUNE.secPerCellSize * cfg.n;
+  const work = cells * perCell * (cfg.boxless ? TUNE.latinFactor : 1);
+  return Math.max(1, work + (TUNE.sizeParTweak[cfg.n] || 0));
+}
+
+// Generosity decays across the run, and each stage opens with a little relief
+// that fades over its ten levels — a sawtooth rather than a grind.
+// The clock tightens in visible steps every ten levels rather than sliding
+// imperceptibly each level, so "the timer got tighter" is an event a player can
+// notice. Peek levels get their relief on top.
+function generosity(level, peek){
+  const block = Math.floor((level - 1) / LEVELS_PER_STAGE);
+  const base = TUNE.generosityFloor
+             + TUNE.generositySpan * Math.exp(-block / TUNE.generosityDecayBlocks);
+  return base + (peek ? TUNE.peekRelief : 0);
+}
+
+// Everything needed to play a level: the puzzle, its measured difficulty, and
+// the clock it has to be beaten against.
+function buildLevel(level){
+  const cfg = levelConfig(level);
+
+  // Prefer a puzzle that plain logic can finish. A tier-3 board is uniquely
+  // solvable but only by guessing, which reads as unfair rather than hard, so
+  // try a few alternative seeds before settling for one.
+  let layers = [], rated = [], tier = 3;
+  for (let attempt = 0; attempt < 6; attempt++){
+    const cand = [], cr = [];
+    for (let L = 0; L < cfg.layers; L++){
+      const p = generatePuzzle(levelSeed(level) + attempt * 104729 + L * 7919,
+                               cfg.n, cfg.givens, cfg.boxless, cfg.boxRotate);
+      cand.push(p);
+      cr.push(rateDifficulty(p.puzzle, cfg.n, cfg.boxless, cfg.boxRotate));
+    }
+    const t = Math.max(...cr.map(r => r.tier));
+    if (attempt === 0 || t < tier){ layers = cand; rated = cr; tier = t; }
+    if (tier < 3) break;
+  }
+  const stalls = rated.reduce((s, r) => s + r.stalls, 0);
+
+  const par = parSeconds(cfg, tier);
+  return { cfg, layers, tier, stalls, par, limit: par * generosity(level, cfg.peek) };
+}
+
+/* ================= progression state ================= */
+
+const LIVES_MAX = 5, LIVES_REGEN_MS = 20 * 60 * 1000;
+
+const blankProgress = () => ({ level:1, lives:LIVES_MAX, livesAt:Date.now(), stars:{}, best:{} });
+
+// Lives refill on a clock, so the count has to be recomputed from a timestamp
+// rather than ticked — otherwise closing the tab pauses the regeneration.
+function progress(){
+  const p = load(LS_PROG, null) || blankProgress();
+  if (p.lives >= LIVES_MAX){ p.lives = LIVES_MAX; p.livesAt = Date.now(); return p; }
+  const gained = Math.floor((Date.now() - p.livesAt) / LIVES_REGEN_MS);
+  if (gained > 0){
+    p.lives = Math.min(LIVES_MAX, p.lives + gained);
+    p.livesAt = p.lives >= LIVES_MAX ? Date.now() : p.livesAt + gained * LIVES_REGEN_MS;
+  }
+  return p;
+}
+const saveProgress2 = p => save(LS_PROG, p);
+const nextLifeMs = p => p.lives >= LIVES_MAX ? 0 : LIVES_REGEN_MS - (Date.now() - p.livesAt);
+
+/* ================= state ================= */
+
+const state = {
+  n:4, diff:"easy", day:0,
+  layers:[],               // [{ grid, solution, givens }] — one per overlaid puzzle
+  sel:null,                // { layer, colour } or null
+  erase:false,
+  mode:"daily",            // "daily" | "levels"
+  lvl:null,                // active level record from buildLevel()
+  limitMs:0,               // countdown budget for the active level
+  latin:false,             // ruleset axis: no boxes, rows and columns only
+  dbl:false,               // layering axis: applies to whichever tier is selected
+  practice:false,          // a re-rollable puzzle, outside the daily record
+  mistakes:0,              // foundation for a lives/ads gate later
+  done:false,
+  elapsed:0, since:null,   // timestamp-based, so the clock never drifts
+  started:false,
+  history:[],              // stack of { entries:[{L,i,prev}] } — one per user gesture
+  bookmark:null,           // { layers:[grid, ...] } — single-slot board snapshot
+  hints:{ reveals:0, freezes:0, adds:0 },   // hint usage this puzzle
+  frozenUntil:0,           // timestamp: clock display freezes until
+};
+const HISTORY_MAX = 50;
+
+/* ================= persistence ================= */
+
+// Safari in private browsing rejects writes outright. Rather than silently
+// losing every game, fall back to an in-memory store and say so once.
+let memStore = null;                    // null until storage is known to be broken
+function storageBroken(){
+  if (memStore) return;
+  memStore = new Map();
+  try {
+    for (let i = 0; i < localStorage.length; i++){
+      const k = localStorage.key(i); memStore.set(k, localStorage.getItem(k));
+    }
+  } catch {}
+  setTimeout(() => toast("Progress won't be saved in private browsing"), 900);
+}
+function load(key, fallback){
+  try {
+    const raw = memStore ? memStore.get(key) : localStorage.getItem(key);
+    const v = JSON.parse(raw === undefined ? null : raw);
+    return v === null ? fallback : v;
+  } catch { return fallback; }
+}
+function save(key, val){
+  const raw = JSON.stringify(val);
+  if (memStore){ memStore.set(key, raw); return; }
+  try { localStorage.setItem(key, raw); }
+  catch { storageBroken(); memStore.set(key, raw); }
+}
+const blankStats = () => ({ played:0, streak:0, maxStreak:0, lastWinDay:null, best:{} });
+
+function loadDaily(){
+  const d = load(LS_DAILY, null);
+  return (d && d.day === state.day) ? d : { day:state.day };
+}
+function saveProgress(){
+  if (state.practice) return;   // practice never enters the daily record
+  const d = loadDaily();
+  d[slot(state.diff, state.dbl)] = {
+    layers:state.layers,
+    elapsed:elapsedMs(), done:state.done, mistakes:state.mistakes,
+    // Bookmark survives reload alongside the board — the guess rescue is
+    // most valuable after a break, not just within a single session.
+    bookmark:state.bookmark,
+    hints:state.hints,
+  };
+  save(LS_DAILY, d);
+}
+
+/* ================= timer ================= */
+
+const elapsedMs = () => state.elapsed + (state.since ? Date.now() - state.since : 0);
+function startTimer(){ if (!state.since && !state.done){ state.since = Date.now(); state.started = true; } }
+function stopTimer(){
+  if (state.since){ state.elapsed += Date.now() - state.since; state.since = null; }
+}
+function fmtTime(ms){
+  const s = Math.floor(ms / 1000);
+  const mm = Math.floor(s / 60), ss = s % 60;
+  return mm + ":" + String(ss).padStart(2, "0");
+}
+// tickTimer both drives the game clock and updates the heart-regen chip. The
+// chip needs to tick even when the game timer isn't running (before the first
+// placement, on the win screen, in the out-of-lives modal), so the interval
+// always fires.
+setInterval(tickTimer, 250);
+function tickTimer(){
+  updateRegenChip();
+  const el = document.getElementById("timer");
+  const frozen = state.frozenUntil > Date.now();
+  if (state.mode !== "levels"){
+    el.textContent = fmtTime(elapsedMs());
+    el.className = "timer" + (frozen ? " frozen" : "");
+    return;
+  }
+
+  const left = Math.max(0, state.limitMs - elapsedMs());
+  el.textContent = fmtTime(left);
+  el.className = "timer" + (frozen ? " frozen" : left < 10000 ? " danger" : left < 30000 ? " warn" : "");
+
+  const bar = document.getElementById("tbar");
+  if (bar){
+    const frac = state.limitMs ? left / state.limitMs : 1;
+    bar.style.width = (frac * 100).toFixed(2) + "%";
+    bar.className = "tbar-fill" + (frozen ? "" : frac < 0.12 ? " danger" : frac < 0.34 ? " warn" : "");
+  }
+  if (left <= 0 && !state.done && state.started && !frozen) failLevel();
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) { stopTimer(); saveProgress(); }
+  else if (state.started && !state.done) startTimer();
+});
+
+/* ================= game setup ================= */
+
+const dayToISO = d => new Date(EPOCH + (d - 1) * 86400000).toISOString().slice(0, 10);
+const isoToDay = iso => Math.floor((Date.parse(iso + "T00:00:00Z") - EPOCH) / 86400000) + 1;
+
+function dayNumber(){
+  const pinned = load(LS_DAY, null);
+  if (pinned !== null) return pinned;
+  const now = new Date();
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.floor((today - EPOCH) / 86400000) + 1;
+}
+
+// `fresh` re-rolls from a random seed instead of loading today's puzzle.
+function loadDifficulty(id, fresh){
+  stopTimer();
+  state.practice = !!fresh;
+  state.diff = id;
+  const cfg = diffOf(id);
+  state.n = cfg.n;
+  buildMarks();               // mark count follows grid size
+
+  const saved = fresh ? null : loadDaily()[slot(id, state.dbl)];
+  if (saved && saved.layers){
+    state.layers = saved.layers.map(L => ({
+      grid:L.grid.slice(), solution:L.solution.slice(), givens:L.givens.slice(),
+    }));
+    state.elapsed = saved.elapsed || 0;
+    state.mistakes = saved.mistakes || 0;
+    state.done = !!saved.done;
+    state.started = state.elapsed > 0;
+    state.hints = saved.hints || { reveals:0, freezes:0, adds:0 };
+    // A saved bookmark's layer arrays are plain grids — deep-clone so gameplay
+    // mutations don't drift into the snapshot.
+    state.bookmark = saved.bookmark
+      ? { layers:saved.bookmark.layers.map(g => g.slice()) }
+      : null;
+  } else {
+    // Each layer is its own puzzle with its own seed — unrelated by design.
+    const base = fresh ? ((Math.random() * 1e9) | 0)
+                       : state.day * 1000 + (state.latin ? 500 : 0)
+                         + diffIndex(id) * 2 + (state.dbl ? 1 : 0);
+    state.layers = [];
+    for (let L = 0; L < layerCount(); L++){
+      const p = generatePuzzle(base + L * 7919, cfg.n, cfg.givens, state.latin);
+      state.layers.push({ grid:p.puzzle.slice(), solution:p.solution.slice(), givens:p.givens.slice() });
+    }
+    state.elapsed = 0; state.mistakes = 0; state.done = false; state.started = false;
+    state.bookmark = null;
+    state.hints = { reveals:0, freezes:0, adds:0 };
+  }
+  state.since = null; state.sel = null; state.erase = false;
+  state.history = []; state.frozenUntil = 0;
+  if (!fresh) save(LS_LAST, id);   // come back to the tier you were last playing
+  render();
+  tickTimer();
+  paintUndo(); paintMark();
+}
+
+// Loads level n into the same board machinery the daily uses, so rendering,
+// interaction and win detection are shared rather than duplicated.
+function loadLevel(n){
+  stopTimer();
+  const p = progress();
+  const lv = buildLevel(n);
+  state.mode = "levels";
+  state.lvl = lv;
+  state.n = lv.cfg.n;
+  state.latin = lv.cfg.boxless;
+  state.dbl = lv.cfg.layers > 1;
+  state.practice = true;          // levels keep their own record, not the daily one
+  // A preview can advertise a mark set as well as a rule; restore the player's
+  // own choice as soon as the level ends.
+  // Rotation drives mark set for levels; explicit peek markSet still wins.
+  activePalette = lv.cfg.markSet && MARKSETS[lv.cfg.markSet]
+    ? lv.cfg.markSet
+    : rotatedMarkSet(n, lv.cfg.n);
+  buildMarks();
+
+  state.layers = lv.layers.map(x => ({
+    grid:x.puzzle.slice(), solution:x.solution.slice(), givens:x.givens.slice(),
+  }));
+  state.limitMs = lv.limit * 1000;
+  state.elapsed = 0; state.since = null; state.started = false;
+  state.mistakes = 0; state.done = false; state.sel = null; state.erase = false;
+  state.history = []; state.bookmark = null;
+  state.hints = { reveals:0, freezes:0, adds:0 }; state.frozenUntil = 0;
+
+  saveProgress2(Object.assign(p, { level:n }));
+  render();
+  tickTimer();
+  paintUndo(); paintMark();
+}
+
+function enterDaily(){
+  state.mode = "daily"; state.lvl = null; state.practice = false;
+  state.latin = load(LS_LATIN, false); state.dbl = load(LS_DBL, false);
+  loadDifficulty(diffOf(load(LS_LAST, "easy")).id);
+}
+
+/* ================= conflicts ================= */
+
+function conflictsAt(L, idx){
+  const n = state.n, g = state.layers[L].grid, v = g[idx];
+  const out = new Set();
+  if (v === null || v === undefined) return out;
+  const rotate = !!(state.lvl && state.lvl.cfg.boxRotate);
+  const { bw, bh } = boxDims(n, rotate);
+  const r = Math.floor(idx / n), c = idx % n;
+  for (let i = 0; i < n; i++){
+    if (i !== c && g[r * n + i] === v) out.add(r * n + i);
+    if (i !== r && g[i * n + c] === v) out.add(i * n + c);
+  }
+  if (!state.latin){
+    const r0 = Math.floor(r / bh) * bh, c0 = Math.floor(c / bw) * bw;
+    for (let rr = r0; rr < r0 + bh; rr++)
+      for (let cc = c0; cc < c0 + bw; cc++){
+        const j = rr * n + cc;
+        if (j !== idx && g[j] === v) out.add(j);
+      }
+  }
+  if (out.size) out.add(idx);
+  return out;
+}
+
+// Every layer complete with no violations. Checked against the rules rather
+// than the stored solution, so the win condition is self-contained.
+function isSolved(){
+  for (let L = 0; L < state.layers.length; L++){
+    const g = state.layers[L].grid;
+    if (g.some(v => v === null || v === undefined)) return false;
+    for (let i = 0; i < g.length; i++) if (conflictsAt(L, i).size) return false;
+  }
+  return true;
+}
+
+/* ================= rendering ================= */
+
+function render(){
+  if (state.mode === "levels") renderLevelBar(); else renderDiffs();
+  renderBoard(); renderPalette(); renderSub();
+  paintCompletedUnits();
+  applySharp();
+}
+
+const heartsHTML = p => Array.from({ length:LIVES_MAX }, (_, i) =>
+  '<span class="' + (i < p.lives ? "on" : "") + '">♥</span>').join("");
+
+// The stage path is a 10-dot strip: current step is bright, past steps
+// muted-with-check, future steps faint. Peek gets a diamond, boss a star.
+// Each dot carries pip marks (1–3) matching the rater's tier so the boss
+// visibly reads as heavier than a mid-stage step.
+const PATH_ICONS = { peek: "◈", boss: "★", dot: "●" };
+function stepMarker(step){
+  if (step === LEVELS_PER_STAGE) return PATH_ICONS.boss;
+  if (step === PEEK_STEP) return PATH_ICONS.peek;
+  return PATH_ICONS.dot;
+}
+function renderStagePath(cfg){
+  // Pre-compute the ten steps of this stage. levelConfig is cheap; buildLevel
+  // is not — the rater takes real time — so precompute lazily and cache by
+  // stage.  We just need config-time info (peek/boss/step) here; the pip
+  // count comes from a lightweight par estimator, not the full rater.
+  const baseLevel = (cfg.world - 1) * LEVELS_PER_WORLD + (cfg.stage - 1) * LEVELS_PER_STAGE;
+  const p = progress();
+  let html = '<div class="path" aria-label="Stage progress">';
+  for (let step = 1; step <= LEVELS_PER_STAGE; step++){
+    const L = baseLevel + step;
+    const st = p.stars[String(L)] || 0;
+    const state = step === cfg.step ? "here"
+                : L < p.level          ? "done"
+                : "todo";
+    const cls = "st " + state + (step === LEVELS_PER_STAGE ? " boss"
+                                 : step === PEEK_STEP ? " peek" : "");
+    // Pip count reflects how demanding this step is *within* the stage:
+    // step 10 (boss) is heaviest, step 5 (peek) uses the next-world entry
+    // and reads as a taster. Everything else is 1 pip.
+    const pips = step === LEVELS_PER_STAGE ? 3 : step === PEEK_STEP ? 2 : 1;
+    html += '<span class="' + cls + '" data-step="' + step + '">'
+          + stepMarker(step)
+          + (st ? '<span class="stg">' + "★".repeat(st) + "</span>" : "")
+          + '<span class="pips">' + "•".repeat(pips) + "</span>"
+          + "</span>";
+  }
+  return html + "</div>";
+}
+// Ticks alongside the game clock so the "next heart in" chip is live rather
+// than a snapshot. Cheap to touch a single innerText per 250ms.
+function updateRegenChip(){
+  const el = document.getElementById("regen");
+  if (!el) return;
+  const p = progress();
+  if (p.lives >= LIVES_MAX){ el.textContent = ""; return; }
+  el.textContent = "+" + fmtTime(nextLifeMs(p));
+  const modalEl = document.getElementById("outLivesIn");
+  if (modalEl){
+    const ms = nextLifeMs(p);
+    modalEl.textContent = ms > 0 ? fmtTime(ms) : "ready";
+  }
+}
+
+function renderLevelBar(){
+  const lv = state.lvl, p = progress();
+  const stars = p.stars[String(lv.cfg.level)] || 0;
+  const c = lv.cfg;
+  const rotTag = c.boxRotate ? " ⤾" : "";   // rotated-box marker
+  const tag = c.n + "×" + c.n + (c.boxless ? " Latin" : "") + rotTag
+            + (c.layers > 1 ? " ×2" : "");
+  document.getElementById("diffs").outerHTML =
+    '<div class="levelbar" id="diffs">'
+    + '<div class="lvl-l"><button class="icon-btn" id="lvBack" aria-label="Back to daily">←</button></div>'
+    + '<div class="lvl-c"><b>Level ' + c.level
+    + (c.peek ? ' <span class="pk">' + (c.peekOf || "ahead") + "</span>" : "") + "</b>"
+    + '<span class="lvl-sub">' + (c.peek ? "Preview" : c.theme.name) + " · " + tag
+    + (c.boss ? " · boss" : "") + "</span>"
+    + renderStagePath(lv.cfg) + "</div>"
+    + '<div class="hearts">' + heartsHTML(p)
+    + '<span class="regen" id="regen"></span></div>'
+    + "</div>";
+  const tw = document.getElementById("tbarwrap");
+  if (tw) tw.style.display = "";
+  document.getElementById("lvBack").onclick = enterDaily;
+  // The axis toggles belong to the daily; a level chooses its own config.
+  for (const id of ["latinToggle", "dblToggle", "lvlToggle"]){
+    const b = document.getElementById(id);
+    if (b) b.style.display = "none";
+  }
+  const box = document.getElementById("diffs");
+  if (box) box.dataset.stars = stars;
+}
+
+function renderSub(){
+  document.getElementById("sub").textContent =
+    state.mode === "levels"
+      ? "Stage " + state.lvl.cfg.stage + " · step " + state.lvl.cfg.step
+      : (state.practice ? "Practice" : "#" + state.day) + " · "
+        + (state.latin ? "Latin " : "") + diffOf(state.diff).label
+        + (state.dbl ? " · Double" : "");
+}
+
+function renderDiffs(){
+  const daily = loadDaily();
+  document.getElementById("diffs").innerHTML = DIFFS().map(d => {
+    const rec = daily[slot(d.id, state.dbl)];
+    const done = rec && rec.done;
+    return '<button class="diff' + (d.id === state.diff ? " on" : "") + '" data-diff="' + d.id + '">'
+      + d.label + (done ? ' <span class="tick">✓</span>' : "") + "</button>";
+  }).join("");
+  for (const id of ["latinToggle", "dblToggle", "lvlToggle"]){
+    const b = document.getElementById(id);
+    if (b) b.style.display = "";
+  }
+  const lb = document.getElementById("lvlToggle");
+  if (lb) lb.onclick = () => loadLevel(progress().level);
+  const tw = document.getElementById("tbarwrap");
+  if (tw) tw.style.display = "none";
+  const lt = document.getElementById("latinToggle");
+  lt.className = "dbl" + (state.latin ? " on" : "");
+  lt.textContent = state.latin ? "Latin ✓" : "Latin";
+  lt.onclick = () => {
+    state.latin = !state.latin; save(LS_LATIN, state.latin);
+    loadDifficulty(DIFFS()[0].id);      // tier lists differ between rulesets
+  };
+  const t = document.getElementById("dblToggle");
+  t.className = "dbl" + (state.dbl ? " on" : "");
+  t.textContent = state.dbl ? "Double ✓" : "Double";
+  t.onclick = () => { state.dbl = !state.dbl; save(LS_DBL, state.dbl); loadDifficulty(state.diff); };
+  document.querySelectorAll("[data-diff]").forEach(b => {
+    b.onclick = () => { if (b.dataset.diff !== state.diff) loadDifficulty(b.dataset.diff); };
+  });
+}
+
+// Nested grid: an outer grid of boxes, each an inner grid of cells. Gives clean
+// box separation at any n without border bookkeeping.
+function renderBoard(){
+  const n = state.n;
+  const rotate = !!(state.lvl && state.lvl.cfg.boxRotate);
+  const { bw, bh } = boxDims(n, rotate);
+  const boxesPerRow = state.latin ? n : n / bw, boxRows = state.latin ? n : n / bh;
+  let html = "";
+
+  // Latin has no boxes, so the board is one flat grid of cells.
+  if (state.latin){
+    for (let i = 0; i < n * n; i++)
+      html += '<div class="cell' + (state.layers[0].givens[i] ? " given" : "")
+            + '" data-i="' + i + '">' + cellInner(i, -1) + "</div>";
+  } else
+
+  for (let b = 0; b < n; b++){
+    const r0 = Math.floor(b / boxesPerRow) * bh, c0 = (b % boxesPerRow) * bw;
+    let inner = "";
+    for (let r = r0; r < r0 + bh; r++){
+      for (let c = c0; c < c0 + bw; c++){
+        const i = r * n + c;
+        inner += '<div class="cell' + (state.layers[0].givens[i] ? " given" : "")
+               + '" data-i="' + i + '">' + cellInner(i) + "</div>";
+      }
+    }
+    html += '<div class="box" style="grid-template-columns:repeat(' + bw + ',1fr);'
+          + 'grid-template-rows:repeat(' + bh + ',1fr)">' + inner + "</div>";
+  }
+
+  const board = document.getElementById("board");
+  // Gaps shrink as the grid grows, or a 16x16 would be all gutter and no cell.
+  const sc = n <= 4 ? [12, 4, 8] : n <= 9 ? [11, 2, 5] : [7, 1, 3];
+  board.style.setProperty("--bgap", sc[0] + "px");
+  board.style.setProperty("--cgap", sc[1] + "px");
+  board.style.setProperty("--crad", sc[2] + "px");
+  board.style.gridTemplateColumns = "repeat(" + boxesPerRow + ",1fr)";
+  board.style.gridTemplateRows = "repeat(" + boxRows + ",1fr)";
+  board.classList.remove("done");
+  board.innerHTML = html;
+  board.querySelectorAll("[data-i]").forEach(el => {
+    el.onclick = () => onCell(parseInt(el.dataset.i, 10));
+  });
+  if (state.done) markWon();
+}
+
+// Layer 0 fills the square itself; each further layer draws a mark inside it.
+// `animate` is the layer index that was just placed, or -1.
+function cellInner(i, animate){
+  let out = "";
+  const v0 = state.layers[0].grid[i];
+  if (v0 !== null && v0 !== undefined)
+    out += '<div class="fill' + (isPattern() ? " pat" : "") + (animate === 0 ? " new" : "")
+         + '" style="' + styleFor(0, v0) + '"></div>';
+  for (let L = 1; L < state.layers.length; L++){
+    const v = state.layers[L].grid[i];
+    if (v === null || v === undefined) continue;
+    out += '<div class="dot' + (state.layers[L].givens[i] ? " given" : "")
+         + (animate === L ? " new" : "") + '" style="' + styleFor(L, v) + '"></div>';
+  }
+  return out;
+}
+
+// One row of swatches per layer. Which row you pick from decides which layer
+// you are placing into — no mode toggle to forget about.
+function renderPalette(){
+  const cols = palette();
+  const sel = state.sel;
+  // A mark is 'done' when it's placed n times on its layer — the palette
+  // shouldn't leave the player scanning back to count.
+  const counts = state.layers.map(L => {
+    const c = new Array(state.n).fill(0);
+    for (const v of L.grid) if (v !== null && v !== undefined) c[v]++;
+    return c;
+  });
+  let rows = "";
+  for (let L = 0; L < state.layers.length; L++){
+    const marks = L > 0 ? innerMarks() : cols;
+    const swatches = marks.map((c, i) => {
+      const placed = counts[L][i];
+      const done = placed >= state.n;
+      const remaining = Math.max(0, state.n - placed);
+      // aria-label carries the count too, so a screen reader hears
+      // "Red, 3 remaining" rather than just "Red".
+      const aria = c.label + (L > 0 ? " (inner)" : "")
+                 + (remaining > 0 ? ", " + remaining + " remaining" : ", done");
+      return '<button class="swatch' + (L > 0 ? " inner" : (isPattern() ? " pat" : ""))
+        + (done ? " done" : "")
+        + (sel && sel.layer === L && sel.colour === i ? " on" : "")
+        + '" data-l="' + L + '" data-c="' + i + '" style="' + styleFor(L, i)
+        + '" aria-label="' + aria + '">'
+        + (remaining > 0 ? '<span class="cnt">' + remaining + "</span>" : "")
+        + (L === 0 && state.n <= 4 ? '<span class="k">' + (i + 1) + "</span>" : "")
+        + "</button>";
+    });
+    const eraser = L === 0
+      ? '<button class="swatch erase' + (state.erase ? " on" : "")
+        + '" data-erase="1" aria-label="Erase">✕</button>'
+      : '<span class="swatch spacer" aria-hidden="true"></span>';
+    // Split into equal rows rather than letting flex-wrap strand one button on
+    // a line of its own — 10 buttons read as 5+5, not 8+2.
+    const all = swatches.concat([eraser]);
+    const nRows = Math.ceil(all.length / 6);
+    const perRow = Math.ceil(all.length / nRows);
+    for (let k = 0; k < all.length; k += perRow)
+      rows += '<div class="prow' + (state.n > 4 ? " wrap" : "") + '">'
+            + all.slice(k, k + perRow).join("") + "</div>";
+  }
+  const p = document.getElementById("palette");
+  p.className = "palette pal-pad" + (state.n > 4 ? " tight" : "");
+  p.innerHTML = rows;
+  p.querySelectorAll("[data-c]").forEach(b => {
+    b.onclick = () => {
+      const L = +b.dataset.l, i = +b.dataset.c;
+      const same = sel && sel.layer === L && sel.colour === i;
+      state.sel = same ? null : { layer:L, colour:i };
+      state.erase = false;
+      renderPalette();
+    };
+  });
+  const er = p.querySelector("[data-erase]");
+  if (er) er.onclick = () => { state.erase = !state.erase; state.sel = null; renderPalette(); };
+}
+
+function cellEl(i){ return document.querySelector('[data-i="' + i + '"]'); }
+
+function paintCell(i, animate){
+  const el = cellEl(i); if (!el) return;
+  el.innerHTML = cellInner(i, animate);
+}
+
+function flashConflicts(set){
+  set.forEach(i => {
+    const el = cellEl(i); if (!el) return;
+    el.classList.add("bad");
+    setTimeout(() => el.classList.remove("bad"), 620);
+  });
+}
+
+function markWon(){
+  const n = state.n;
+  document.getElementById("board").classList.add("done");
+  document.querySelectorAll("[data-i]").forEach(el => {
+    const i = +el.dataset.i, r = Math.floor(i / n), c = i % n;
+    el.style.animationDelay = ((r + c) * 70) + "ms";
+    el.classList.add("won");
+  });
+}
+
+/* ================= interaction ================= */
+
+// Every mutation goes through pushHistory so undo restores what was there,
+// including a null (empty) — same-colour-tap-to-clear round-trips through here.
+function pushHistory(entries){
+  if (!entries.length) return;
+  state.history.push({ entries });
+  if (state.history.length > HISTORY_MAX) state.history.shift();
+  paintUndo();
+}
+
+// Single chokepoint for every placement — a lives system or ad gate attaches here.
+function placeColour(L, i, val){
+  const prev = state.layers[L].grid[i];
+  if (prev !== val) pushHistory([{ L, i, prev }]);
+  state.layers[L].grid[i] = val;
+  startTimer();
+  paintCell(i, val !== null ? L : -1);
+  renderPalette();      // keeps the 'done' fade in step with the last placement
+  paintCompletedUnits();
+
+  if (val !== null){
+    const bad = conflictsAt(L, i);
+    if (bad.size){ state.mistakes++; flashConflicts(bad); }
+  }
+  saveProgress();
+
+  if (isSolved()) win();
+}
+
+function onCell(i){
+  if (state.done) return;
+
+  if (state.erase){
+    // Clears every unlocked layer in the square, so one tap undoes the square.
+    // The whole sweep is captured as one undo entry — restoring one tap.
+    const entries = [];
+    state.layers.forEach((L, li) => {
+      if (!L.givens[i] && L.grid[i] !== null){
+        entries.push({ L:li, i, prev:L.grid[i] });
+        L.grid[i] = null;
+      }
+    });
+    if (entries.length){
+      pushHistory(entries);
+      paintCell(i, -1);
+      renderPalette();
+      paintCompletedUnits();
+      saveProgress();
+    }
+    return;
+  }
+
+  if (state.sel === null){ toast("Pick a " + markNoun() + " first"); return; }
+  const { layer, colour } = state.sel;
+  if (state.layers[layer].givens[i]) return;
+  placeColour(layer, i, state.layers[layer].grid[i] === colour ? null : colour);
+}
+
+// Not routed through placeColour: an undo shouldn't count mistakes, shouldn't
+// flash conflicts, and shouldn't trigger a win check.
+function undo(){
+  if (state.done || !state.history.length) return;
+  const move = state.history.pop();
+  for (const { L, i, prev } of move.entries) state.layers[L].grid[i] = prev;
+  for (const { i } of move.entries) paintCell(i, -1);
+  renderPalette();
+  paintCompletedUnits();
+  saveProgress();
+  paintUndo();
+}
+
+function paintUndo(){
+  const b = document.getElementById("btnUndo");
+  if (b) b.disabled = state.done || state.history.length === 0;
+}
+
+// --------------- completion fade ---------------
+// After each placement, tag cells belonging to fully-filled, conflict-free
+// units so CSS can dim them.  In Double mode, outer (layer 0) and inner
+// (layer 1) are tracked independently — a row may be complete on the outer
+// fill while the inner dot is still missing.
+function paintCompletedUnits(){
+  const board = document.getElementById("board");
+  if (!board) return;
+  const fadePref = load(LS_FADE, true);
+  board.classList.toggle("fade-done", fadePref);
+
+  const n = state.n;
+  const rotate = !!(state.lvl && state.lvl.cfg.boxRotate);
+  const U = unitsOf(n, state.latin, rotate);
+
+  // For each layer, find which cells belong to at least one complete unit.
+  const done = state.layers.map(() => new Set());
+  for (let L = 0; L < state.layers.length; L++){
+    const g = state.layers[L].grid;
+    for (const u of U){
+      // A unit is complete when every cell has a value and no conflicts exist.
+      if (u.some(i => g[i] === null || g[i] === undefined)) continue;
+      let clean = true;
+      for (const i of u){
+        if (conflictsAt(L, i).size){ clean = false; break; }
+      }
+      if (clean) for (const i of u) done[L].add(i);
+    }
+  }
+
+  const multi = state.layers.length > 1;
+  board.querySelectorAll("[data-i]").forEach(el => {
+    const i = +el.dataset.i;
+    if (multi){
+      el.classList.toggle("unit-done-0", done[0].has(i));
+      el.classList.toggle("unit-done-1", done.length > 1 && done[1].has(i));
+      el.classList.remove("unit-done");
+    } else {
+      el.classList.toggle("unit-done", done[0].has(i));
+      el.classList.remove("unit-done-0", "unit-done-1");
+    }
+  });
+}
+
+// --------------- sharp / rounded marks ---------------
+function applySharp(){
+  const board = document.getElementById("board");
+  if (board) board.classList.toggle("sharp", !load(LS_ROUND, true));
+}
+
+// Bookmark: single slot, board-state only. Clock and mistakes deliberately
+// don't rewind — this is a wrong-guess rescue, not a do-over.
+function setBookmark(){
+  state.bookmark = { layers:state.layers.map(L => L.grid.slice()) };
+  paintMark();
+  saveProgress();
+  toast("Bookmark saved — tap again to return.");
+}
+
+function restoreBookmark(){
+  if (!state.bookmark || state.done) return;
+  state.bookmark.layers.forEach((g, L) => { state.layers[L].grid = g.slice(); });
+  state.history = [];
+  renderBoard();
+  renderPalette();
+  paintCompletedUnits();
+  applySharp();
+  saveProgress();
+  paintUndo();
+}
+
+function clearBookmark(){
+  state.bookmark = null;
+  paintMark();
+  saveProgress();
+}
+
+function paintMark(){
+  const b = document.getElementById("btnMark");
+  if (!b) return;
+  const has = !!state.bookmark;
+  b.textContent = has ? "★" : "☆";
+  b.setAttribute("aria-label", has ? "Bookmark set — tap to return" : "Bookmark");
+}
+
+function openMarkModal(){
+  openModal(
+    "<h2>Bookmark</h2>"
+    + '<p class="lede">Return to the board as it was when you saved?</p>'
+    + '<button class="btn" id="mkRet">Return</button>'
+    + '<button class="btn ghost" id="mkUpd">Save here instead</button>'
+    + '<button class="btn ghost" id="mkClr">Clear bookmark</button>'
+  );
+  document.getElementById("mkRet").onclick = () => { closeModal(); restoreBookmark(); };
+  document.getElementById("mkUpd").onclick = () => { closeModal(); setBookmark(); };
+  document.getElementById("mkClr").onclick = () => { closeModal(); clearBookmark(); };
+}
+
+document.addEventListener("keydown", e => {
+  if (!document.getElementById("overlay").classList.contains("hide")){
+    if (e.key === "Escape") closeModal();
+    return;
+  }
+  // Ctrl/Cmd+Z beats the digit handler — the modifier check has to run first.
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z"){
+    e.preventDefault(); undo(); return;
+  }
+  // 1-4 pick outer colours; hold Shift for the inner layer.
+  const k = parseInt(e.key === "!" ? 1 : e.key === "@" ? 2 : e.key === "#" ? 3 : e.key === "$" ? 4 : e.key, 10);
+  if (k >= 1 && k <= Math.min(state.n, 9)){
+    const layer = e.shiftKey && state.layers.length > 1 ? 1 : 0;
+    state.sel = { layer, colour:k - 1 };
+    state.erase = false; renderPalette();
+  }
+  else if (e.key === "Backspace" || e.key === "Delete"){ state.erase = true; state.sel = null; renderPalette(); }
+});
+
+/* ================= win ================= */
+
+function win(){
+  stopTimer();
+  state.done = true;
+  saveProgress();
+  tickTimer();          // freeze the header on the final time, not the last tick
+  paintUndo();          // grey the undo — the solved board isn't unwindable
+
+  if (state.mode === "levels"){ winLevel(); return; }
+  if (state.practice){ markWon(); setTimeout(showWin, 1100); return; }
+
+  const st = load(LS_STATS, blankStats());
+  st.played++;
+  if (st.lastWinDay !== state.day){
+    st.streak = st.lastWinDay === state.day - 1 ? st.streak + 1 : 1;
+    st.lastWinDay = state.day;
+    st.maxStreak = Math.max(st.maxStreak, st.streak);
+  }
+  const secs = Math.floor(elapsedMs() / 1000);
+  if (!st.best[state.diff] || secs < st.best[state.diff]) st.best[state.diff] = secs;
+  save(LS_STATS, st);
+
+  markWon();
+  renderDiffs();
+  setTimeout(showWin, 1100);
+}
+
+// Stars reward beating par, so there is a reason to replay a cleared level.
+// Each hint used reduces the ceiling by one — three hints caps you at one star.
+function starsFor(secs, par){
+  const raw = secs <= par ? 3 : secs <= par * 1.4 ? 2 : 1;
+  const hintsUsed = state.hints.reveals + state.hints.freezes + state.hints.adds;
+  return Math.max(1, raw - hintsUsed);
+}
+
+function winLevel(){
+  const lv = state.lvl, secs = Math.round(elapsedMs() / 1000);
+  const st = starsFor(secs, lv.par);
+  const p = progress();
+  const key = String(lv.cfg.level);
+  p.stars[key] = Math.max(p.stars[key] || 0, st);
+  if (!p.best[key] || secs < p.best[key]) p.best[key] = secs;
+  p.level = Math.max(p.level, lv.cfg.level + 1);
+  saveProgress2(p);
+
+  markWon();
+  setTimeout(() => {
+    const hintsUsed = totalHints();
+    openModal(
+      "<h2>Level " + lv.cfg.level + " cleared</h2>"
+      + '<p class="lede">' + lv.cfg.theme.name + " · stage " + lv.cfg.stage
+      + (lv.cfg.boss ? " · boss" : "")
+      + (hintsUsed ? ' · 💡×' + hintsUsed : '') + "</p>"
+      + '<div class="stars-big">' + [1,2,3].map(i =>
+          '<span class="' + (i <= st ? "on" : "") + '">★</span>').join("") + "</div>"
+      + '<div class="badge-wrap" id="badgeWrap"></div>'
+      + '<div class="stats">'
+      + '<div class="stat"><div class="n">' + fmtTime(secs * 1000) + '</div><div class="l">Your time</div></div>'
+      + '<div class="stat"><div class="n">' + fmtTime(lv.par * 1000) + '</div><div class="l">Par</div></div>'
+      + '<div class="stat"><div class="n">' + progress().lives + '</div><div class="l">Lives</div></div>'
+      + "</div>"
+      + '<button class="btn" id="shareBtn">Share badge</button>'
+      + '<button class="btn ghost" id="mNext">Next level</button>'
+      + '<button class="btn ghost" id="mRetry">Replay</button>'
+    );
+    try {
+      const badge = renderShareBadge();
+      document.getElementById("badgeWrap").appendChild(badge);
+    } catch { /* canvas unavailable */ }
+    document.getElementById("shareBtn").onclick = shareAsImage;
+    document.getElementById("mNext").onclick = () => { closeModal(); loadLevel(lv.cfg.level + 1); };
+    document.getElementById("mRetry").onclick = () => { closeModal(); loadLevel(lv.cfg.level); };
+  }, 1100);
+}
+
+// Failure is the clock, never a mistake — conflicts stay advisory, which keeps
+// the puzzle forgiving while still giving the run something to lose.
+function failLevel(){
+  stopTimer();
+  state.done = true;
+  const p = progress();
+  p.lives = Math.max(0, p.lives - 1);
+  if (p.lives === LIVES_MAX - 1 && !p.livesAt) p.livesAt = Date.now();
+  if (p.lives < LIVES_MAX) p.livesAt = p.livesAt || Date.now();
+  saveProgress2(p);
+  renderLevelBar();
+
+  const out = p.lives <= 0;
+  openModal(
+    "<h2>Out of time</h2>"
+    + '<p class="lede">Level ' + state.lvl.cfg.level + " · par was "
+    + fmtTime(state.lvl.par * 1000) + ".</p>"
+    + '<div class="hearts big">' + heartsHTML(p) + "</div>"
+    + (out
+        ? '<p class="lede">No lives left. One returns in <b id="outLivesIn">'
+          + fmtTime(nextLifeMs(p)) + "</b>.</p>"
+          + '<button class="btn" id="mBack">Back to daily</button>'
+        : '<button class="btn" id="mRetry">Try again</button>'
+          + '<button class="btn ghost" id="mBack">Back to daily</button>')
+  );
+  const r = document.getElementById("mRetry");
+  if (r) r.onclick = () => { closeModal(); loadLevel(state.lvl.cfg.level); };
+  document.getElementById("mBack").onclick = () => { closeModal(); enterDaily(); };
+}
+
+/* ================= share ================= */
+
+function emojiGrid(L){
+  const n = state.n, g = state.layers[L].grid;
+  let out = "";
+  for (let r = 0; r < n; r++){
+    for (let c = 0; c < n; c++) out += emojiFor(L, g[r * n + c]);
+    if (r < n - 1) out += "\n";
+  }
+  return out;
+}
+
+// One grid, not a stack of them. Emoji cannot nest a mark inside a mark, so
+// text sharing carries the outer layer; the in-app solved view shows the true
+// nested board. Reworking this into a badge that does not spoil the answer is
+// still open.
+function shareText(){
+  return SHARE_NAME + " #" + state.day + " · " + diffOf(state.diff).label + " ✨\n"
+       + "⏱️ " + fmtTime(elapsedMs()) + "\n\n" + emojiGrid(0) + "\n";
+}
+
+const copyShare = () => copyText(shareText());
+
+async function copyText(text){
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied!");
+  } catch {
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); toast("Copied!"); }
+    catch { toast("Copy failed"); }
+    ta.remove();
+  }
+}
+
+/* ================= hints ================= */
+
+// "Sell helpers, not lives." Three tools the player can reach for; each one
+// dents the star rating so there is a reason not to, but never blocks progress.
+const HINT_LIMITS = { reveals:3, freezes:2, adds:2 };
+const FREEZE_SECS = 15;
+const ADD_SECS = 30;
+
+function totalHints(){ return state.hints.reveals + state.hints.freezes + state.hints.adds; }
+
+function showHintModal(){
+  if (state.done){ toast("Puzzle already solved"); return; }
+  const isLvl = state.mode === "levels";
+  const revLeft = HINT_LIMITS.reveals - state.hints.reveals;
+  const frzLeft = HINT_LIMITS.freezes - state.hints.freezes;
+  const addLeft = HINT_LIMITS.adds - state.hints.adds;
+  const penalty = totalHints() > 0
+    ? '<p class="lede" style="color:var(--error)">Hints used: ' + totalHints()
+      + (isLvl ? ' · max stars reduced' : '') + '</p>' : '';
+
+  openModal(
+    '<h2>Hints</h2>'
+    + '<p class="lede">Helpers, not cheats — but each one lowers your star ceiling.</p>'
+    + penalty
+    + '<div class="hint-opts">'
+    + '<button class="hint-opt" id="hReveal"' + (revLeft <= 0 ? ' disabled' : '') + '>'
+    + '<span class="h-icon">💡</span><div class="h-body">'
+    + '<div class="h-title">Reveal a cell</div>'
+    + '<div class="h-desc">Fills one random empty cell with the correct ' + markNoun() + '.</div></div>'
+    + '<span class="h-count">' + revLeft + '/' + HINT_LIMITS.reveals + '</span></button>'
+    + (isLvl
+      ? '<button class="hint-opt" id="hFreeze"' + (frzLeft <= 0 ? ' disabled' : '') + '>'
+      + '<span class="h-icon">⏸</span><div class="h-body">'
+      + '<div class="h-title">Freeze clock</div>'
+      + '<div class="h-desc">Pauses the countdown for ' + FREEZE_SECS + ' seconds.</div></div>'
+      + '<span class="h-count">' + frzLeft + '/' + HINT_LIMITS.freezes + '</span></button>'
+      + '<button class="hint-opt" id="hAdd"' + (addLeft <= 0 ? ' disabled' : '') + '>'
+      + '<span class="h-icon">⏰</span><div class="h-body">'
+      + '<div class="h-title">Add time</div>'
+      + '<div class="h-desc">Adds ' + ADD_SECS + ' seconds to your remaining time.</div></div>'
+      + '<span class="h-count">' + addLeft + '/' + HINT_LIMITS.adds + '</span></button>'
+      : '')
+    + '</div>'
+    + '<button class="btn ghost" onclick="closeModal()">Cancel</button>'
+  );
+  const hR = document.getElementById("hReveal");
+  if (hR) hR.onclick = revealCell;
+  const hF = document.getElementById("hFreeze");
+  if (hF) hF.onclick = freezeClock;
+  const hA = document.getElementById("hAdd");
+  if (hA) hA.onclick = addTime;
+}
+
+function revealCell(){
+  if (state.done) return;
+  if (state.hints.reveals >= HINT_LIMITS.reveals){ toast("No reveals left"); return; }
+  // Collect all empty, non-given cells across all layers
+  const empties = [];
+  for (let L = 0; L < state.layers.length; L++)
+    for (let i = 0; i < state.n * state.n; i++)
+      if (!state.layers[L].givens[i] && (state.layers[L].grid[i] === null || state.layers[L].grid[i] === undefined))
+        empties.push({ L, i });
+  if (!empties.length){ toast("Board is full"); closeModal(); return; }
+  const pick = empties[Math.floor(Math.random() * empties.length)];
+  state.hints.reveals++;
+  state.layers[pick.L].givens[pick.i] = true;   // lock it like a given
+  closeModal();
+  placeColour(pick.L, pick.i, state.layers[pick.L].solution[pick.i]);
+  // Glow effect
+  const el = cellEl(pick.i);
+  if (el){ el.classList.add("revealed"); setTimeout(() => el.classList.remove("revealed"), 900); }
+  toast("Cell revealed · " + (HINT_LIMITS.reveals - state.hints.reveals) + " left");
+}
+
+function freezeClock(){
+  if (state.done || state.mode !== "levels") return;
+  if (state.hints.freezes >= HINT_LIMITS.freezes){ toast("No freezes left"); return; }
+  state.hints.freezes++;
+  // Mechanically: stop the timer for FREEZE_SECS, then restart it.
+  stopTimer();
+  state.frozenUntil = Date.now() + FREEZE_SECS * 1000;
+  closeModal();
+  toast("⏸ Clock frozen for " + FREEZE_SECS + "s");
+  saveProgress();
+  setTimeout(() => {
+    state.frozenUntil = 0;
+    if (!state.done && state.started) startTimer();
+    toast("Clock resumed");
+  }, FREEZE_SECS * 1000);
+}
+
+function addTime(){
+  if (state.done || state.mode !== "levels") return;
+  if (state.hints.adds >= HINT_LIMITS.adds){ toast("No time adds left"); return; }
+  state.hints.adds++;
+  state.limitMs += ADD_SECS * 1000;
+  closeModal();
+  toast("⏰ +" + ADD_SECS + "s · " + (HINT_LIMITS.adds - state.hints.adds) + " left");
+  saveProgress();
+}
+
+/* ================= share badge (canvas) ================= */
+
+// Renders the solved board to a canvas image suitable for sharing. Unlike the
+// emoji grid, this supports Double mode natively and does not spoil the answer
+// in a copy-pasteable way.
+function renderShareBadge(){
+  const n = state.n;
+  const rotate = !!(state.lvl && state.lvl.cfg.boxRotate);
+  const { bw, bh } = boxDims(n, rotate);
+  const dpr = Math.min(window.devicePixelRatio || 1, 3);
+
+  const cellSz = n <= 4 ? 48 : n <= 9 ? 36 : 24;
+  const cGap = n <= 4 ? 4 : n <= 9 ? 2 : 1;
+  const bGap = state.latin ? cGap : (n <= 4 ? 10 : n <= 9 ? 7 : 4);
+  const pad = 20;
+  const headerH = 56, footerH = 32;
+
+  // Board pixel dimensions
+  let boardW, boardH;
+  if (state.latin){
+    boardW = n * cellSz + (n - 1) * cGap;
+    boardH = boardW;
+  } else {
+    const bpr = n / bw, bpc = n / bh;
+    boardW = bpr * (bw * cellSz + (bw - 1) * cGap) + (bpr - 1) * bGap;
+    boardH = bpc * (bh * cellSz + (bh - 1) * cGap) + (bpc - 1) * bGap;
+  }
+
+  const W = boardW + pad * 2;
+  const H = headerH + boardH + footerH + pad;
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
+  canvas.style.width = W + "px";
+  canvas.style.height = H + "px";
+  const ctx = canvas.getContext("2d");
+  ctx.scale(dpr, dpr);
+
+  // Detect theme
+  const dark = document.documentElement.getAttribute("data-theme") === "dark"
+    || (!document.documentElement.getAttribute("data-theme")
+        && window.matchMedia("(prefers-color-scheme:dark)").matches);
+  const bg = dark ? "#14141f" : "#f7f7f8";
+  const cellBg = dark ? "#252537" : "#ffffff";
+  const ink = dark ? "#ececf4" : "#17172b";
+  const dim = dark ? "#9a9ab2" : "#63637a";
+  const givenBg = dark ? "#32324a" : "#e9e9f0";
+
+  // Background
+  ctx.fillStyle = bg;
+  ctx.beginPath(); ctx.roundRect(0, 0, W, H, 14); ctx.fill();
+
+  // Header
+  ctx.fillStyle = ink;
+  ctx.font = "bold 17px system-ui,-apple-system,sans-serif";
+  ctx.textAlign = "center";
+  const title = state.mode === "levels"
+    ? SHARE_NAME + " · Level " + state.lvl.cfg.level
+    : SHARE_NAME + " #" + state.day;
+  ctx.fillText(title, W / 2, pad + 20);
+  ctx.fillStyle = dim;
+  ctx.font = "12px ui-monospace,monospace";
+  const st = load(LS_STATS, blankStats());
+  const streakStr = state.mode !== "levels" && st.streak > 1
+    ? " · 🔥" + st.streak : "";
+  const sub = state.mode === "levels"
+    ? state.lvl.cfg.theme.name + " · " + fmtTime(elapsedMs())
+    : (state.latin ? "Latin " : "") + diffOf(state.diff).label
+      + (state.dbl ? " · Double" : "") + " · " + fmtTime(elapsedMs())
+      + streakStr;
+  ctx.fillText(sub, W / 2, pad + 38);
+
+  // Draw each cell
+  const bx = pad, by = headerH;
+  const rounded = load(LS_ROUND, true);
+  for (let r = 0; r < n; r++){
+    for (let c = 0; c < n; c++){
+      const i = r * n + c;
+      let x, y;
+      if (state.latin){
+        x = bx + c * (cellSz + cGap);
+        y = by + r * (cellSz + cGap);
+      } else {
+        const br = Math.floor(r / bh), bc = Math.floor(c / bw);
+        const ir = r % bh, ic = c % bw;
+        x = bx + bc * (bw * cellSz + (bw - 1) * cGap + bGap) + ic * (cellSz + cGap);
+        y = by + br * (bh * cellSz + (bh - 1) * cGap + bGap) + ir * (cellSz + cGap);
+      }
+      const isGiven = state.layers[0].givens[i];
+      // Cell bg
+      ctx.fillStyle = isGiven ? givenBg : cellBg;
+      ctx.beginPath(); ctx.roundRect(x, y, cellSz, cellSz, 3); ctx.fill();
+
+      // Outer fill — rounded corners on guesses when the toggle is on
+      const v0 = state.layers[0].grid[i];
+      if (v0 !== null && v0 !== undefined){
+        const mk = MARKS[v0];
+        ctx.fillStyle = mk ? (mk.hex || ink) : ink;
+        const fillRad = isGiven ? 1 : (rounded ? 6 : 1);
+        ctx.beginPath(); ctx.roundRect(x + 1, y + 1, cellSz - 2, cellSz - 2, fillRad); ctx.fill();
+      }
+      // Inner dot(s)
+      for (let L = 1; L < state.layers.length; L++){
+        const v = state.layers[L].grid[i];
+        if (v === null || v === undefined) continue;
+        const im = INNER[v];
+        const dotSz = Math.round(cellSz * 0.42);
+        const dx = x + (cellSz - dotSz) / 2, dy = y + (cellSz - dotSz) / 2;
+        const innerGiven = state.layers[L].givens[i];
+        ctx.fillStyle = givenBg;
+        ctx.beginPath(); ctx.roundRect(dx - 2, dy - 2, dotSz + 4, dotSz + 4, 4); ctx.fill();
+        ctx.fillStyle = im ? (im.hex || ink) : ink;
+        const dotRad = innerGiven ? 0 : (rounded ? 4 : 0);
+        ctx.beginPath(); ctx.roundRect(dx, dy, dotSz, dotSz, dotRad); ctx.fill();
+      }
+    }
+  }
+
+  // Hints disclosure
+  const hintsUsed = totalHints();
+  if (hintsUsed > 0){
+    ctx.fillStyle = dim;
+    ctx.font = "10px ui-monospace,monospace";
+    ctx.textAlign = "center";
+    ctx.fillText("💡×" + hintsUsed, W / 2, H - 10);
+  }
+
+  return canvas;
+}
+
+async function shareAsImage(){
+  const canvas = renderShareBadge();
+  try {
+    const blob = await new Promise(r => canvas.toBlob(r, "image/png"));
+    const file = new File([blob], "chromoku.png", { type:"image/png" });
+    if (navigator.canShare && navigator.canShare({ files:[file] })){
+      await navigator.share({ files:[file], title:SHARE_NAME });
+      return;
+    }
+    // Fallback: copy image to clipboard
+    await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+    toast("Image copied!");
+  } catch {
+    // Last resort: copy the text version
+    copyShare();
+  }
+}
+
+/* ================= modals ================= */
+
+function openModal(html){
+  document.getElementById("modal").innerHTML = html;
+  document.getElementById("overlay").classList.remove("hide");
+}
+function closeModal(){ document.getElementById("overlay").classList.add("hide"); }
+document.getElementById("overlay").onclick = e => {
+  if (e.target.id === "overlay") closeModal();
+};
+
+function showHelp(){
+  const c = palette();
+  const noun = markNoun(), plural = noun + "s";
+  // Swatch previews reflect whatever set is active — pattern grounds use their
+  // background image; colour and shape sets fall back to the hex fill.
+  const swatches = c.map(x => {
+    const base = 'display:inline-block;width:15px;height:15px;border-radius:4px;vertical-align:-3px;';
+    if (x.kind === "pattern")
+      return '<span style="' + base + 'background-color:var(--panel2);background-image:'
+        + x.bg + ';background-size:' + TILE + '"></span>';
+    return '<span style="' + base + 'background:' + x.hex
+      + (x.clip ? ";clip-path:" + x.clip : "") + '"></span>';
+  }).join(" ");
+  openModal(
+    "<h2>How to play</h2>"
+    + '<p class="lede">Fill the grid so no ' + noun + ' repeats. That is the whole game.</p>'
+    + "<ul>"
+    + '<li><span class="bullet"></span><span>Every <b>row</b> uses all four ' + plural + ' — once each.</span></li>'
+    + '<li><span class="bullet"></span><span>Every <b>column</b> uses all four ' + plural + ' — once each.</span></li>'
+    + '<li><span class="bullet"></span><span>Every <b>2×2 box</b> uses all four ' + plural + ' — once each.</span></li>'
+    + '<li><span class="bullet"></span><span>Tap a ' + noun + ', then tap a square. Tap the same ' + noun + ' '
+    + "again to clear it.</span></li>"
+    + '<li><span class="bullet"></span><span>Marks already on the board fill their square '
+    + "edge to edge — those are fixed. Yours sit slightly inset.</span></li>"
+    + '<li><span class="bullet"></span><span><b>Double</b> adds a second puzzle on the inner '
+    + "circles. It is completely separate from the outer one — same rules, its own answer. "
+    + "Solve both. The hard part is not letting them blur together.</span></li>"
+    + "</ul>"
+    + '<p class="lede">' + swatches + "<br><br>One new puzzle every day, at three difficulties. "
+    + "Repeats shake at you, but never block you.</p>"
+    + '<button class="btn" onclick="closeModal()">Play</button>'
+  );
+  save(LS_HELP, true);
+}
+
+function showStats(){
+  const st = load(LS_STATS, blankStats());
+  const rows = DIFFS().map(d => {
+    const b = st.best[d.id];
+    return '<div class="time-row"><span>' + d.label + "</span><span>"
+      + (b ? fmtTime(b * 1000) : "—") + "</span></div>";
+  }).join("");
+  openModal(
+    "<h2>Statistics</h2>"
+    + '<p class="lede">Puzzles you have finished.</p>'
+    + '<div class="stats">'
+    + '<div class="stat"><div class="n">' + st.played + '</div><div class="l">Solved</div></div>'
+    + '<div class="stat"><div class="n">' + st.streak + '</div><div class="l">Streak</div></div>'
+    + '<div class="stat"><div class="n">' + st.maxStreak + '</div><div class="l">Best streak</div></div>'
+    + "</div>"
+    + '<div class="times"><div class="l" style="font-size:9.5px;color:var(--ink-faint);'
+    + 'text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">Best times</div>'
+    + rows + "</div>"
+    + '<button class="btn" onclick="closeModal()">Close</button>'
+  );
+}
+
+// The finished board as one grid with every layer nested in place, rather than
+// a stack of separate grids. This is the thing worth showing off.
+function miniBoard(){
+  const n = state.n;
+  const rotate = !!(state.lvl && state.lvl.cfg.boxRotate);
+  const { bw, bh } = boxDims(n, rotate);
+  let html = "";
+  const marksAt = i => {
+    let out = '<div class="fill' + (isPattern() ? " pat" : "")
+            + '" style="' + styleFor(0, state.layers[0].grid[i]) + '"></div>';
+    for (let L = 1; L < state.layers.length; L++)
+      out += '<div class="dot given" style="' + styleFor(L, state.layers[L].grid[i]) + '"></div>';
+    return out;
+  };
+  if (state.latin){
+    for (let i = 0; i < n * n; i++) html += '<div class="cell">' + marksAt(i) + "</div>";
+    return '<div class="board mini done" style="grid-template-columns:repeat(' + n
+         + ",1fr);grid-template-rows:repeat(" + n + ',1fr)">' + html + "</div>";
+  }
+  for (let b = 0; b < n; b++){
+    const r0 = ((b / (n / bw)) | 0) * bh, c0 = (b % (n / bw)) * bw;
+    let inner = "";
+    for (let r = r0; r < r0 + bh; r++)
+      for (let c = c0; c < c0 + bw; c++){
+        const i = r * n + c;
+        let marks = '<div class="fill' + (isPattern() ? " pat" : "")
+                  + '" style="' + styleFor(0, state.layers[0].grid[i]) + '"></div>';
+        for (let L = 1; L < state.layers.length; L++)
+          marks += '<div class="dot given" style="' + styleFor(L, state.layers[L].grid[i]) + '"></div>';
+        inner += '<div class="cell">' + marks + "</div>";
+      }
+    html += '<div class="box" style="grid-template-columns:repeat(' + bw + ',1fr);'
+          + "grid-template-rows:repeat(" + bh + ',1fr)">' + inner + "</div>";
+  }
+  return '<div class="board mini done" style="grid-template-columns:repeat(' + (n / bw)
+       + ",1fr);grid-template-rows:repeat(" + (n / bh) + ',1fr)">' + html + "</div>";
+}
+
+function showWin(){
+  const st = load(LS_STATS, blankStats());
+  const hintsUsed = totalHints();
+  openModal(
+    "<h2>Solved</h2>"
+    + '<p class="lede">' + SHARE_NAME + " #" + state.day + " · " + diffOf(state.diff).label
+    + (hintsUsed ? ' · 💡×' + hintsUsed : '') + "</p>"
+    + '<div class="win-time">' + fmtTime(elapsedMs()) + "</div>"
+    + '<div class="badge-wrap" id="badgeWrap"></div>'
+    + '<div class="stats">'
+    + '<div class="stat"><div class="n">' + st.streak + '</div><div class="l">Streak</div></div>'
+    + '<div class="stat"><div class="n">' + st.played + '</div><div class="l">Solved</div></div>'
+    + '<div class="stat"><div class="n">' + fmtTime((st.best[state.diff] || 0) * 1000)
+    + '</div><div class="l">Best</div></div>'
+    + "</div>"
+    + '<button class="btn" id="shareBtn">Share badge</button>'
+    + '<button class="btn ghost" id="shareTxt">Copy as text</button>'
+    + '<button class="btn ghost" onclick="closeModal()">Close</button>'
+  );
+  // Render the share badge canvas into the modal
+  try {
+    const badge = renderShareBadge();
+    document.getElementById("badgeWrap").appendChild(badge);
+  } catch { /* canvas rendering failed, mini board fallback */
+    document.getElementById("badgeWrap").innerHTML = '<div class="mini-wrap">' + miniBoard() + '</div>';
+  }
+  document.getElementById("shareBtn").onclick = shareAsImage;
+  document.getElementById("shareTxt").onclick = copyShare;
+}
+
+/* ================= toast ================= */
+
+let toastTimer = null;
+function toast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.remove("hide");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.add("hide"), 1600);
+}
+
+// No analytics by choice, so this is how tester feedback gets back: a block of
+// text they can paste into a message. It is the data that says which TUNE
+// constants are wrong.
+function copyStats(){
+  const p = progress(), st = load(LS_STATS, blankStats());
+  const cleared = Object.keys(p.stars).length;
+  const lines = [
+    "Chromoku stats",
+    "level reached: " + p.level,
+    "levels cleared: " + cleared,
+    "stars: " + Object.values(p.stars).reduce((a, b) => a + b, 0) + " of " + cleared * 3,
+    "daily solved: " + st.played + ", streak " + st.streak + " (best " + st.maxStreak + ")",
+    "",
+    "per level (level: seconds, stars)",
+  ];
+  Object.keys(p.best).map(Number).sort((a, b) => a - b).forEach(L => {
+    lines.push("  " + L + ": " + p.best[L] + "s, " + (p.stars[L] || 0) + "\u2605");
+  });
+  copyText(lines.join("\n"));
+}
+
+/* ================= theme ================= */
+
+const HOST_THEME = document.documentElement.getAttribute("data-theme");
+function applyTheme(){
+  const t = load(LS_THEME, "auto");
+  if (t === "auto"){
+    if (HOST_THEME) document.documentElement.setAttribute("data-theme", HOST_THEME);
+    else document.documentElement.removeAttribute("data-theme");
+  }
+  else document.documentElement.setAttribute("data-theme", t);
+}
+
+function showSettings(){
+  const theme = load(LS_THEME, "auto");
+  // Attribute is data-th, not data-theme: the latter also matches <html>.
+  const seg = (opts, cur) => '<div class="seg">' + opts.map(o =>
+    '<button class="' + (o[0] === cur ? "on" : "") + '" data-th="' + o[0] + '">'
+    + o[1] + "</button>").join("") + "</div>";
+
+  // Only offer sets that can actually produce enough marks for this grid.
+  const usable = Object.entries(MARKSETS).filter(([id]) => setFits(id, state.n));
+  const palOpts = usable.map(([id, s]) => {
+    const prev = s.build(Math.min(4, state.n)).map(mk =>
+      '<i style="' + (mk.kind === "pattern"
+        // Same tile size as the board — a smaller one clips the gradient period.
+        ? "background-color:var(--panel2);background-image:" + mk.bg
+          + ";background-size:" + TILE + ";box-shadow:inset 0 0 0 1px var(--line-2)"
+        : "background:" + mk.hex)
+      + (mk.clip ? ";clip-path:" + mk.clip : "") + '"></i>').join("");
+    return '<button class="' + (id === activePalette ? "on" : "") + '" data-pal="' + id + '">'
+      + s.name + '<span class="pal-prev">' + prev + "</span></button>";
+  }).join("");
+
+  openModal(
+    "<h2>Settings</h2>"
+    + '<p class="lede">Patterns work without relying on colour vision.</p>'
+    + '<div class="fld">Marks</div><div class="seg">' + palOpts + "</div>"
+    + '<div class="fld">Theme</div>'
+    + seg([["auto","Auto"],["light","Light"],["dark","Dark"]], theme)
+    + '<div class="fld" style="margin-top:4px">Gameplay</div>'
+    + '<div class="toggle-row">'
+    + '<div><div class="toggle-lbl">Fade completed</div>'
+    + '<div class="toggle-desc">Dim rows, columns and boxes when filled</div></div>'
+    + '<button class="toggle-sw' + (load(LS_FADE, true) ? " on" : "") + '" id="togFade" aria-label="Fade completed units"></button>'
+    + '</div>'
+    + '<div class="toggle-row">'
+    + '<div><div class="toggle-lbl">Rounded marks</div>'
+    + '<div class="toggle-desc">Your guesses have rounded corners</div></div>'
+    + '<button class="toggle-sw' + (load(LS_ROUND, true) ? " on" : "") + '" id="togRound" aria-label="Rounded mark corners"></button>'
+    + '</div>'
+    + (DEV
+        ? '<div class="fld">Debug — puzzle date</div>'
+          + '<div class="dbg"><input type="date" id="dbgDate" value="' + dayToISO(state.day) + '">'
+          + '<button id="dbgToday">Today</button></div>'
+          + '<p class="lede" style="margin-top:-8px">Puzzle #' + state.day
+          + (load(LS_DAY, null) !== null ? " · pinned" : " · live") + "</p>"
+          + '<div class="fld">Debug — jump to level</div>'
+          + '<div class="dbg"><input type="number" id="dbgLevel" min="1" max="500" value="'
+          + progress().level + '"><button id="dbgGo">Go</button>'
+          + '<button id="dbgReset">Reset</button></div>'
+          + '<p class="lede" style="margin-top:-8px">Reset clears levels, stars and lives; the daily is not affected.</p>'
+        : "")
+    + '<button class="btn ghost" id="copyStats">Copy my stats</button>' 
+    + '<button class="btn" onclick="closeModal()">Done</button>'
+  );
+
+  const m = document.getElementById("modal");
+  m.querySelectorAll("[data-pal]").forEach(b => {
+    b.onclick = () => {
+      activePalette = b.dataset.pal; save(LS_PAL, activePalette);
+      buildMarks(); render(); showSettings();
+    };
+  });
+  m.querySelectorAll("[data-th]").forEach(b => {
+    b.onclick = () => { save(LS_THEME, b.dataset.th); applyTheme(); showSettings(); };
+  });
+  m.querySelector("#togFade").onclick = () => {
+    save(LS_FADE, !load(LS_FADE, true));
+    paintCompletedUnits();
+    showSettings();
+  };
+  m.querySelector("#togRound").onclick = () => {
+    save(LS_ROUND, !load(LS_ROUND, true));
+    applySharp();
+    showSettings();
+  };
+  m.querySelector("#copyStats").onclick = copyStats;
+  if (DEV) m.querySelector("#dbgDate").onchange = e => {
+    const d = isoToDay(e.target.value);
+    if (!isFinite(d)) return;
+    save(LS_DAY, d); state.day = d;
+    loadDifficulty(state.diff); showSettings();
+  };
+  if (DEV) m.querySelector("#dbgToday").onclick = () => {
+    try { localStorage.removeItem(LS_DAY); } catch {}
+    state.day = dayNumber();
+    loadDifficulty(state.diff); showSettings();
+  };
+  if (DEV) m.querySelector("#dbgGo").onclick = () => {
+    const n = Math.max(1, Math.min(500, parseInt(m.querySelector("#dbgLevel").value, 10) || 1));
+    closeModal(); loadLevel(n);
+  };
+  if (DEV) m.querySelector("#dbgReset").onclick = () => {
+    try { localStorage.removeItem(LS_PROG); } catch {}
+    toast("Progress reset");
+    closeModal();
+    if (state.mode === "levels") loadLevel(1);
+    else render();
+  };
+}
+
+/* ================= init ================= */
+
+document.getElementById("btnHelp").onclick  = showHelp;
+document.getElementById("btnUndo").onclick  = undo;
+document.getElementById("btnStats").onclick = showStats;
+document.getElementById("btnHint").onclick  = showHintModal;
+document.getElementById("btnMark").onclick  = () => state.bookmark ? openMarkModal() : setBookmark();
+document.getElementById("btnNew").onclick = () => loadDifficulty(state.diff, true);
+document.getElementById("btnSettings").onclick = showSettings;
+
+if (DEV) document.documentElement.classList.add("dev");
+
+// An uncaught error used to leave a blank page with no way back. Show a panel
+// with an escape hatch instead.
+window.addEventListener("error", e => showCrash(e.message));
+window.addEventListener("unhandledrejection", e => showCrash(String(e.reason)));
+let crashed = false;
+function showCrash(msg){
+  if (crashed) return;
+  crashed = true;
+  const el = document.createElement("div");
+  el.className = "crash";
+  el.innerHTML = "<h2>Something broke</h2>"
+    + '<p class="lede">Sorry. Your progress is still saved.</p>'
+    + '<pre>' + String(msg).slice(0, 200).replace(/</g, "&lt;") + "</pre>"
+    + '<button class="btn" id="crashReload">Reload</button>'
+    + '<button class="btn ghost" id="crashReset">Reset this puzzle</button>';
+  document.body.appendChild(el);
+  el.querySelector("#crashReload").onclick = () => location.reload();
+  el.querySelector("#crashReset").onclick = () => {
+    try { localStorage.removeItem(LS_DAILY); } catch {}
+    location.reload();
+  };
+}
+
+
+applyTheme();
+activePalette = MARKSETS[load(LS_PAL, "classic")] ? load(LS_PAL, "classic") : "classic";
+state.latin = load(LS_LATIN, false);
+state.dbl = load(LS_DBL, false);
+state.day = dayNumber();
+loadDifficulty(diffOf(load(LS_LAST, "easy")).id);
+if (!load(LS_HELP, false)) showHelp();
+
+// Exposed for verification in the console.
+window.CHROMOKU = { state, DIFFS, TIERS, MARKSETS, buildLevel, levelConfig,
+                    rateDifficulty, parSeconds, generosity, WORLDS, TUNE, generatePuzzle, countSolutions,
+                    randomSolvedGrid, boxDims, mulberry32, nakedPairs, hiddenPairs,
+                    loadDifficulty, loadLevel, placeColour, onCell, undo,
+                    setBookmark, restoreBookmark, renderShareBadge,
+                    revealCell, freezeClock, addTime, showHintModal,
+                    paintCompletedUnits, applySharp, shareAsImage };
+</script>
+
+</html>
