@@ -37,50 +37,42 @@ immediately *see* which cell was the hint.
 
 ---
 
-## Colour palette — needs rework for 16
+## Colour palette — slots 10–16 need refinement
 
-Current HUES array has too many blues:
+Switched to Kelly's 22 Colours of Maximum Contrast (1965, NBS) — a
+research-backed set designed so no two colours can be confused.
 
-| # | Name | Hex | Family |
+**First 9 (solid):**
+
+| # | Name | Hex | Kelly name |
 |---|---|---|---|
-| 1 | Red | #e74c3c | Red |
-| 2 | Blue | #3498db | **Blue** |
-| 3 | Green | #27ae60 | Green |
-| 4 | Yellow | #f1c40f | Yellow |
-| 5 | Purple | #9b59b6 | Purple |
-| 6 | Orange | #e67e22 | Orange |
-| 7 | Cyan | #00b8d4 | **Blue** |
-| 8 | Grey | #8d99ae | Neutral |
-| 9 | Brown | #6d4c41 | Brown |
-| 10 | Pink | #ec7ab5 | Pink |
-| 11 | Lime | #a3c72e | Green-ish |
-| 12 | Navy | #1f3a93 | **Blue** |
-| 13 | Teal | #16a085 | **Blue-green** |
-| 14 | Olive | #7d6608 | Yellow-brown |
-| 15 | Maroon | #c0392b | Red-ish |
-| 16 | Slate | #2c3e50 | Dark neutral |
+| 1 | Red | #c10020 | Vivid Red |
+| 2 | Green | #007d34 | Vivid Green |
+| 3 | Blue | #00538a | Strong Blue |
+| 4 | Yellow | #f4c800 | Greenish Yellow |
+| 5 | Orange | #ff6800 | Vivid Orange |
+| 6 | Purple | #803e75 | Strong Purple |
+| 7 | Ice | #a6bdd7 | Very Light Blue |
+| 8 | Dark Olive | #232c16 | Dark Olive Green |
+| 9 | Brown | #593315 | Deep Yellowish Brown |
 
-**Problems:**
-- 4 blues (Blue, Cyan, Navy, Teal) — too many, especially when faded
-- 2 reds (Red, Maroon) — close together
-- 2 greens (Green, Lime) — manageable but tight
-- Olive and Brown are close
-- Slate and Grey are close at small sizes
+**Slots 10–16 (need work):**
 
-**Principles for a good 16:**
-- Maximise perceptual distance (spread around the hue wheel)
-- Each colour should be nameable in one word
-- Must work on both light and dark backgrounds
-- Must survive the completion fade (whatever treatment we pick)
-- First 4 and first 9 should work great on their own (subsets matter)
+| # | Name | Hex | Problem |
+|---|---|---|---|
+| 10 | Gold | #ffb300 | Close to Yellow (#f4c800) |
+| 11 | Sand | #cea262 | Close to Brown at small sizes |
+| 12 | Stone | #817066 | Low contrast, hard to see on dark bg |
+| 13 | Rose | #f6768e | OK but close to Salmon |
+| 14 | Salmon | #ff7a5c | Close to Orange and Rose |
+| 15 | Violet | #53377a | OK — distinct from Purple |
+| 16 | Amber | #ff8e00 | Close to Orange |
 
-**Draft replacement to evaluate:**
-1. Red, 2. Blue, 3. Green, 4. Yellow, 5. Purple, 6. Orange,
-7. Pink, 8. Brown, 9. Teal (shift greener, away from blue),
-10. Lime, 11. Grey, 12. Coral/Salmon, 13. Indigo (distinct from blue),
-14. Gold/Amber, 15. Magenta, 16. Slate/Charcoal
-
-Needs visual testing on a real 16×16 board before committing.
+**What to try next:**
+- Replace some Kelly 10–16 with neon/vivid variants that contrast the muted 1–9
+- Or cherry-pick from Tableau 10, which was designed for screen legibility
+- Test on actual 16×16 boards at phone screen sizes
+- Consider pairing with shapes at 16×16 to carry the disambiguation load
 
 ---
 
