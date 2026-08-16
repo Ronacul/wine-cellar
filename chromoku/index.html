@@ -86,7 +86,8 @@ h1{
   border-radius:11px; max-width:100%; overflow-x:auto; scrollbar-width:none;
 }
 .diffs::-webkit-scrollbar{display:none}
-.tiers{display:flex; gap:8px; align-items:center; max-width:100%}
+.tiers{display:flex; flex-direction:column; gap:4px; align-items:center; max-width:100%}
+.axis-row{display:flex; gap:8px; align-items:center; max-width:100%}
 /* Layering is its own axis, so it sits outside the size ladder rather than
    pretending to be one more step along it. */
 .dbl{
@@ -466,10 +467,15 @@ html.dev .dev-only{display:grid}
 
 <div class="play">
   <div class="tiers">
-    <div class="diffs" id="diffs"></div>
-    <button class="dbl" id="latinToggle">Latin</button>
-    <button class="dbl" id="dblToggle">Double</button>
-    <button class="dbl" id="lvlToggle">Levels</button>
+    <div class="axis-row" id="sizeRow">
+      <div class="diffs" id="sizes"></div>
+    </div>
+    <div class="axis-row">
+      <div class="diffs" id="diffs"></div>
+      <button class="dbl" id="latinToggle">Latin</button>
+      <button class="dbl" id="dblToggle">Double</button>
+      <button class="dbl" id="lvlToggle">Levels</button>
+    </div>
   </div>
   <div class="tbarwrap" id="tbarwrap" style="display:none"><div class="tbar-fill" id="tbar"></div></div>
   <div class="board-wrap"><div class="board" id="board"></div></div>
@@ -645,38 +651,74 @@ const emojiFor = (L, i) => (L > 0 ? INNER[i].emoji[1] : MARKS[i].emoji[0]);
 // overlaid grids apart by eye), not deductive.
 // Size/difficulty tiers. Layering is a separate axis (see state.dbl) that
 // applies to any of them, rather than one more step on this ladder.
-const TIERS = {
+// Size and difficulty are independent axes. Each ruleset has a list of sizes;
+// each size within a ruleset has its own difficulty ladder.
+const SIZES = {
   sudoku: [
-    { id:"easy",    label:"Easy",   n:4,  givens:8   },
-    { id:"medium",  label:"Medium", n:4,  givens:6   },
-    { id:"hard",    label:"Hard",   n:4,  givens:4   },
-    { id:"nine",    label:"9×9",    n:9,  givens:30  },
-    // 16x16 stays near 140 givens: below that the uniqueness check climbs from
-    // ~0.2s to tens of seconds, which is not something to do on page load.
-    { id:"sixteen", label:"16×16",  n:16, givens:140 },
+    { id:"s4",  label:"4×4",   n:4  },
+    { id:"s9",  label:"9×9",   n:9  },
+    { id:"s16", label:"16×16", n:16 },
   ],
-  // Without boxes the grid size no longer has to factorise, so odd and prime
-  // sizes become available. Givens are set a little above the measured minimum
-  // for a unique solve (5x5 needs 8, 7x7 needs 18, 10x10 needs 42).
   latin: [
-    { id:"l4",  label:"4×4",   n:4,  givens:7  },
-    { id:"l5",  label:"5×5",   n:5,  givens:11 },
-    { id:"l7",  label:"7×7",   n:7,  givens:22 },
-    { id:"l10", label:"10×10", n:10, givens:48 },
+    { id:"l4",  label:"4×4",   n:4  },
+    { id:"l5",  label:"5×5",   n:5  },
+    { id:"l7",  label:"7×7",   n:7  },
+    { id:"l10", label:"10×10", n:10 },
   ],
 };
-const DIFFS = () => TIERS[state.latin ? "latin" : "sudoku"];
+const DIFFICULTIES = {
+  sudoku: {
+    4:  [{ id:"easy", label:"Easy", givens:8 }, { id:"medium", label:"Medium", givens:6 }, { id:"hard", label:"Hard", givens:4 }],
+    9:  [{ id:"easy", label:"Easy", givens:35 }, { id:"medium", label:"Medium", givens:30 }, { id:"hard", label:"Hard", givens:25 }],
+    // 16×16 stays near 140 givens: below that the uniqueness check climbs from
+    // ~0.2s to tens of seconds, which is not something to do on page load.
+    16: [{ id:"easy", label:"Easy", givens:140 }],
+  },
+  latin: {
+    4:  [{ id:"easy", label:"Easy", givens:8 }, { id:"medium", label:"Medium", givens:7 }, { id:"hard", label:"Hard", givens:5 }],
+    5:  [{ id:"easy", label:"Easy", givens:13 }, { id:"medium", label:"Medium", givens:11 }, { id:"hard", label:"Hard", givens:9 }],
+    7:  [{ id:"easy", label:"Easy", givens:26 }, { id:"medium", label:"Medium", givens:22 }, { id:"hard", label:"Hard", givens:18 }],
+    10: [{ id:"easy", label:"Easy", givens:55 }, { id:"medium", label:"Medium", givens:48 }, { id:"hard", label:"Hard", givens:42 }],
+  },
+};
+
+const CURR_SIZES = () => SIZES[state.latin ? "latin" : "sudoku"];
+const CURR_DIFFS = (n) => {
+  const rs = state.latin ? "latin" : "sudoku";
+  return DIFFICULTIES[rs][n] || DIFFICULTIES[rs][CURR_SIZES()[0].n];
+};
+const compositeId = (sizeId, diffId) => sizeId + "-" + diffId;
 const layerCount = () => state.dbl ? 2 : 1;
-// Each tier+layering combination is its own daily puzzle and its own record.
-const slot = (id, dbl) => id + (dbl ? "-x2" : "");
+const slot = (sizeId, diffId, dbl) => compositeId(sizeId, diffId) + (dbl ? "-x2" : "");
+
+// Backward compat: old flat TIERS list for any code that needs it, plus helpers
+// that resolve current size+diff into the config the rest of the engine needs.
+const sizeOf  = id => { const s = CURR_SIZES(); return s.find(x => x.id === id) || s[0]; };
+const diffOf2 = (diffId, n) => { const d = CURR_DIFFS(n); return d.find(x => x.id === diffId) || d[0]; };
+// Legacy DIFFS() — returns flat array for stats iteration
+const DIFFS = () => {
+  const sizes = CURR_SIZES(), rs = state.latin ? "latin" : "sudoku";
+  const out = [];
+  for (const s of sizes)
+    for (const d of (DIFFICULTIES[rs][s.n] || []))
+      out.push({ id:compositeId(s.id, d.id), label:s.label+" "+d.label, n:s.n, givens:d.givens });
+  return out;
+};
 const diffOf = id => DIFFS().find(d => d.id === id) || DIFFS()[0];
-const diffIndex = id => DIFFS().findIndex(d => d.id === id);
+
+// Legacy slot migration: map old tier IDs to new composite IDs
+const LEGACY_SLOTS = {
+  easy:"s4-easy", medium:"s4-medium", hard:"s4-hard",
+  nine:"s9-easy", sixteen:"s16-easy",
+  l4:"l4-easy", l5:"l5-easy", l7:"l7-easy", l10:"l10-easy",
+};
 
 const LS_DAILY = "chromoku.daily.v2";   // v2: per-layer state
 const LS_STATS = "chromoku.stats.v1";
 const LS_THEME = "chromoku.theme.v1";
 const LS_HELP  = "chromoku.seen-help.v1";
 const LS_LAST  = "chromoku.last-diff.v1";
+const LS_SIZE  = "chromoku.last-size.v1";
 const LS_PAL   = "chromoku.palette.v1";
 const LS_DBL   = "chromoku.double.v1";
 const LS_LATIN = "chromoku.latin.v1";
@@ -1287,7 +1329,7 @@ const nextLifeMs = p => p.lives >= LIVES_MAX ? 0 : LIVES_REGEN_MS - (Date.now() 
 /* ================= state ================= */
 
 const state = {
-  n:4, diff:"easy", day:0,
+  n:4, size:"s4", diff:"easy", day:0,
   layers:[],               // [{ grid, solution, givens }] — one per overlaid puzzle
   sel:null,                // { layer, colour } or null
   erase:false,
@@ -1340,12 +1382,21 @@ const blankStats = () => ({ played:0, streak:0, maxStreak:0, lastWinDay:null, be
 
 function loadDaily(){
   const d = load(LS_DAILY, null);
-  return (d && d.day === state.day) ? d : { day:state.day };
+  if (!d || d.day !== state.day) return { day:state.day };
+  // One-time migration: old single-axis tier IDs → new composite IDs
+  if (!d._mig){
+    for (const [old, nk] of Object.entries(LEGACY_SLOTS)){
+      if (d[old] && !d[nk])           { d[nk]         = d[old]; }
+      if (d[old+"-x2"] && !d[nk+"-x2"]) { d[nk+"-x2"] = d[old+"-x2"]; }
+    }
+    d._mig = true; save(LS_DAILY, d);
+  }
+  return d;
 }
 function saveProgress(){
   if (state.practice) return;   // practice never enters the daily record
   const d = loadDaily();
-  d[slot(state.diff, state.dbl)] = {
+  d[slot(state.size, state.diff, state.dbl)] = {
     layers:state.layers,
     elapsed:elapsedMs(), done:state.done, mistakes:state.mistakes,
     // Bookmark survives reload alongside the board — the guess rescue is
@@ -1414,16 +1465,24 @@ function dayNumber(){
   return Math.floor((today - EPOCH) / 86400000) + 1;
 }
 
+// Two-axis loader: picks a size + difficulty, generates or restores the puzzle.
 // `fresh` re-rolls from a random seed instead of loading today's puzzle.
-function loadDifficulty(id, fresh){
+function loadPuzzle(sizeId, diffId, fresh){
   stopTimer();
   state.practice = !!fresh;
-  state.diff = id;
-  const cfg = diffOf(id);
-  state.n = cfg.n;
+
+  const sizes = CURR_SIZES();
+  const sObj = sizes.find(s => s.id === sizeId) || sizes[0];
+  state.size = sObj.id;
+  state.n    = sObj.n;
+
+  const diffs = CURR_DIFFS(sObj.n);
+  const dObj  = diffs.find(d => d.id === diffId) || diffs[0];
+  state.diff  = dObj.id;
+
   buildMarks();               // mark count follows grid size
 
-  const saved = fresh ? null : loadDaily()[slot(id, state.dbl)];
+  const saved = fresh ? null : loadDaily()[slot(state.size, state.diff, state.dbl)];
   if (saved && saved.layers){
     state.layers = saved.layers.map(L => ({
       grid:L.grid.slice(), solution:L.solution.slice(), givens:L.givens.slice(),
@@ -1433,19 +1492,17 @@ function loadDifficulty(id, fresh){
     state.done = !!saved.done;
     state.started = state.elapsed > 0;
     state.hints = saved.hints || { reveals:0, freezes:0, adds:0 };
-    // A saved bookmark's layer arrays are plain grids — deep-clone so gameplay
-    // mutations don't drift into the snapshot.
     state.bookmark = saved.bookmark
       ? { layers:saved.bookmark.layers.map(g => g.slice()) }
       : null;
   } else {
-    // Each layer is its own puzzle with its own seed — unrelated by design.
+    const si = sizes.indexOf(sObj), di = diffs.indexOf(dObj);
     const base = fresh ? ((Math.random() * 1e9) | 0)
                        : state.day * 1000 + (state.latin ? 500 : 0)
-                         + diffIndex(id) * 2 + (state.dbl ? 1 : 0);
+                         + si * 10 + di * 2 + (state.dbl ? 1 : 0);
     state.layers = [];
     for (let L = 0; L < layerCount(); L++){
-      const p = generatePuzzle(base + L * 7919, cfg.n, cfg.givens, state.latin);
+      const p = generatePuzzle(base + L * 7919, sObj.n, dObj.givens, state.latin);
       state.layers.push({ grid:p.puzzle.slice(), solution:p.solution.slice(), givens:p.givens.slice() });
     }
     state.elapsed = 0; state.mistakes = 0; state.done = false; state.started = false;
@@ -1454,10 +1511,24 @@ function loadDifficulty(id, fresh){
   }
   state.since = null; state.sel = null; state.erase = false;
   state.history = []; state.frozenUntil = 0;
-  if (!fresh) save(LS_LAST, id);   // come back to the tier you were last playing
+  if (!fresh){ save(LS_SIZE, state.size); save(LS_LAST, state.diff); }
   render();
   tickTimer();
   paintUndo(); paintMark();
+}
+
+// Backward-compat wrapper — used by loadLevel's toggles and any surviving callers
+function loadDifficulty(id, fresh){
+  // id may be old-style ("easy","nine") or new composite ("s4-easy")
+  if (LEGACY_SLOTS[id]){
+    const c = LEGACY_SLOTS[id].split("-");
+    return loadPuzzle(c[0], c.slice(1).join("-"), fresh);
+  }
+  // Try as composite
+  const dash = id.indexOf("-");
+  if (dash > 0) return loadPuzzle(id.slice(0, dash), id.slice(dash+1), fresh);
+  // Assume it's a bare diffId for the current size
+  loadPuzzle(state.size, id, fresh);
 }
 
 // Loads level n into the same board machinery the daily uses, so rendering,
@@ -1498,7 +1569,10 @@ function loadLevel(n){
 function enterDaily(){
   state.mode = "daily"; state.lvl = null; state.practice = false;
   state.latin = load(LS_LATIN, false); state.dbl = load(LS_DBL, false);
-  loadDifficulty(diffOf(load(LS_LAST, "easy")).id);
+  const defSize = CURR_SIZES()[0].id;
+  const sizeId = load(LS_SIZE, defSize);
+  const diffId = load(LS_LAST, "easy");
+  loadPuzzle(sizeId, diffId);
 }
 
 /* ================= conflicts ================= */
@@ -1540,7 +1614,8 @@ function isSolved(){
 /* ================= rendering ================= */
 
 function render(){
-  if (state.mode === "levels") renderLevelBar(); else renderDiffs();
+  if (state.mode === "levels") renderLevelBar();
+  else { renderSizes(); renderDiffs(); }
   renderBoard(); renderPalette(); renderSub();
   paintCompletedUnits();
   applySharp();
@@ -1603,6 +1678,9 @@ function updateRegenChip(){
 }
 
 function renderLevelBar(){
+  // Hide the size row in level mode — levels pick their own config
+  const sr = document.getElementById("sizeRow");
+  if (sr) sr.style.display = "none";
   const lv = state.lvl, p = progress();
   const stars = p.stars[String(lv.cfg.level)] || 0;
   const c = lv.cfg;
@@ -1633,18 +1711,51 @@ function renderLevelBar(){
 }
 
 function renderSub(){
+  const sObj = sizeOf(state.size);
+  const dObj = diffOf2(state.diff, state.n);
   document.getElementById("sub").textContent =
     state.mode === "levels"
       ? "Stage " + state.lvl.cfg.stage + " · step " + state.lvl.cfg.step
       : (state.practice ? "Practice" : "#" + state.day) + " · "
-        + (state.latin ? "Latin " : "") + diffOf(state.diff).label
+        + (state.latin ? "Latin " : "") + sObj.label + " " + dObj.label
         + (state.dbl ? " · Double" : "");
+}
+
+function renderSizes(){
+  const daily = loadDaily();
+  const sizes = CURR_SIZES();
+  const el = document.getElementById("sizes");
+  if (!el) return;
+  el.innerHTML = sizes.map(s => {
+    // A size is "done" if all its difficulties are done for today
+    const ds = CURR_DIFFS(s.n);
+    const allDone = ds.every(d => {
+      const rec = daily[slot(s.id, d.id, state.dbl)];
+      return rec && rec.done;
+    });
+    return '<button class="diff' + (s.id === state.size ? " on" : "") + '" data-size="' + s.id + '">'
+      + s.label + (allDone ? ' <span class="tick">✓</span>' : "") + "</button>";
+  }).join("");
+  document.querySelectorAll("[data-size]").forEach(b => {
+    b.onclick = () => {
+      if (b.dataset.size !== state.size){
+        const ns = sizes.find(s => s.id === b.dataset.size) || sizes[0];
+        const nd = CURR_DIFFS(ns.n);
+        const dId = nd.find(d => d.id === state.diff) ? state.diff : nd[0].id;
+        loadPuzzle(b.dataset.size, dId);
+      }
+    };
+  });
+  // Show size row in daily mode
+  const sr = document.getElementById("sizeRow");
+  if (sr) sr.style.display = "";
 }
 
 function renderDiffs(){
   const daily = loadDaily();
-  document.getElementById("diffs").innerHTML = DIFFS().map(d => {
-    const rec = daily[slot(d.id, state.dbl)];
+  const diffs = CURR_DIFFS(state.n);
+  document.getElementById("diffs").innerHTML = diffs.map(d => {
+    const rec = daily[slot(state.size, d.id, state.dbl)];
     const done = rec && rec.done;
     return '<button class="diff' + (d.id === state.diff ? " on" : "") + '" data-diff="' + d.id + '">'
       + d.label + (done ? ' <span class="tick">✓</span>' : "") + "</button>";
@@ -1662,14 +1773,15 @@ function renderDiffs(){
   lt.textContent = state.latin ? "Latin ✓" : "Latin";
   lt.onclick = () => {
     state.latin = !state.latin; save(LS_LATIN, state.latin);
-    loadDifficulty(DIFFS()[0].id);      // tier lists differ between rulesets
+    const sizes = CURR_SIZES();
+    loadPuzzle(sizes[0].id, CURR_DIFFS(sizes[0].n)[0].id);
   };
   const t = document.getElementById("dblToggle");
   t.className = "dbl" + (state.dbl ? " on" : "");
   t.textContent = state.dbl ? "Double ✓" : "Double";
-  t.onclick = () => { state.dbl = !state.dbl; save(LS_DBL, state.dbl); loadDifficulty(state.diff); };
+  t.onclick = () => { state.dbl = !state.dbl; save(LS_DBL, state.dbl); loadPuzzle(state.size, state.diff); };
   document.querySelectorAll("[data-diff]").forEach(b => {
-    b.onclick = () => { if (b.dataset.diff !== state.diff) loadDifficulty(b.dataset.diff); };
+    b.onclick = () => { if (b.dataset.diff !== state.diff) loadPuzzle(state.size, b.dataset.diff); };
   });
 }
 
@@ -2036,7 +2148,8 @@ function win(){
     st.maxStreak = Math.max(st.maxStreak, st.streak);
   }
   const secs = Math.floor(elapsedMs() / 1000);
-  if (!st.best[state.diff] || secs < st.best[state.diff]) st.best[state.diff] = secs;
+  const bk = compositeId(state.size, state.diff);
+  if (!st.best[bk] || secs < st.best[bk]) st.best[bk] = secs;
   save(LS_STATS, st);
 
   markWon();
@@ -2139,7 +2252,7 @@ function emojiGrid(L){
 // nested board. Reworking this into a badge that does not spoil the answer is
 // still open.
 function shareText(){
-  return SHARE_NAME + " #" + state.day + " · " + diffOf(state.diff).label + " ✨\n"
+  return SHARE_NAME + " #" + state.day + " · " + sizeOf(state.size).label + " " + diffOf2(state.diff, state.n).label + " ✨\n"
        + "⏱️ " + fmtTime(elapsedMs()) + "\n\n" + emojiGrid(0) + "\n";
 }
 
@@ -2327,7 +2440,7 @@ function renderShareBadge(){
     ? " · 🔥" + st.streak : "";
   const sub = state.mode === "levels"
     ? state.lvl.cfg.theme.name + " · " + fmtTime(elapsedMs())
-    : (state.latin ? "Latin " : "") + diffOf(state.diff).label
+    : (state.latin ? "Latin " : "") + sizeOf(state.size).label + " " + diffOf2(state.diff, state.n).label
       + (state.dbl ? " · Double" : "") + " · " + fmtTime(elapsedMs())
       + streakStr;
   ctx.fillText(sub, W / 2, pad + 38);
@@ -2456,11 +2569,16 @@ function showHelp(){
 
 function showStats(){
   const st = load(LS_STATS, blankStats());
-  const rows = DIFFS().map(d => {
-    const b = st.best[d.id];
-    return '<div class="time-row"><span>' + d.label + "</span><span>"
-      + (b ? fmtTime(b * 1000) : "—") + "</span></div>";
-  }).join("");
+  // Show best times grouped by size × difficulty
+  let rows = "";
+  for (const s of CURR_SIZES()){
+    for (const d of CURR_DIFFS(s.n)){
+      const key = compositeId(s.id, d.id);
+      const b = st.best[key];
+      rows += '<div class="time-row"><span>' + s.label + " " + d.label + "</span><span>"
+        + (b ? fmtTime(b * 1000) : "—") + "</span></div>";
+    }
+  }
   openModal(
     "<h2>Statistics</h2>"
     + '<p class="lede">Puzzles you have finished.</p>'
@@ -2519,14 +2637,14 @@ function showWin(){
   const hintsUsed = totalHints();
   openModal(
     "<h2>Solved</h2>"
-    + '<p class="lede">' + SHARE_NAME + " #" + state.day + " · " + diffOf(state.diff).label
+    + '<p class="lede">' + SHARE_NAME + " #" + state.day + " · " + sizeOf(state.size).label + " " + diffOf2(state.diff, state.n).label
     + (hintsUsed ? ' · 💡×' + hintsUsed : '') + "</p>"
     + '<div class="win-time">' + fmtTime(elapsedMs()) + "</div>"
     + '<div class="badge-wrap" id="badgeWrap"></div>'
     + '<div class="stats">'
     + '<div class="stat"><div class="n">' + st.streak + '</div><div class="l">Streak</div></div>'
     + '<div class="stat"><div class="n">' + st.played + '</div><div class="l">Solved</div></div>'
-    + '<div class="stat"><div class="n">' + fmtTime((st.best[state.diff] || 0) * 1000)
+    + '<div class="stat"><div class="n">' + fmtTime((st.best[compositeId(state.size, state.diff)] || 0) * 1000)
     + '</div><div class="l">Best</div></div>'
     + "</div>"
     + '<button class="btn" id="shareBtn">Share badge</button>'
@@ -2667,12 +2785,12 @@ function showSettings(){
     const d = isoToDay(e.target.value);
     if (!isFinite(d)) return;
     save(LS_DAY, d); state.day = d;
-    loadDifficulty(state.diff); showSettings();
+    loadPuzzle(state.size, state.diff); showSettings();
   };
   if (DEV) m.querySelector("#dbgToday").onclick = () => {
     try { localStorage.removeItem(LS_DAY); } catch {}
     state.day = dayNumber();
-    loadDifficulty(state.diff); showSettings();
+    loadPuzzle(state.size, state.diff); showSettings();
   };
   if (DEV) m.querySelector("#dbgGo").onclick = () => {
     const n = Math.max(1, Math.min(500, parseInt(m.querySelector("#dbgLevel").value, 10) || 1));
@@ -2694,7 +2812,7 @@ document.getElementById("btnUndo").onclick  = undo;
 document.getElementById("btnStats").onclick = showStats;
 document.getElementById("btnHint").onclick  = showHintModal;
 document.getElementById("btnMark").onclick  = () => state.bookmark ? openMarkModal() : setBookmark();
-document.getElementById("btnNew").onclick = () => loadDifficulty(state.diff, true);
+document.getElementById("btnNew").onclick = () => loadPuzzle(state.size, state.diff, true);
 document.getElementById("btnSettings").onclick = showSettings;
 
 if (DEV) document.documentElement.classList.add("dev");
@@ -2728,14 +2846,35 @@ activePalette = MARKSETS[load(LS_PAL, "classic")] ? load(LS_PAL, "classic") : "c
 state.latin = load(LS_LATIN, false);
 state.dbl = load(LS_DBL, false);
 state.day = dayNumber();
-loadDifficulty(diffOf(load(LS_LAST, "easy")).id);
+
+// Migrate legacy LS_LAST (old tier ID like "nine") → new size + diff
+(function migrateLast(){
+  const last = load(LS_LAST, null);
+  if (last && LEGACY_SLOTS[last]){
+    const parts = LEGACY_SLOTS[last].split("-");
+    save(LS_SIZE, parts[0]);
+    save(LS_LAST, parts.slice(1).join("-"));
+  }
+  // Also migrate stats best-time keys
+  const st = load(LS_STATS, null);
+  if (st && !st._mig){
+    for (const [old, nk] of Object.entries(LEGACY_SLOTS)){
+      if (st.best[old] && !st.best[nk]) st.best[nk] = st.best[old];
+    }
+    st._mig = true; save(LS_STATS, st);
+  }
+})();
+
+const defSize = CURR_SIZES()[0].id;
+loadPuzzle(load(LS_SIZE, defSize), load(LS_LAST, "easy"));
 if (!load(LS_HELP, false)) showHelp();
 
 // Exposed for verification in the console.
-window.CHROMOKU = { state, DIFFS, TIERS, MARKSETS, buildLevel, levelConfig,
+window.CHROMOKU = { state, DIFFS, SIZES, DIFFICULTIES, CURR_SIZES, CURR_DIFFS,
+                    MARKSETS, buildLevel, levelConfig,
                     rateDifficulty, parSeconds, generosity, WORLDS, TUNE, generatePuzzle, countSolutions,
                     randomSolvedGrid, boxDims, mulberry32, nakedPairs, hiddenPairs,
-                    loadDifficulty, loadLevel, placeColour, onCell, undo,
+                    loadPuzzle, loadDifficulty, loadLevel, placeColour, onCell, undo,
                     setBookmark, restoreBookmark, renderShareBadge,
                     revealCell, freezeClock, addTime, showHintModal,
                     paintCompletedUnits, applySharp, shareAsImage };
