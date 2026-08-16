@@ -300,6 +300,25 @@ html.dev .dev-only{display:grid}
 .pal-prev{display:flex; gap:5px; justify-content:center; margin-top:6px}
 .pal-prev i{width:21px; height:21px; border-radius:5px; display:block}
 .pal-pad{padding-bottom:20px}
+/* Toggle row — label + switch on one line */
+.toggle-row{
+  display:flex; justify-content:space-between; align-items:center;
+  padding:10px 0; border-bottom:1px solid var(--line);
+}
+.toggle-row:last-of-type{border-bottom:none}
+.toggle-lbl{font-size:13px; font-weight:600}
+.toggle-desc{font-size:11px; color:var(--ink-dim); margin-top:1px}
+.toggle-sw{
+  position:relative; width:44px; height:26px; border-radius:13px;
+  background:var(--panel2); border:1.5px solid var(--line-2);
+  transition:background .2s; flex:0 0 44px; cursor:pointer;
+}
+.toggle-sw::after{
+  content:""; position:absolute; top:2px; left:2px; width:20px; height:20px;
+  border-radius:10px; background:var(--ink-dim); transition:transform .2s, background .2s;
+}
+.toggle-sw.on{background:var(--ink)}
+.toggle-sw.on::after{transform:translateX(18px); background:var(--bg)}
 
 /* ================= modal ================= */
 .overlay{
@@ -373,6 +392,21 @@ html.dev .dev-only{display:grid}
 @media (prefers-reduced-motion:reduce){
   .cell.bad .fill{box-shadow:inset 0 0 0 3px var(--error)}
 }
+
+/* ================= completion fade ================= */
+/* Cells belonging to a completed unit (row/col/box) recede so the player's
+   eye moves to what still needs work.  Per-layer classes let Double mode
+   fade the outer fill while the inner dot stays bright, or vice versa. */
+.board.fade-done .cell.unit-done-0 .fill{opacity:.32; transition:opacity .35s}
+.board.fade-done .cell.unit-done-1 .dot{opacity:.32; transition:opacity .35s}
+/* Single-layer shorthand — unit-done without a suffix. */
+.board.fade-done .cell.unit-done .fill{opacity:.32; transition:opacity .35s}
+/* On win the whole board lights back up. */
+.board.done .cell .fill,.board.done .cell .dot{opacity:1!important}
+
+/* ================= sharp marks (no rounded corners on guesses) ================= */
+.board.sharp .cell:not(.given) .fill{border-radius:2px}
+.board.sharp .cell:not(.given) .dot{border-radius:0}
 
 /* ================= hint button ================= */
 .icon-btn.hint{font-size:16px}
@@ -643,6 +677,8 @@ const LS_PAL   = "chromoku.palette.v1";
 const LS_DBL   = "chromoku.double.v1";
 const LS_LATIN = "chromoku.latin.v1";
 const LS_PROG  = "chromoku.progress.v1";
+const LS_FADE  = "chromoku.fade-done.v1";    // toggle: fade completed units
+const LS_ROUND = "chromoku.round-marks.v1";  // toggle: rounded corners on guesses
 
 // The re-roll and the date picker are development tools. A player who finds the
 // date picker can skip the daily entirely, and unlimited re-rolls make it
@@ -1502,6 +1538,8 @@ function isSolved(){
 function render(){
   if (state.mode === "levels") renderLevelBar(); else renderDiffs();
   renderBoard(); renderPalette(); renderSub();
+  paintCompletedUnits();
+  applySharp();
 }
 
 const heartsHTML = p => Array.from({ length:LIVES_MAX }, (_, i) =>
@@ -1799,6 +1837,7 @@ function placeColour(L, i, val){
   startTimer();
   paintCell(i, val !== null ? L : -1);
   renderPalette();      // keeps the 'done' fade in step with the last placement
+  paintCompletedUnits();
 
   if (val !== null){
     const bad = conflictsAt(L, i);
@@ -1826,6 +1865,7 @@ function onCell(i){
       pushHistory(entries);
       paintCell(i, -1);
       renderPalette();
+      paintCompletedUnits();
       saveProgress();
     }
     return;
@@ -1845,6 +1885,7 @@ function undo(){
   for (const { L, i, prev } of move.entries) state.layers[L].grid[i] = prev;
   for (const { i } of move.entries) paintCell(i, -1);
   renderPalette();
+  paintCompletedUnits();
   saveProgress();
   paintUndo();
 }
@@ -1852,6 +1893,56 @@ function undo(){
 function paintUndo(){
   const b = document.getElementById("btnUndo");
   if (b) b.disabled = state.done || state.history.length === 0;
+}
+
+// --------------- completion fade ---------------
+// After each placement, tag cells belonging to fully-filled, conflict-free
+// units so CSS can dim them.  In Double mode, outer (layer 0) and inner
+// (layer 1) are tracked independently — a row may be complete on the outer
+// fill while the inner dot is still missing.
+function paintCompletedUnits(){
+  const board = document.getElementById("board");
+  if (!board) return;
+  const fadePref = load(LS_FADE, true);
+  board.classList.toggle("fade-done", fadePref);
+
+  const n = state.n;
+  const rotate = !!(state.lvl && state.lvl.cfg.boxRotate);
+  const U = unitsOf(n, state.latin, rotate);
+
+  // For each layer, find which cells belong to at least one complete unit.
+  const done = state.layers.map(() => new Set());
+  for (let L = 0; L < state.layers.length; L++){
+    const g = state.layers[L].grid;
+    for (const u of U){
+      // A unit is complete when every cell has a value and no conflicts exist.
+      if (u.some(i => g[i] === null || g[i] === undefined)) continue;
+      let clean = true;
+      for (const i of u){
+        if (conflictsAt(L, i).size){ clean = false; break; }
+      }
+      if (clean) for (const i of u) done[L].add(i);
+    }
+  }
+
+  const multi = state.layers.length > 1;
+  board.querySelectorAll("[data-i]").forEach(el => {
+    const i = +el.dataset.i;
+    if (multi){
+      el.classList.toggle("unit-done-0", done[0].has(i));
+      el.classList.toggle("unit-done-1", done.length > 1 && done[1].has(i));
+      el.classList.remove("unit-done");
+    } else {
+      el.classList.toggle("unit-done", done[0].has(i));
+      el.classList.remove("unit-done-0", "unit-done-1");
+    }
+  });
+}
+
+// --------------- sharp / rounded marks ---------------
+function applySharp(){
+  const board = document.getElementById("board");
+  if (board) board.classList.toggle("sharp", !load(LS_ROUND, true));
 }
 
 // Bookmark: single slot, board-state only. Clock and mistakes deliberately
@@ -1869,6 +1960,8 @@ function restoreBookmark(){
   state.history = [];
   renderBoard();
   renderPalette();
+  paintCompletedUnits();
+  applySharp();
   saveProgress();
   paintUndo();
 }
@@ -1975,14 +2068,21 @@ function winLevel(){
       + (hintsUsed ? ' · 💡×' + hintsUsed : '') + "</p>"
       + '<div class="stars-big">' + [1,2,3].map(i =>
           '<span class="' + (i <= st ? "on" : "") + '">★</span>').join("") + "</div>"
+      + '<div class="badge-wrap" id="badgeWrap"></div>'
       + '<div class="stats">'
       + '<div class="stat"><div class="n">' + fmtTime(secs * 1000) + '</div><div class="l">Your time</div></div>'
       + '<div class="stat"><div class="n">' + fmtTime(lv.par * 1000) + '</div><div class="l">Par</div></div>'
       + '<div class="stat"><div class="n">' + progress().lives + '</div><div class="l">Lives</div></div>'
       + "</div>"
-      + '<button class="btn" id="mNext">Next level</button>'
+      + '<button class="btn" id="shareBtn">Share badge</button>'
+      + '<button class="btn ghost" id="mNext">Next level</button>'
       + '<button class="btn ghost" id="mRetry">Replay</button>'
     );
+    try {
+      const badge = renderShareBadge();
+      document.getElementById("badgeWrap").appendChild(badge);
+    } catch { /* canvas unavailable */ }
+    document.getElementById("shareBtn").onclick = shareAsImage;
     document.getElementById("mNext").onclick = () => { closeModal(); loadLevel(lv.cfg.level + 1); };
     document.getElementById("mRetry").onclick = () => { closeModal(); loadLevel(lv.cfg.level); };
   }, 1100);
@@ -2218,14 +2318,19 @@ function renderShareBadge(){
   ctx.fillText(title, W / 2, pad + 20);
   ctx.fillStyle = dim;
   ctx.font = "12px ui-monospace,monospace";
+  const st = load(LS_STATS, blankStats());
+  const streakStr = state.mode !== "levels" && st.streak > 1
+    ? " · 🔥" + st.streak : "";
   const sub = state.mode === "levels"
     ? state.lvl.cfg.theme.name + " · " + fmtTime(elapsedMs())
     : (state.latin ? "Latin " : "") + diffOf(state.diff).label
-      + (state.dbl ? " · Double" : "") + " · " + fmtTime(elapsedMs());
+      + (state.dbl ? " · Double" : "") + " · " + fmtTime(elapsedMs())
+      + streakStr;
   ctx.fillText(sub, W / 2, pad + 38);
 
   // Draw each cell
   const bx = pad, by = headerH;
+  const rounded = load(LS_ROUND, true);
   for (let r = 0; r < n; r++){
     for (let c = 0; c < n; c++){
       const i = r * n + c;
@@ -2239,16 +2344,18 @@ function renderShareBadge(){
         x = bx + bc * (bw * cellSz + (bw - 1) * cGap + bGap) + ic * (cellSz + cGap);
         y = by + br * (bh * cellSz + (bh - 1) * cGap + bGap) + ir * (cellSz + cGap);
       }
+      const isGiven = state.layers[0].givens[i];
       // Cell bg
-      ctx.fillStyle = state.layers[0].givens[i] ? givenBg : cellBg;
+      ctx.fillStyle = isGiven ? givenBg : cellBg;
       ctx.beginPath(); ctx.roundRect(x, y, cellSz, cellSz, 3); ctx.fill();
 
-      // Outer fill
+      // Outer fill — rounded corners on guesses when the toggle is on
       const v0 = state.layers[0].grid[i];
       if (v0 !== null && v0 !== undefined){
         const mk = MARKS[v0];
         ctx.fillStyle = mk ? (mk.hex || ink) : ink;
-        ctx.beginPath(); ctx.roundRect(x + 1, y + 1, cellSz - 2, cellSz - 2, 2); ctx.fill();
+        const fillRad = isGiven ? 1 : (rounded ? 6 : 1);
+        ctx.beginPath(); ctx.roundRect(x + 1, y + 1, cellSz - 2, cellSz - 2, fillRad); ctx.fill();
       }
       // Inner dot(s)
       for (let L = 1; L < state.layers.length; L++){
@@ -2257,10 +2364,12 @@ function renderShareBadge(){
         const im = INNER[v];
         const dotSz = Math.round(cellSz * 0.42);
         const dx = x + (cellSz - dotSz) / 2, dy = y + (cellSz - dotSz) / 2;
+        const innerGiven = state.layers[L].givens[i];
         ctx.fillStyle = givenBg;
         ctx.beginPath(); ctx.roundRect(dx - 2, dy - 2, dotSz + 4, dotSz + 4, 4); ctx.fill();
         ctx.fillStyle = im ? (im.hex || ink) : ink;
-        ctx.beginPath(); ctx.roundRect(dx, dy, dotSz, dotSz, 2); ctx.fill();
+        const dotRad = innerGiven ? 0 : (rounded ? 4 : 0);
+        ctx.beginPath(); ctx.roundRect(dx, dy, dotSz, dotSz, dotRad); ctx.fill();
       }
     }
   }
@@ -2502,6 +2611,17 @@ function showSettings(){
     + '<div class="fld">Marks</div><div class="seg">' + palOpts + "</div>"
     + '<div class="fld">Theme</div>'
     + seg([["auto","Auto"],["light","Light"],["dark","Dark"]], theme)
+    + '<div class="fld" style="margin-top:4px">Gameplay</div>'
+    + '<div class="toggle-row">'
+    + '<div><div class="toggle-lbl">Fade completed</div>'
+    + '<div class="toggle-desc">Dim rows, columns and boxes when filled</div></div>'
+    + '<button class="toggle-sw' + (load(LS_FADE, true) ? " on" : "") + '" id="togFade" aria-label="Fade completed units"></button>'
+    + '</div>'
+    + '<div class="toggle-row">'
+    + '<div><div class="toggle-lbl">Rounded marks</div>'
+    + '<div class="toggle-desc">Your guesses have rounded corners</div></div>'
+    + '<button class="toggle-sw' + (load(LS_ROUND, true) ? " on" : "") + '" id="togRound" aria-label="Rounded mark corners"></button>'
+    + '</div>'
     + (DEV
         ? '<div class="fld">Debug — puzzle date</div>'
           + '<div class="dbg"><input type="date" id="dbgDate" value="' + dayToISO(state.day) + '">'
@@ -2528,6 +2648,16 @@ function showSettings(){
   m.querySelectorAll("[data-th]").forEach(b => {
     b.onclick = () => { save(LS_THEME, b.dataset.th); applyTheme(); showSettings(); };
   });
+  m.querySelector("#togFade").onclick = () => {
+    save(LS_FADE, !load(LS_FADE, true));
+    paintCompletedUnits();
+    showSettings();
+  };
+  m.querySelector("#togRound").onclick = () => {
+    save(LS_ROUND, !load(LS_ROUND, true));
+    applySharp();
+    showSettings();
+  };
   m.querySelector("#copyStats").onclick = copyStats;
   if (DEV) m.querySelector("#dbgDate").onchange = e => {
     const d = isoToDay(e.target.value);
@@ -2603,7 +2733,8 @@ window.CHROMOKU = { state, DIFFS, TIERS, MARKSETS, buildLevel, levelConfig,
                     randomSolvedGrid, boxDims, mulberry32, nakedPairs, hiddenPairs,
                     loadDifficulty, loadLevel, placeColour, onCell, undo,
                     setBookmark, restoreBookmark, renderShareBadge,
-                    revealCell, freezeClock, addTime, showHintModal };
+                    revealCell, freezeClock, addTime, showHintModal,
+                    paintCompletedUnits, applySharp, shareAsImage };
 </script>
 
 </html>

@@ -1,36 +1,59 @@
 # Chromoku — daily colour-logic puzzle
 
-Working title. Lives in `game.html`, a single self-contained page with no build
-step, no dependencies and no backend — same architecture as the wine app.
+A single-file PWA puzzle game. Lives in `chromoku/index.html` — no build step,
+no dependencies, no backend. Deployable package in `chromoku/` with manifest,
+service worker, icons. Installable, works offline.
 
-**Deployable package lives in `chromoku/`** — `index.html`, manifest, service
-worker, icons, README. Installable, works offline from a cold start, dev tools
-gated behind `?dev=1`. That folder is the future repo root.
-
-**Not yet moved to its own repo.** `wine-cellar` is public, so this source is
-public. The package is ready; creating the repo needs an account-level
-permission this session does not have.
+**Not yet in its own repo.** `wine-cellar` is public. Package is ready; creating
+the private repo needs account-level permission.
 
 ## The game
 
 Fill a grid so no mark repeats in any row, column or box. Marks are colours,
-shapes or patterns — the rule never mentions numbers, which is the whole point.
+shapes or patterns — the rule never mentions numbers.
 
-Three axes, all independent and all composable:
+Three axes, all independent and composable:
 
 | Axis | Values |
 |---|---|
 | **Size** | 4×4 (Easy/Medium/Hard by given count), 9×9, 16×16 |
-| **Layers** | Single, or Double — a second, unrelated puzzle on the inner squares |
+| **Layers** | Single, or Double — a second puzzle on the inner squares |
 | **Ruleset** | Sudoku (with boxes), or Latin (rows and columns only) |
 
 Latin unlocks 5×5 and 7×7. Each combination is its own daily puzzle, own seed
 and own record slot.
 
+## Feature inventory
+
+| Feature | Status |
+|---|---|
+| Core puzzle engine (4–16×16, Latin, Double) | ✅ |
+| 500-level progression across 5 worlds | ✅ |
+| Three mark sets (colour, shapes, patterns) | ✅ |
+| Daily puzzles (seeded from date) | ✅ |
+| Lives system (5 lives, 20-min regen, timer fail) | ✅ |
+| Hints (reveal, freeze, add time, star penalty) | ✅ |
+| Share badge (canvas image, Web Share API) | ✅ |
+| Difficulty rater (T0–T3 with naked/hidden pairs) | ✅ |
+| Per-technique timing model | ✅ |
+| Undo, bookmark, crash recovery | ✅ |
+| Fade completed units (rows/columns/boxes) | ✅ |
+| Rounded-marks toggle (sharp vs round guesses) | ✅ |
+| Settings toggles (fade, rounded, theme, marks) | ✅ |
+| Win screen with share badge + share button | ✅ |
+| Streak in share badge | ✅ |
+| PWA packaging (offline, installable) | ✅ |
+| Accessibility (patterns, shapes, no colour-only) | ✅ |
+| Deployment (Cloudflare Pages, custom domain) | 🔲 ready, not wired |
+| Own repo (private) | 🔲 needs account permission |
+| Accounts / backend | 🔲 not started |
+| Monetisation | 🔲 not started |
+| Analytics | 🔲 not started |
+
 ## Architecture
 
 `<style>` → minimal `<body>` → `<script>`, in that order. Rendering is template
-strings into `innerHTML`, then bind listeners — the repo's existing pattern.
+strings into `innerHTML`, then bind listeners.
 
 - **Daily puzzles** are seeded from the date: `day*1000 + latin*500 + tier*2 + double`.
   Epoch 15 Aug 2026 = puzzle #1. Day is captured at init, so a session spanning
@@ -42,183 +65,101 @@ strings into `innerHTML`, then bind listeners — the repo's existing pattern.
   rule violations — the single attach point for any future lives or ad gate.
 - **localStorage**, versioned keys: `chromoku.daily.v2`, `.stats.v1`,
   `.palette.v1`, `.theme.v1`, `.double.v1`, `.latin.v1`, `.last-diff.v1`,
-  `.debug-day.v1`, `.seen-help.v1`.
+  `.debug-day.v1`, `.seen-help.v1`, `.progress.v1`, `.fade-done.v1`,
+  `.round-marks.v1`.
 
-Dev affordances currently shipped and **not meant for players**: the ⟳ practice
-re-roll and the debug date field in Settings.
+Dev affordances shipped and **not meant for players**: the ⟳ practice
+re-roll and the debug date field in Settings. Gated behind `?dev=1`.
 
-## Findings worth not rediscovering
+## Key subsystems
 
-**Shuffling one grid does not reach the whole space.** Permuting rows, columns
-and symbols of a canonical grid looks like it explores everything. It reaches
-96 of the 288 valid 4×4 grids — one of three orbits. Randomised backtracking on
-an empty board reaches all 288, is faster, and is less code. This tripled daily
-puzzle variety and was invisible without measuring.
+### Completion fade
 
-**Carve down, don't carve out.** Generating by removing cells from a solved
-board and keeping each removal that preserves uniqueness beats picking random
-givens and retrying. 9×9 at 25 givens: ~7.6s → ~4ms.
+After each placement, every unit (row, column, box) is checked per layer. Cells
+belonging to a fully-filled, conflict-free unit get a CSS class that dims their
+marks to 32% opacity. In Double mode, outer (layer 0) and inner (layer 1) fade
+independently — a row can be complete on the outer fill while the inner dot is
+still bright, so the player always sees what still needs work.
 
-**The solver is the bottleneck at scale.** Bitmask candidates plus
-most-constrained-cell branching, short-circuiting at two solutions. Without it
-nothing above 9×9 is viable.
+The fade resets on undo, erase, and bookmark restore. On win, all cells light
+back up for the victory animation. Controlled by the **Fade completed** toggle
+in Settings (default: on). Stored in `chromoku.fade-done.v1`.
 
-**Uniqueness is not optional.** An ambiguous puzzle is an unwinnable puzzle.
-Every generated puzzle is verified to have exactly one solution before serving.
+### Rounded marks toggle
 
-**Measured minimum givens for a unique solve:**
+By default, player guesses have visibly rounded corners while givens are
+near-square — that's the visual cue telling them apart. The **Rounded marks**
+toggle (Settings, default: on) lets the player switch to sharp corners on
+guesses too, making all marks uniform. The setting also applies to the share
+badge canvas, so the shared image matches what the player sees.
 
-| Size | With boxes | Latin (no boxes) |
-|---|---|---|
-| 4×4 | 4.3 | 5.0 |
-| 5×5 | — (cannot box) | 8.0 |
-| 7×7 | — (cannot box) | 17.5 |
-| 9×9 | 24.2 | 32.8 |
-| 10×10 | 32.3 (5×2) | 41.6 |
-| 12×12 | 47.7 (4×3) | 63.6 |
+Class `board.sharp` applies `border-radius:2px` to `.cell:not(.given) .fill`
+and `border-radius:0` to `.cell:not(.given) .dot`. Stored in
+`chromoku.round-marks.v1`.
 
-Shipped counts sit a little above these; minimum-clue puzzles are solvable but
-unpleasant.
+### Share badge
 
-**Sudoku requires the size to factorise.** 5, 7, 11, 13 can never be Sudoku.
-Dropping the box rule costs ~30% more givens but makes every size legal — that,
-not the missing rule, is why Latin earns its place.
+Canvas-rendered image of the solved board. Supports Double mode (inner dots),
+streak count for daily puzzles, hint count disclosure. Uses Web Share API →
+clipboard → text fallback chain.
 
-**Generation cost climbs a cliff.** 16×16 at 140 givens is ~190ms; at 110 it is
-~52s. 12×12 Latin is ~465ms against ~15ms for 10×10. Both are held at the safe
-side of their cliff.
+Badge respects the rounded-marks setting: given fills always use `radius:1`,
+guess fills use `radius:6` when rounded, `radius:1` when sharp. Same for
+inner dots: `radius:4` vs `radius:0`.
 
-**16×16 is a desktop tier.** Cells land around 20px on a phone, below the 44px
-tap-target minimum. It generates fine and is unplayable on mobile. 16×16 Double
-(512 marks) is worse — kept only as proof the axes are orthogonal.
+Shown in the win modal for both daily and level modes, with a **Share badge**
+button. Level win also shows stars, time vs par, and lives count.
 
-**Marks must vary along one dimension.** Crossing colour with shape gives more
-marks but a board holding a red triangle, a blue triangle and a red circle costs
-more to read than to solve. Colour tops out at ~9 genuinely distinct hues;
-Shapes is the strongest set at 9×9 and the right answer at 16×16.
+### Hints system
 
-**Patterns are the accessibility answer**, not a cosmetic. A colour-only board
-is unplayable with red-green colour deficiency (~8% of men). Monochrome pattern
-and shape sets depend on no colour discrimination. Keep them free.
+Three types, each with per-puzzle limits:
+- **Reveal** (💡×3): fills one empty cell with the correct value, gold glow
+- **Freeze clock** (❄️×2): pauses timer for 15 seconds, blue timer display
+- **Add time** (⏰×2): adds 30 seconds to the countdown (levels only)
 
-**Orthogonal (Graeco-Latin) layering was considered and rejected.** Coupling the
-layers so every mark pair is unique makes the puzzle far denser — unique from ~6
-marks of 32 rather than ~12 — but turns Double into a deduction exercise instead
-of the visual one intended. Also: **no orthogonal pair exists at 6×6** (Euler's
-36 officers, proven by Tarry 1901), so a 4→6→9 ladder would break. 9×9 pairs do
-exist but need construction; random search will not find them.
+Each hint used reduces the maximum star rating by one. Three hints = capped at
+one star. Available in both daily and level modes (freeze/add time only in
+levels since daily has no timer pressure).
 
-## Design decisions
+### Difficulty rater
 
-- **Conflicts are advisory.** An illegal placement lands and shakes. The game
-  has no fail state — worth remembering before designing anything around lives.
-- **Givens are bolder than your own marks**: flush to the cell edge versus inset,
-  and larger versus smaller on the inner layer. One rule, learned once.
-- **The inner layer is a square inside a square** and always uses colour —
-  patterns turn to mush at a third of a cell's width. Varying inner shape is
-  held back as a reward lever.
-- **The solved view is one nested grid**, not a stack of separate grids.
-- Box gaps must be roughly 3× the gaps inside a box or the boxes vanish. This
-  was missed twice: once at 4×4, again at 9×9.
+Grades a puzzle by the cheapest technique that cracks it:
+- T0: naked singles — a cell with one candidate left
+- T1: hidden singles — a value with only one home in a unit
+- T2: naked pairs, hidden pairs, locked candidates (boxes only)
+- T3: needs guessing
 
-## Progression (phase 1 — engine only, no level UI yet)
+Naked and hidden pairs work on rows and columns alone, so Latin puzzles properly
+rate above T1.
 
-Levels sit alongside the daily, which is unchanged. A level's configuration is a
-pure function of its number, so level N is identical for everyone and there is
-no table to maintain.
+### Progression (500 levels)
 
-**The rater** grades a puzzle by the cheapest technique that cracks it: T0 naked
-singles, T1 hidden singles, T2 naked pairs / hidden pairs / locked candidates,
-T3 needs guessing. T2 now includes pair-based techniques that work without
-boxes, so Latin puzzles can properly rate above T1. This is the real difficulty
-signal — given count is a poor proxy, and below 9×9 it measures nothing at all.
+Five worlds: Sunrise (1–100), Tide (101–200), Lattice (201–300),
+Echo (301–400), Prism (401–500). Each world introduces new mechanics. Step 5 of
+every stage is a peek (gentle preview of next world), step 10 is a boss.
 
-**Par time** uses a per-technique timing model — each tier has its own
-seconds-per-cell cost (T0 0.80s, T1 1.40s, T2 2.20s, T3 3.00s) plus a small
-per-size add-on (0.04s/cell/n). The time limit is par × a generosity multiplier
-that decays from 2.6× at level 1 toward a 1.25× floor, with a small sawtooth so
-each stage opens kinder than it ends. Per-size tweaks (`sizeParTweak`) handle
-cases the linear model cannot (4×4 tighter, 6×6 looser). All of it lives in one
-`TUNE` block.
+Lives system: 5 lives, one regained every 20 minutes. Timer expiry costs a
+life. Zero lives = wait for regen.
 
-**Measured over levels 1–500** (`scratchpad/curve.js`):
+Stars reward beating par: ≤ par = 3★, ≤ par×1.4 = 2★, else 1★, minus hints.
 
-| World | Levels | Unlock | Mean par | Peak (p90) |
-|---|---|---|---|---|
-| Sunrise | 1–100 | 4×4 up to 9×9 | 34s | 67s |
-| Tide | 101–200 | 9×9, shape marks | 73s | 87s |
-| Lattice | 201–300 | Latin | 73s | 107s |
-| Echo | 301–400 | Double | 98s | 152s |
-| Prism | 401–500 | combinations | 156s | 203s |
+### Win screen
 
-**Rhythm.** Step 5 of every stage is a *peek*: a deliberately gentle taste of
-what the next world brings, drawn from that world's declared `preview`. Step 10
-is a boss borrowing the next entry from the current world's own pool. The clock
-tightens in visible steps at every stage boundary rather than sliding
-imperceptibly per level, so "the timer got tighter" is something a player can
-notice.
+Both daily and level wins show:
+- Solved confirmation with puzzle details
+- **Canvas share badge** rendered inline
+- Stats (streak/solved/best for daily; time/par/lives for levels)
+- **Share badge** button (Web Share API → clipboard → text fallback)
+- Level mode adds stars display and Next/Replay buttons
 
-A preview must advertise what is *new*, not merely what is bigger. Pulling the
-next world's first configuration blindly put a 9×9 at level 5, four levels after
-the player's first 4×4 — a wall dressed as an invitation. Tide's preview is now
-a 4×4 in shape marks: same size, new idea.
+## Settings
 
-Par trends up at 0.27 s/level, generosity trends down, world peaks rise
-monotonically, no level takes over 35ms to build, and every level of all 500 is
-uniquely solvable.
-
-**Rater now includes naked and hidden pairs (T2).** The technique ladder was
-box-centric — locked candidates need boxes, so a Latin board could never rate
-above T1. Naked pairs and hidden pairs work on pure row/column constraints, so
-Latin puzzles now properly reach T2. Both are standard Sudoku techniques:
-- **Naked pairs**: two cells in a unit share exactly the same two candidates →
-  eliminate those values from every other cell in the unit.
-- **Hidden pairs**: two values appear as candidates in exactly two cells of a
-  unit → those cells can only hold those two values.
-`TUNE.latinFactor` drops from 1.22 to 1.15, since the rater now captures much
-of the difficulty the factor was carrying.
-
-**World peaks are compared at the 90th percentile, not the maximum.** A max over
-100 levels is decided by a single outlier tier bump and says little about how
-hard a world actually gets.
-
-**Three things the curve got wrong**, all invisible until measured:
-
-- Worlds 3 and 4 *regressed* — introducing a mechanic on a small board dropped
-  difficulty below the previous world and left it there. Fixed by giving each
-  world an explicit stage→config `ramp` rather than spreading its pool evenly.
-  The assertion that caught it is world-peak monotonicity plus "must climb back
-  past the previous world's mean within 40 levels"; a plain positive overall
-  slope passed happily while two worlds sagged.
-- The opening was flat: levels 1–20 were one identical 4×4, in exactly the
-  window where a player decides whether to continue. World 1 now changes
-  configuration every ten levels and reaches 9×9 by level 71; par at level 30 is
-  2.7× par at level 1.
-- 39 of 500 levels needed guessing. A tier-3 board is uniquely solvable but only
-  by trial, which reads as unfair rather than hard. `buildLevel` now tries up to
-  six alternative seeds for a logic-solvable puzzle: 39 → 1.
-
-Still to build: lives and the timer fail state (5 lives, one per 20 minutes,
-expiry costs a life, retry replays the same level), and the level UI.
-
-## Recently shipped
-
-- **Share badge** — canvas-rendered image of the solved board, shareable via Web
-  Share API or clipboard. Supports Double mode natively. Falls back to the text
-  emoji grid when canvas/share is unavailable.
-- **Difficulty algorithm** — naked pairs and hidden pairs added to the rater.
-  Latin puzzles now rate above T1. Both techniques work on rows and columns
-  alone, no boxes needed.
-- **Timing calibration** — per-technique seconds-per-cell model replaces the old
-  single-base × tier-factor. T0 is 0.80s/cell, T2 is 2.20s/cell, so a harder
-  puzzle gets proportionally more time rather than a blanket multiplier.
-- **Hints system** — reveal-a-cell, freeze clock (+15s), add time (+30s). Each
-  hint used reduces the star ceiling by one. Sell helpers, not lives.
-
-## Open
-
-- **Monetisation and progression** — undecided.
-- Move to its own repo before launch.
+| Setting | Key | Default | Notes |
+|---|---|---|---|
+| Mark set | `palette.v1` | Colour | Colour, Shapes, Patterns |
+| Theme | `theme.v1` | Auto | Auto, Light, Dark |
+| Fade completed | `fade-done.v1` | On | Dim completed rows/cols/boxes |
+| Rounded marks | `round-marks.v1` | On | Rounded corners on guesses |
 
 ## Conventions
 
@@ -229,55 +170,107 @@ identifiers and commit messages. CSS keywords (`color`, `background-color`,
 Verify in a real browser, not by reading the diff. Every layout bug in this
 project's history was found by screenshotting and none by reading the code.
 
-## Distribution and revenue
+## Open
 
-**Private GitHub repos are free** — unlimited, any number of collaborators. Only
-*GitHub Pages* from a private repo needs Pro ($4/mo); Cloudflare Pages deploys
-from a private repo for nothing and on a faster CDN. So: private repo, free
-hosting, no subscription.
+- **Monetisation and progression** — see `CHROMOKU-PLAN.md` for strategy.
+- Move to its own repo before launch.
 
-**The web is the right first medium, and it is not a compromise.** A URL is one
-tap; an app install is a funnel that loses most of the people who begin it.
-Store presence also costs an Apple account at $99/yr, a Google one at $25 once,
-two review processes, two leaderboard systems that cannot see each other, and
-30% of anything sold.
+---
 
-**But the lives-and-rewarded-video economy is genuinely app-shaped.** Rough
-industry ballparks, not verified figures:
+## Reference: technical details
 
-| ~1,000 daily players | Revenue |
-|---|---|
-| Web display ads (~$3–5 RPM) | ~$3–5/day |
-| App with rewarded video + IAP (casual puzzle ARPDAU $0.02–0.15) | ~$20–150/day |
+<details>
+<summary>Puzzle generation and solver internals</summary>
 
-Two concrete reasons for the gap, both worth knowing before betting on ads:
+### Generation
 
-- **Rewarded video pays far less on the open web.** The networks that pay well
-  for it — AdMob, AppLovin, ironSource, Unity — are SDK-based for native apps.
-  AdSense does not offer rewarded formats for arbitrary sites. "Watch an ad for
-  a life" is precisely the mechanic that suffers most from living on a page.
-- **Payment friction.** Apple and Google already hold the player's card. Stripe
-  on the web avoids the 30% cut but converts noticeably worse.
+**Shuffling one grid does not reach the whole space.** Permuting rows, columns
+and symbols of a canonical grid reaches 96 of the 288 valid 4×4 grids — one of
+three orbits. Randomised backtracking on an empty board reaches all 288, is
+faster, and is less code.
 
-**Anything sold needs a backend before it needs a store.** Lives, progress and
-entitlements all live in localStorage today, which anyone can edit in devtools.
-That is harmless for feel, but it means selling lives would be selling something
-players can mint for free. Accounts also solve cross-device permanence, which is
-the same problem wearing a different hat.
+**Carve down, don't carve out.** Removing cells from a solved board and keeping
+each removal that preserves uniqueness beats picking random givens and retrying.
+9×9 at 25 givens: ~7.6s → ~4ms.
 
-**The sequence keeps every door open**, because it is one codebase throughout:
+**The solver is the bottleneck at scale.** Bitmask candidates plus
+most-constrained-cell branching, short-circuiting at two solutions.
 
-1. **Now** — PWA, free hosting, progress local. Installing to the home screen
-   also stops iOS evicting storage after ~7 days of non-use, which would
-   otherwise fake a retention failure.
-2. **If retention holds** — accounts and a small backend: cross-device sync,
-   leaderboards, and entitlements that cannot be forged.
-3. **If a store presence is wanted** — wrap the same PWA (TWA for Play,
-   Capacitor for iOS). That is when rewarded video, one-tap payment, store
-   discovery and receipt verification arrive. Going this direction is easy;
-   starting native and backing out is not.
+**Uniqueness is not optional.** Every generated puzzle is verified to have
+exactly one solution.
 
-**Sell helpers, not lives.** Hints, reveal-a-cell, freeze-the-clock, +30
-seconds. They help a player *win* rather than merely *continue*, they build on
-the timer that already exists, and they do not require making the game punishing
-in order to manufacture demand.
+### Minimum givens for a unique solve
+
+| Size | With boxes | Latin (no boxes) |
+|---|---|---|
+| 4×4 | 4.3 | 5.0 |
+| 5×5 | — | 8.0 |
+| 7×7 | — | 17.5 |
+| 9×9 | 24.2 | 32.8 |
+| 10×10 | 32.3 | 41.6 |
+| 12×12 | 47.7 | 63.6 |
+
+### Generation cost
+
+16×16 at 140 givens is ~190ms; at 110 it is ~52s. 12×12 Latin is ~465ms
+against ~15ms for 10×10. Both are held at the safe side of their cliff.
+
+16×16 is a desktop tier — cells land around 20px on a phone, below the 44px
+tap-target minimum.
+
+### Timing model
+
+Per-technique seconds-per-cell: T0 0.80s, T1 1.40s, T2 2.20s, T3 3.00s, plus
+0.04s/cell/n for size. Generosity decays from 2.6× at level 1 toward a 1.25×
+floor, with sawtooth relief at stage boundaries.
+
+### Progression curve stats (levels 1–500)
+
+| World | Levels | Mean par | Peak (p90) |
+|---|---|---|---|
+| Sunrise | 1–100 | 34s | 67s |
+| Tide | 101–200 | 73s | 87s |
+| Lattice | 201–300 | 73s | 107s |
+| Echo | 301–400 | 98s | 152s |
+| Prism | 401–500 | 156s | 203s |
+
+Par trends up at 0.27s/level; every level of all 500 is uniquely solvable and
+logic-solvable (only 1 of 500 needs guessing after seed retries).
+
+</details>
+
+<details>
+<summary>Design decisions and findings</summary>
+
+- **Conflicts are advisory.** An illegal placement lands and shakes. No fail
+  state from wrong guesses — the timer is the only way to lose.
+- **Givens vs guesses**: corner shape is the cue. Givens are near-square,
+  guesses are rounded (configurable via toggle).
+- **Inner layer is a square inside a square**, always colour. Patterns turn to
+  mush at a third of a cell's width.
+- **Box gaps must be 3× the gaps inside a box** or the boxes vanish.
+- **Marks must vary along one dimension.** Crossing colour with shape costs more
+  to read than to solve. Colour tops out at ~9 distinct hues; Shapes is
+  strongest at 9×9+.
+- **Patterns are the accessibility answer**, not cosmetic. Colour-only boards are
+  unplayable with red-green deficiency (~8% of men).
+- **Orthogonal (Graeco-Latin) layering was rejected** — no pair exists at 6×6
+  (Euler's 36 officers), and the density makes it a deduction exercise.
+
+</details>
+
+<details>
+<summary>Distribution and revenue notes</summary>
+
+See `CHROMOKU-PLAN.md` for the full strategy. Key points:
+
+- **Private GitHub repos are free** — Cloudflare Pages deploys from private repos
+  for nothing on a faster CDN than GitHub Pages.
+- **Web first for growth** (URL sharing, zero friction), native app wrapper later
+  for rewarded video revenue (5–10× the web rate).
+- **Sell helpers, not lives** — hints, reveal, freeze, add time. They help a
+  player *win* rather than merely *continue*.
+- **The sequence keeps every door open**: PWA now → accounts + backend if
+  retention holds → app store wrappers (TWA/Capacitor) if traction.
+
+</details>
