@@ -497,23 +497,26 @@ const TILE = "12px 12px";  // more negative space than 9x9
 
 // Primitive pools. A mark set combines these to produce however many
 // distinguishable marks a grid size needs — 4, 9, 16, whatever comes next.
+// Spread around the hue wheel so no two neighbours share a family.
+// First 4 are the primaries (4×4 boards). First 9 are the core set (9×9).
+// 10–16 fill the gaps for larger grids where shapes carry the real load.
 const HUES = [
-  { hex:"#e74c3c", emoji:["🟥","🟥"], label:"Red"     },
-  { hex:"#3498db", emoji:["🟦","🟦"], label:"Blue"    },
-  { hex:"#27ae60", emoji:["🟩","🟩"], label:"Green"   },
-  { hex:"#f1c40f", emoji:["🟨","🟨"], label:"Yellow"  },
-  { hex:"#9b59b6", emoji:["🟪","🟪"], label:"Purple"  },
-  { hex:"#e67e22", emoji:["🟧","🟧"], label:"Orange"  },
-  { hex:"#00b8d4", emoji:["🟦","🟦"], label:"Cyan"    },
-  { hex:"#8d99ae", emoji:["⬜","⬜"], label:"Grey"    },
-  { hex:"#6d4c41", emoji:["🟫","🟫"], label:"Brown"   },
-  { hex:"#ec7ab5", emoji:["🟪","🟪"], label:"Pink"    },
-  { hex:"#a3c72e", emoji:["🟩","🟩"], label:"Lime"    },
-  { hex:"#1f3a93", emoji:["🟦","🟦"], label:"Navy"    },
-  { hex:"#16a085", emoji:["🟦","🟦"], label:"Teal"    },
-  { hex:"#7d6608", emoji:["🟫","🟫"], label:"Olive"   },
-  { hex:"#c0392b", emoji:["🟥","🟥"], label:"Maroon"  },
-  { hex:"#2c3e50", emoji:["⬛","⬛"], label:"Slate"   },
+  { hex:"#e74c3c", emoji:["🟥","🟥"], label:"Red"     },   //  1 — 0°   warm primary
+  { hex:"#3498db", emoji:["🟦","🟦"], label:"Blue"    },   //  2 — 210° cool primary
+  { hex:"#27ae60", emoji:["🟩","🟩"], label:"Green"   },   //  3 — 145° natural
+  { hex:"#f1c40f", emoji:["🟨","🟨"], label:"Yellow"  },   //  4 — 48°  bright
+  { hex:"#8e44ad", emoji:["🟪","🟪"], label:"Purple"  },   //  5 — 282° violet
+  { hex:"#e67e22", emoji:["🟧","🟧"], label:"Orange"  },   //  6 — 28°  warm secondary
+  { hex:"#e91e63", emoji:["🟥","🟥"], label:"Magenta" },   //  7 — 340° vivid pink-red
+  { hex:"#009688", emoji:["🟩","🟩"], label:"Teal"    },   //  8 — 174° green-aqua (not blue)
+  { hex:"#795548", emoji:["🟫","🟫"], label:"Brown"   },   //  9 — 16°  dark warm
+  { hex:"#cddc39", emoji:["🟩","🟩"], label:"Lime"    },   // 10 — 66°  yellow-green
+  { hex:"#f48fb1", emoji:["🟪","🟪"], label:"Pink"    },   // 11 — 340° soft (lighter than Magenta)
+  { hex:"#5c6bc0", emoji:["🟦","🟦"], label:"Indigo"  },   // 12 — 232° blue-purple
+  { hex:"#ff7043", emoji:["🟧","🟧"], label:"Coral"   },   // 13 — 14°  warm salmon
+  { hex:"#ffa000", emoji:["🟨","🟨"], label:"Amber"   },   // 14 — 38°  dark gold
+  { hex:"#78909c", emoji:["⬜","⬜"], label:"Grey"    },   // 15 — 200° blue-grey neutral
+  { hex:"#37474f", emoji:["⬛","⬛"], label:"Slate"   },   // 16 — 200° dark charcoal
 ];
 
 // Shapes each get a distinct hue from HUES for visual variety, but the
