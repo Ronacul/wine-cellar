@@ -128,15 +128,18 @@ pure function of its number, so level N is identical for everyone and there is
 no table to maintain.
 
 **The rater** grades a puzzle by the cheapest technique that cracks it: T0 naked
-singles, T1 hidden singles, T2 locked candidates (boxes only), T3 needs
-guessing. This is the real difficulty signal — given count is a poor proxy, and
-below 9×9 it measures nothing at all.
+singles, T1 hidden singles, T2 naked pairs / hidden pairs / locked candidates,
+T3 needs guessing. T2 now includes pair-based techniques that work without
+boxes, so Latin puzzles can properly rate above T1. This is the real difficulty
+signal — given count is a poor proxy, and below 9×9 it measures nothing at all.
 
-**Par time** is estimated from work — cells to fill × seconds per cell × a tier
-factor — and the time limit is par × a generosity that decays from 2.6× at level
-1 toward a 1.25× floor, with a small sawtooth so each stage opens kinder than it
-ends. All of it lives in one `TUNE` block. **Those constants are guesses until
-real play data exists.**
+**Par time** uses a per-technique timing model — each tier has its own
+seconds-per-cell cost (T0 0.80s, T1 1.40s, T2 2.20s, T3 3.00s) plus a small
+per-size add-on (0.04s/cell/n). The time limit is par × a generosity multiplier
+that decays from 2.6× at level 1 toward a 1.25× floor, with a small sawtooth so
+each stage opens kinder than it ends. Per-size tweaks (`sizeParTweak`) handle
+cases the linear model cannot (4×4 tighter, 6×6 looser). All of it lives in one
+`TUNE` block.
 
 **Measured over levels 1–500** (`scratchpad/curve.js`):
 
@@ -164,12 +167,16 @@ Par trends up at 0.27 s/level, generosity trends down, world peaks rise
 monotonically, no level takes over 35ms to build, and every level of all 500 is
 uniquely solvable.
 
-**Known bias in the rater.** The technique ladder is box-centric — locked
-candidates need boxes, so a Latin board can never rate above T1 however hard it
-is. Measured, Latin needs deeper reasoning far more often at equal size (85% vs
-100% solvable by singles at 9×9). `TUNE.latinFactor` carries that measurement
-until the rater grows a technique that works without boxes; naked and hidden
-pairs would be the natural addition.
+**Rater now includes naked and hidden pairs (T2).** The technique ladder was
+box-centric — locked candidates need boxes, so a Latin board could never rate
+above T1. Naked pairs and hidden pairs work on pure row/column constraints, so
+Latin puzzles now properly reach T2. Both are standard Sudoku techniques:
+- **Naked pairs**: two cells in a unit share exactly the same two candidates →
+  eliminate those values from every other cell in the unit.
+- **Hidden pairs**: two values appear as candidates in exactly two cells of a
+  unit → those cells can only hold those two values.
+`TUNE.latinFactor` drops from 1.22 to 1.15, since the rater now captures much
+of the difficulty the factor was carrying.
 
 **World peaks are compared at the 90th percentile, not the maximum.** A max over
 100 levels is decided by a single outlier tier bump and says little about how
@@ -194,15 +201,22 @@ hard a world actually gets.
 Still to build: lives and the timer fail state (5 lives, one per 20 minutes,
 expiry costs a life, retry replays the same level), and the level UI.
 
+## Recently shipped
+
+- **Share badge** — canvas-rendered image of the solved board, shareable via Web
+  Share API or clipboard. Supports Double mode natively. Falls back to the text
+  emoji grid when canvas/share is unavailable.
+- **Difficulty algorithm** — naked pairs and hidden pairs added to the rater.
+  Latin puzzles now rate above T1. Both techniques work on rows and columns
+  alone, no boxes needed.
+- **Timing calibration** — per-technique seconds-per-cell model replaces the old
+  single-base × tier-factor. T0 is 0.80s/cell, T2 is 2.20s/cell, so a harder
+  puzzle gets proportionally more time rather than a blanket multiplier.
+- **Hints system** — reveal-a-cell, freeze clock (+15s), add time (+30s). Each
+  hint used reduces the star ceiling by one. Sell helpers, not lives.
+
 ## Open
 
-- **Share badge.** Text sharing spoils the answer, and emoji cannot nest a mark
-  inside a mark so Double only shares its outer layer. Wants rendering to an
-  image. Worldle handles this better; deliberately parked.
-- **Difficulty algorithm.** Given count is a crude proxy. The real measure is
-  which solving technique a puzzle requires: run a solver that only applies
-  forced moves and score by how many cells it cannot resolve, then generate by
-  rejection sampling to hit a target. Works across every size and ruleset.
 - **Monetisation and progression** — undecided.
 - Move to its own repo before launch.
 
