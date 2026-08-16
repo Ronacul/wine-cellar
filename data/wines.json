@@ -6135,7 +6135,7 @@
     "name": "Saint-Émilion",
     "vintage": "1983",
     "type": "Red",
-    "qty": 1,
+    "qty": 0,
     "region": "Saint-Émilion, Bordeaux, France",
     "drinkFrom": "1988",
     "drinkTo": "1998",
@@ -6145,9 +6145,22 @@
     "fire": 0,
     "pairings": "roasted lamb, grilled duck breast, beef stew, aged cheeses",
     "source": "",
-    "price": "~$45 CAD (est.)",
+    "price": "~$65 CAD (est.)",
     "location": "",
     "notes": "A blend of Merlot and Cabernet Franc. This is a basic négociant bottling from a decent Bordeaux vintage; it is now far past its prime and likely faded, showing tertiary characters of dried leaves, leather, and cedar.",
-    "imagePath": "images/msuvogwwopuef.jpg"
+    "imagePath": "images/msuvogwwopuef.jpg",
+    "tastingHistory": [
+      {
+        "date": "2026-08-16",
+        "rating": 4,
+        "notes": "Early Birthday for me, with Cordelia.\nGood, very thin texture, and nice smooth taste, even so far past window",
+        "bottleNum": 1
+      }
+    ],
+    "drankDate": "2026-08-15",
+    "rating": 4,
+    "drinkNotes": "Early Birthday for me, with Cordelia.\nGood, very thin texture, and nice smooth taste, even so far past window",
+    "buyAgain": null,
+    "giftedTo": null
   }
 ]
