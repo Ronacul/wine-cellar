@@ -268,6 +268,9 @@ h1{
   clip-path:var(--clip); border-radius:3px}
 .swatch.shaped.on{box-shadow:0 0 0 3px var(--bg),0 0 0 6px var(--c)}
 .swatch.shaped.done::before{opacity:.35}
+/* Scramble mode: Stroop-style interference — colours get random shape
+   clip-paths, shapes get random colours. Applied via inline styles in
+   scrambleStyle() so no extra class is needed on the .fill div. */
 .swatch .k{
   position:absolute; bottom:-17px; left:0; right:0; text-align:center;
   font-family:var(--mono); font-size:9px; color:var(--ink-faint);
@@ -483,6 +486,7 @@ html.dev .dev-only{display:grid}
       <div class="diffs" id="diffs"></div>
       <button class="dbl" id="latinToggle">Latin</button>
       <button class="dbl" id="dblToggle">Double</button>
+      <button class="dbl" id="scrambleToggle">Scramble</button>
       <button class="dbl" id="lvlToggle">Levels</button>
     </div>
   </div>
@@ -676,6 +680,34 @@ const emojiFor = (L, i) => {
   return mk.emoji[0];
 };
 
+// Scramble mode: Stroop-style interference. Colours get misleading shapes;
+// shapes get misleading colours. The decoy is deterministic per cell so the
+// board stays consistent on re-render, but the decoy is always different
+// from the real value so every cell lies.
+function scrambleDecoy(i, v, n){
+  const seed = state.day * 31 + state.n * 7;
+  let d = ((i * 17 + seed) * 13 + 37) % n;
+  if (d === v) d = (d + 1) % n;
+  return d;
+}
+// Board-cell style with scramble overlay: the real mark stays, but a second
+// dimension misleads the eye. Classic colours gain a random shape clip-path;
+// shapes gain a random colour.
+function scrambleStyle(i, v){
+  const m = MARKS[v];
+  if (activePalette === "shapes"){
+    // Shape is truth; colour is noise
+    const fakeIdx = scrambleDecoy(i, v, Math.min(state.n, HUES.length));
+    const fakeHex = HUES[fakeIdx].hex;
+    const clip = m.clip ? ";clip-path:" + m.clip + ";border-radius:3px" : "";
+    return "--c:" + fakeHex + clip;
+  }
+  // Classic colours: colour is truth; shape is noise
+  const fakeIdx = scrambleDecoy(i, v, Math.min(state.n, SHAPES.length));
+  const fakeClip = SHAPES[fakeIdx].clip;
+  return "--c:" + m.hex + ";clip-path:" + fakeClip + ";border-radius:3px";
+}
+
 // Difficulty is a table, not branching logic — a future difficulty algorithm
 // replaces these numbers without touching the generator.
 // `layers: 2` runs a second, entirely independent puzzle on the inner squares.
@@ -754,6 +786,7 @@ const LS_SIZE  = "chromoku.last-size.v1";
 const LS_PAL   = "chromoku.palette.v1";
 const LS_DBL   = "chromoku.double.v1";
 const LS_LATIN = "chromoku.latin.v1";
+const LS_SCRAMBLE = "chromoku.scramble.v1";
 const LS_PROG  = "chromoku.progress.v1";
 const LS_FADE  = "chromoku.fade-done.v1";    // toggle: fade completed units
 const LS_ROUND = "chromoku.round-marks.v1";  // toggle: rounded corners on guesses
@@ -1370,6 +1403,7 @@ const state = {
   limitMs:0,               // countdown budget for the active level
   latin:false,             // ruleset axis: no boxes, rows and columns only
   dbl:false,               // layering axis: applies to whichever tier is selected
+  scramble:false,           // Stroop axis: cross colours/shapes to mislead the eye
   practice:false,          // a re-rollable puzzle, outside the daily record
   mistakes:0,              // foundation for a lives/ads gate later
   done:false,
@@ -1734,7 +1768,7 @@ function renderLevelBar(){
   if (tw) tw.style.display = "";
   document.getElementById("lvBack").onclick = enterDaily;
   // The axis toggles belong to the daily; a level chooses its own config.
-  for (const id of ["latinToggle", "dblToggle", "lvlToggle"]){
+  for (const id of ["latinToggle", "dblToggle", "scrambleToggle", "lvlToggle"]){
     const b = document.getElementById(id);
     if (b) b.style.display = "none";
   }
@@ -1750,7 +1784,8 @@ function renderSub(){
       ? "Stage " + state.lvl.cfg.stage + " · step " + state.lvl.cfg.step
       : (state.practice ? "Practice" : "#" + state.day) + " · "
         + (state.latin ? "Latin " : "") + sObj.label + " " + dObj.label
-        + (state.dbl ? " · Double" : "");
+        + (state.dbl ? " · Double" : "")
+        + (state.scramble ? " · Scramble" : "");
 }
 
 function renderSizes(){
@@ -1792,7 +1827,7 @@ function renderDiffs(){
     return '<button class="diff' + (d.id === state.diff ? " on" : "") + '" data-diff="' + d.id + '">'
       + d.label + (done ? ' <span class="tick">✓</span>' : "") + "</button>";
   }).join("");
-  for (const id of ["latinToggle", "dblToggle", "lvlToggle"]){
+  for (const id of ["latinToggle", "dblToggle", "scrambleToggle", "lvlToggle"]){
     const b = document.getElementById(id);
     if (b) b.style.display = "";
   }
@@ -1812,6 +1847,10 @@ function renderDiffs(){
   t.className = "dbl" + (state.dbl ? " on" : "");
   t.textContent = state.dbl ? "Double ✓" : "Double";
   t.onclick = () => { state.dbl = !state.dbl; save(LS_DBL, state.dbl); loadPuzzle(state.size, state.diff); };
+  const st = document.getElementById("scrambleToggle");
+  st.className = "dbl" + (state.scramble ? " on" : "");
+  st.textContent = state.scramble ? "Scramble ✓" : "Scramble";
+  st.onclick = () => { state.scramble = !state.scramble; save(LS_SCRAMBLE, state.scramble); loadPuzzle(state.size, state.diff); };
   document.querySelectorAll("[data-diff]").forEach(b => {
     b.onclick = () => { if (b.dataset.diff !== state.diff) loadPuzzle(state.size, b.dataset.diff); };
   });
@@ -1868,9 +1907,12 @@ function renderBoard(){
 function cellInner(i, animate){
   let out = "";
   const v0 = state.layers[0].grid[i];
-  if (v0 !== null && v0 !== undefined)
+  if (v0 !== null && v0 !== undefined){
+    const useScramble = state.scramble && activePalette !== "ink";
+    const st = useScramble ? scrambleStyle(i, v0) : styleFor(0, v0);
     out += '<div class="fill' + (isPattern() ? " pat" : "") + (animate === 0 ? " new" : "")
-         + '" style="' + styleFor(0, v0) + '"></div>';
+         + '" style="' + st + '"></div>';
+  }
   for (let L = 1; L < state.layers.length; L++){
     const v = state.layers[L].grid[i];
     if (v === null || v === undefined) continue;
@@ -2228,6 +2270,7 @@ function winLevel(){
       + '<button class="btn" id="shareBtn">Share badge</button>'
       + '<button class="btn ghost" id="mNext">Next level</button>'
       + '<button class="btn ghost" id="mRetry">Replay</button>'
+      + '<button class="btn ghost" id="mStop">Done for now</button>'
     );
     try {
       const badge = renderShareBadge();
@@ -2236,6 +2279,7 @@ function winLevel(){
     document.getElementById("shareBtn").onclick = shareAsImage;
     document.getElementById("mNext").onclick = () => { closeModal(); loadLevel(lv.cfg.level + 1); };
     document.getElementById("mRetry").onclick = () => { closeModal(); loadLevel(lv.cfg.level); };
+    document.getElementById("mStop").onclick = () => { closeModal(); enterDaily(); };
   }, 1100);
 }
 
@@ -2286,7 +2330,8 @@ function emojiGrid(L){
 // nested board. Reworking this into a badge that does not spoil the answer is
 // still open.
 function shareText(){
-  return SHARE_NAME + " #" + state.day + " · " + sizeOf(state.size).label + " " + diffOf2(state.diff, state.n).label + " ✨\n"
+  const mods = (state.dbl ? " · Double" : "") + (state.scramble ? " · Scramble" : "");
+  return SHARE_NAME + " #" + state.day + " · " + sizeOf(state.size).label + " " + diffOf2(state.diff, state.n).label + mods + " ✨\n"
        + "⏱️ " + fmtTime(elapsedMs()) + "\n\n" + emojiGrid(0) + "\n";
 }
 
@@ -2945,6 +2990,7 @@ applyTheme();
 activePalette = MARKSETS[load(LS_PAL, "classic")] ? load(LS_PAL, "classic") : "classic";
 state.latin = load(LS_LATIN, false);
 state.dbl = load(LS_DBL, false);
+state.scramble = load(LS_SCRAMBLE, false);
 state.day = dayNumber();
 
 // Migrate legacy LS_LAST (old tier ID like "nine") → new size + diff
@@ -2979,6 +3025,7 @@ window.CHROMOKU = { state, DIFFS, SIZES, DIFFICULTIES, CURR_SIZES, CURR_DIFFS,
                     revealCell, freezeClock, addTime, showHintModal,
                     paintCompletedUnits, applySharp, shareAsImage,
                     rotatedMarkSet, buildMarks, emojiFor,
+                    render, winLevel, enterDaily,
                     get activePalette(){ return activePalette; },
                     set activePalette(v){ activePalette = v; } };
 </script>
