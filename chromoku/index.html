@@ -253,12 +253,21 @@ h1{
 .swatch{
   width:clamp(48px,12.5vw,54px); aspect-ratio:1; border-radius:14px; background:var(--c);
   position:relative; transition:transform .12s, box-shadow .12s;
-  box-shadow:var(--shadow);
+  box-shadow:var(--shadow); overflow:visible;
 }
+/* Expand touch target beyond the visual swatch — fat-finger insurance. */
+.swatch::after{content:""; position:absolute; inset:-6px; z-index:1}
 .swatch:active{transform:scale(.93)}
 .swatch.on{box-shadow:0 0 0 3px var(--bg),0 0 0 6px var(--c); transform:scale(1.06); z-index:1}
 /* Completed marks recede so the player can scan for what's still needed. */
 .swatch.done{opacity:.35; transform:scale(.82); transition:opacity .2s, transform .2s}
+/* Shape swatches: the clip-path sits on a ::before pseudo so the .cnt badge
+   (positioned outside the shape boundary) is not clipped away. */
+.swatch.shaped{background:transparent; box-shadow:none}
+.swatch.shaped::before{content:""; position:absolute; inset:0; background:var(--c);
+  clip-path:var(--clip); border-radius:3px}
+.swatch.shaped.on{box-shadow:0 0 0 3px var(--bg),0 0 0 6px var(--c)}
+.swatch.shaped.done::before{opacity:.35}
 .swatch .k{
   position:absolute; bottom:-17px; left:0; right:0; text-align:center;
   font-family:var(--mono); font-size:9px; color:var(--ink-faint);
@@ -634,13 +643,21 @@ const setFits = (id, n) => !!MARKSETS[id].build(n);
 
 // Inline style for a mark. Patterns need a ground of their own, since the
 // pattern is drawn in ink and would otherwise sit on the empty-cell colour.
+// Inline style for a board cell's .fill div. Shapes get clip-path directly
+// because .fill has no children to protect from clipping.
 function markStyle(m){
-  // Shaped marks square off their corners, or a rounded square and a circle
-  // are almost the same silhouette at swatch size.
   const clip = m.clip ? ";clip-path:" + m.clip + ";border-radius:3px" : "";
   if (m.kind !== "pattern") return "--c:" + m.hex + clip;
   return "background-color:var(--panel2);background-image:" + m.bg
        + ";background-size:" + TILE + clip;
+}
+// Inline style for a palette swatch. Shapes use a --clip custom property
+// consumed by the .shaped::before pseudo so the .cnt badge isn't clipped.
+function swatchStyle(m){
+  if (m.clip && m.kind !== "pattern") return "--c:" + m.hex + ";--clip:" + m.clip;
+  if (m.kind !== "pattern") return "--c:" + m.hex;
+  return "background-color:var(--panel2);background-image:" + m.bg
+       + ";background-size:" + TILE;
 }
 
 // The inner layer always uses colour: its marks are a third the width of a
@@ -648,6 +665,7 @@ function markStyle(m){
 let INNER = [];
 const innerMarks = () => INNER;
 const styleFor = (L, i) => markStyle((L > 0 ? INNER : MARKS)[i]);
+const swatchStyleFor = (L, i) => swatchStyle((L > 0 ? INNER : MARKS)[i]);
 // Pattern glyphs (▨ ▤ ▦) render as blank white squares on most phones, so
 // the text share falls back to colour emoji for patterns. The canvas badge
 // draws the actual hatches — this only affects the copy-pasteable text.
@@ -1885,10 +1903,12 @@ function renderPalette(){
       // "Red, 3 remaining" rather than just "Red".
       const aria = c.label + (L > 0 ? " (inner)" : "")
                  + (remaining > 0 ? ", " + remaining + " remaining" : ", done");
+      const shaped = L === 0 && c.clip && c.kind !== "pattern";
       return '<button class="swatch' + (L > 0 ? " inner" : (isPattern() ? " pat" : ""))
+        + (shaped ? " shaped" : "")
         + (done ? " done" : "")
         + (sel && sel.layer === L && sel.colour === i ? " on" : "")
-        + '" data-l="' + L + '" data-c="' + i + '" style="' + styleFor(L, i)
+        + '" data-l="' + L + '" data-c="' + i + '" style="' + swatchStyleFor(L, i)
         + '" aria-label="' + aria + '">'
         + (remaining > 0 ? '<span class="cnt">' + remaining + "</span>" : "")
         + (L === 0 && state.n <= 4 ? '<span class="k">' + (i + 1) + "</span>" : "")
