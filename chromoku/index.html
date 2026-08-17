@@ -606,14 +606,20 @@ const markNoun = () => activePalette === "shapes" ? "shape"
                      : activePalette === "ink" ? "pattern"
                      : "colour";
 // Cycles inside a same-size run so 30 straight 4×4s don't feel identical.
-const MARK_ROTATION = ["classic", "shapes", "ink"];
+// Patterns are a late-game mark set — they don't enter the rotation until
+// level 51+. The first 50 levels cycle classic/shapes only, letting the
+// player build fluency before hatches and dots arrive.
+const MARK_ROTATION_EARLY = ["classic", "shapes"];
+const MARK_ROTATION_FULL  = ["classic", "shapes", "ink"];
+const PATTERN_UNLOCK_LEVEL = 51;
 function rotatedMarkSet(level, n){
   // Rotate only through sets that can actually produce n marks. Filtering
   // first (rather than falling through inside the cycle) avoids the case
   // where a size collapses two rotation slots onto the same set — e.g. ink
   // has 9 weaves, so at 10x10 the ink slot fell back to classic and left
   // whole 10-level stretches on one set.
-  const available = MARK_ROTATION.filter(id => MARKSETS[id].build(n));
+  const pool = level >= PATTERN_UNLOCK_LEVEL ? MARK_ROTATION_FULL : MARK_ROTATION_EARLY;
+  const available = pool.filter(id => MARKSETS[id].build(n));
   if (!available.length) return "classic";
   return available[Math.floor((level - 1) / 5) % available.length];
 }
@@ -642,7 +648,15 @@ function markStyle(m){
 let INNER = [];
 const innerMarks = () => INNER;
 const styleFor = (L, i) => markStyle((L > 0 ? INNER : MARKS)[i]);
-const emojiFor = (L, i) => (L > 0 ? INNER[i].emoji[1] : MARKS[i].emoji[0]);
+// Pattern glyphs (▨ ▤ ▦) render as blank white squares on most phones, so
+// the text share falls back to colour emoji for patterns. The canvas badge
+// draws the actual hatches — this only affects the copy-pasteable text.
+const emojiFor = (L, i) => {
+  if (L > 0) return INNER[i].emoji[1];
+  const mk = MARKS[i];
+  if (mk.kind === "pattern") return HUES[i] ? HUES[i].emoji[0] : "⬜";
+  return mk.emoji[0];
+};
 
 // Difficulty is a table, not branching logic — a future difficulty algorithm
 // replaces these numbers without touching the generator.
@@ -2375,6 +2389,58 @@ function addTime(){
 
 /* ================= share badge (canvas) ================= */
 
+// Parse a CSS clip-path polygon/circle/inset into a canvas path.
+function drawClipPath(ctx, clip, x, y, sz){
+  ctx.beginPath();
+  const polyMatch = clip.match(/polygon\((.+)\)/);
+  if (polyMatch){
+    const pts = polyMatch[1].split(",").map(p => {
+      const [px, py] = p.trim().split(/\s+/);
+      return [x + parseFloat(px) / 100 * sz, y + parseFloat(py) / 100 * sz];
+    });
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    for (let k = 1; k < pts.length; k++) ctx.lineTo(pts[k][0], pts[k][1]);
+    ctx.closePath();
+    return;
+  }
+  const circMatch = clip.match(/circle\((\d+)%\)/);
+  if (circMatch){
+    const r = parseFloat(circMatch[1]) / 100 * sz / 2;
+    ctx.arc(x + sz / 2, y + sz / 2, r, 0, Math.PI * 2);
+    return;
+  }
+  // Fallback: inset or unknown → full rect
+  ctx.roundRect(x, y, sz, sz, 3);
+}
+
+// Draw hatch/pattern marks on the badge canvas. Each WEAVE index maps to a
+// distinct stroke pattern so the badge matches the in-game look.
+function drawBadgePattern(ctx, idx, x, y, sz, ink, cellBg, rad){
+  // Ground fill
+  ctx.fillStyle = cellBg;
+  ctx.beginPath(); ctx.roundRect(x, y, sz, sz, rad); ctx.fill();
+  // Clip to cell bounds
+  ctx.save();
+  ctx.beginPath(); ctx.roundRect(x, y, sz, sz, rad); ctx.clip();
+  ctx.strokeStyle = ink; ctx.lineWidth = 1.2;
+  const gap = sz <= 24 ? 5 : 7;
+  const patterns = [
+    /* 0 Diagonals */     () => { for(let d=-sz;d<sz*2;d+=gap){ ctx.moveTo(x+d,y); ctx.lineTo(x+d-sz,y+sz); }},
+    /* 1 Bars */          () => { for(let d=0;d<sz;d+=gap){ ctx.moveTo(x,y+d); ctx.lineTo(x+sz,y+d); }},
+    /* 2 Hatch */         () => { for(let d=0;d<sz;d+=gap){ ctx.moveTo(x,y+d); ctx.lineTo(x+sz,y+d); ctx.moveTo(x+d,y); ctx.lineTo(x+d,y+sz); }},
+    /* 3 Dots */          () => { ctx.lineWidth=0; for(let dy=gap/2;dy<sz;dy+=gap) for(let dx=gap/2;dx<sz;dx+=gap){ ctx.moveTo(x+dx+1.5,y+dy); ctx.arc(x+dx,y+dy,1.5,0,Math.PI*2); } },
+    /* 4 Back-diagonals */() => { for(let d=-sz;d<sz*2;d+=gap){ ctx.moveTo(x+d,y); ctx.lineTo(x+d+sz,y+sz); }},
+    /* 5 Columns */       () => { for(let d=0;d<sz;d+=gap){ ctx.moveTo(x+d,y); ctx.lineTo(x+d,y+sz); }},
+    /* 6 Weave */         () => { for(let d=-sz;d<sz*2;d+=gap){ ctx.moveTo(x+d,y); ctx.lineTo(x+d-sz,y+sz); ctx.moveTo(x+d,y); ctx.lineTo(x+d+sz,y+sz); }},
+    /* 7 Rings */         () => { ctx.lineWidth=1; for(let dy=gap;dy<sz;dy+=gap) for(let dx=gap;dx<sz;dx+=gap){ ctx.moveTo(x+dx+2.5,y+dy); ctx.arc(x+dx,y+dy,2.5,0,Math.PI*2); }},
+    /* 8 Wide bars */     () => { ctx.lineWidth=2.5; for(let d=0;d<sz;d+=gap*1.5){ ctx.moveTo(x,y+d); ctx.lineTo(x+sz,y+d); }},
+  ];
+  ctx.beginPath();
+  (patterns[idx] || patterns[0])();
+  if (idx === 3 || idx === 7) ctx.fill(); else ctx.stroke();
+  ctx.restore();
+}
+
 // Renders the solved board to a canvas image suitable for sharing. Unlike the
 // emoji grid, this supports Double mode natively and does not spoil the answer
 // in a copy-pasteable way.
@@ -2466,13 +2532,27 @@ function renderShareBadge(){
       ctx.fillStyle = isGiven ? givenBg : cellBg;
       ctx.beginPath(); ctx.roundRect(x, y, cellSz, cellSz, 3); ctx.fill();
 
-      // Outer fill — rounded corners on guesses when the toggle is on
+      // Outer fill — shapes get clipped, patterns get hatched, colours get a
+      // solid rounded rect. This keeps the badge faithful to what was on screen.
       const v0 = state.layers[0].grid[i];
       if (v0 !== null && v0 !== undefined){
         const mk = MARKS[v0];
-        ctx.fillStyle = mk ? (mk.hex || ink) : ink;
+        const fx = x + 1, fy = y + 1, fs = cellSz - 2;
         const fillRad = isGiven ? 1 : (rounded ? 6 : 1);
-        ctx.beginPath(); ctx.roundRect(x + 1, y + 1, cellSz - 2, cellSz - 2, fillRad); ctx.fill();
+        if (mk && mk.kind === "pattern"){
+          // Draw pattern hatches inside the cell
+          drawBadgePattern(ctx, v0, fx, fy, fs, ink, cellBg, fillRad);
+        } else if (mk && mk.clip){
+          // Shape mark — draw the colour clipped to the shape
+          ctx.save();
+          drawClipPath(ctx, mk.clip, fx, fy, fs);
+          ctx.fillStyle = mk.hex || ink;
+          ctx.fill();
+          ctx.restore();
+        } else {
+          ctx.fillStyle = mk ? (mk.hex || ink) : ink;
+          ctx.beginPath(); ctx.roundRect(fx, fy, fs, fs, fillRad); ctx.fill();
+        }
       }
       // Inner dot(s)
       for (let L = 1; L < state.layers.length; L++){
@@ -2877,7 +2957,10 @@ window.CHROMOKU = { state, DIFFS, SIZES, DIFFICULTIES, CURR_SIZES, CURR_DIFFS,
                     loadPuzzle, loadDifficulty, loadLevel, placeColour, onCell, undo,
                     setBookmark, restoreBookmark, renderShareBadge,
                     revealCell, freezeClock, addTime, showHintModal,
-                    paintCompletedUnits, applySharp, shareAsImage };
+                    paintCompletedUnits, applySharp, shareAsImage,
+                    rotatedMarkSet, buildMarks, emojiFor,
+                    get activePalette(){ return activePalette; },
+                    set activePalette(v){ activePalette = v; } };
 </script>
 
 </html>
