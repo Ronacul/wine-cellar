@@ -1177,11 +1177,11 @@ const WORLDS = [
   // twenty used to be one identical 4x4, which is the worst possible place for
   // the ladder to stand still.
   { name:"Sunrise", tint:"#f5a623", unlock:"4×4 up to 9×9",
-    // With mark rotation making each stage feel varied, each size can hold
-    // longer. Ramp still lands 9×9 by the end of the world. Stage 7 slips a
-    // 2×3-box variant in between the regular 6×6s — same puzzle rules, box
-    // shape flipped so the player has to look for a 2-wide-3-tall region.
-    ramp:[0,1,1,2,2,3,6,4,5,5], pool:[
+    // Hook early: 6×6 arrives at stage 2 (level 11) so the player sees a
+    // bigger board before they lose interest. Then alternate between harder
+    // 4×4 and 6×6 to build both muscles, with 9×9 landing at stage 8.
+    // Stage 7 slips a 2×3-box variant in between the regular 6×6s.
+    ramp:[0,3,1,3,2,4,6,4,5,5], pool:[
       { n:4, boxless:false, layers:1, givens:8  },
       { n:4, boxless:false, layers:1, givens:6  },
       { n:4, boxless:false, layers:1, givens:4  },
