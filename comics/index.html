@@ -146,6 +146,35 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
 .card.sold{opacity:.45;filter:grayscale(.6)}
 .card.gifted{opacity:.55;filter:sepia(.2)}
 
+/* ---------- value band (the signature) ---------- */
+.vband-wrap{padding:0 12px 11px}
+.vband-labels{
+  display:flex; justify-content:space-between;
+  font-family:"IBM Plex Mono",monospace; font-size:10px; color:var(--ink-faint);
+  margin-bottom:4px;
+}
+.vband-status{text-transform:uppercase; letter-spacing:.08em}
+.vband-status.no-data{color:var(--ink-faint)}
+.vband-status.low{color:var(--ink-faint)}
+.vband-status.moderate{color:var(--vf)}
+.vband-status.strong{color:var(--accent)}
+.vband-status.exceptional{color:var(--fire)}
+.vband-status.slabbed{color:var(--ok)}
+.vband{
+  position:relative; height:6px; border-radius:3px; background:var(--panel2);
+  overflow:visible;
+}
+.vband-fill{
+  position:absolute; top:0; bottom:0; border-radius:3px;
+  background:linear-gradient(90deg, var(--vf) 0%, var(--accent) 50%, var(--fire) 100%);
+  opacity:.85;
+}
+.vband-marker{
+  position:absolute; top:-3px; width:2px; height:12px; background:var(--ink);
+  border-radius:1px;
+}
+.vband-marker.cost{background:var(--red-soft);opacity:.7}
+
 /* ---------- empty state ---------- */
 .empty-state{
   text-align:center; padding:56px 32px; color:var(--ink-dim);
@@ -460,6 +489,84 @@ function gradingROI(c){
   const cost = 50; /* approximate grading cost CAD */
   const gain = graded - raw - cost;
   return {raw, graded, cost, gain, pct: Math.round((gain/raw)*100)};
+}
+
+/* ================= value band (raw → graded spectrum) ================= */
+function gradeROIStatus(c){
+  if(isGraded(c)){
+    const grade = parseFloat(c.grade)||0;
+    return {cls:"slabbed", label:`Slabbed ${c.gradingCompany||"CGC"} ${grade}`};
+  }
+  const roi = gradingROI(c);
+  if(!roi) {
+    const raw = parsePrice(c.marketValue) || parsePrice(c.price);
+    if(raw) return {cls:"no-data", label:"$" + raw.toLocaleString() + " raw"};
+    return null; /* no data at all */
+  }
+  if(roi.gain >= 500) return {cls:"exceptional", label:`Grade ROI +$${roi.gain.toLocaleString()} (+${roi.pct}%)`};
+  if(roi.gain >= 200) return {cls:"strong", label:`Grade ROI +$${roi.gain.toLocaleString()} (+${roi.pct}%)`};
+  if(roi.gain >= 50)  return {cls:"moderate", label:`Grade ROI +$${roi.gain.toLocaleString()}`};
+  if(roi.gain > 0)    return {cls:"low", label:`Grade ROI +$${roi.gain.toLocaleString()}`};
+  return {cls:"low", label:"Grading not worth it"};
+}
+
+function valueBandHTML(c){
+  if(isGone(c)) return "";
+  const raw = parsePrice(c.marketValue) || parsePrice(c.price);
+  const graded = parsePrice(c.gradedValue);
+  if(!raw && !graded) return "";
+
+  const st = gradeROIStatus(c);
+  if(!st) return "";
+
+  /* if graded (slabbed), show a simple single-value bar */
+  if(isGraded(c)){
+    return `<div class="vband-wrap">
+      <div class="vband-labels">
+        <span>🏅 ${esc((c.gradingCompany||"CGC")+" "+String(c.grade||""))}</span>
+        <span class="vband-status slabbed">${raw ? "$"+raw.toLocaleString() : ""}</span>
+        <span></span>
+      </div>
+      <div class="vband"><div class="vband-fill" style="left:0;right:0;background:var(--ok);opacity:.5"></div></div>
+    </div>`;
+  }
+
+  /* raw only, no graded estimate */
+  if(!graded){
+    return `<div class="vband-wrap">
+      <div class="vband-labels">
+        <span>$${raw.toLocaleString()}</span>
+        <span class="vband-status no-data">Raw · no graded est.</span>
+        <span>?</span>
+      </div>
+      <div class="vband"><div class="vband-fill" style="left:0;width:30%;background:var(--vf);opacity:.4"></div></div>
+    </div>`;
+  }
+
+  /* full band: raw → graded with grading cost marker */
+  const cost = 50;
+  const costPos = Math.min((raw + cost) / graded, 1); /* break-even point */
+
+  return `<div class="vband-wrap">
+    <div class="vband-labels">
+      <span>$${raw.toLocaleString()} raw</span>
+      <span class="vband-status ${st.cls}">${esc(st.label)}</span>
+      <span>$${graded.toLocaleString()} graded</span>
+    </div>
+    <div class="vband">
+      <div class="vband-fill" style="left:0;right:0"></div>
+      <div class="vband-marker cost" style="left:calc(${(costPos*100).toFixed(1)}% - 1px)" title="Break-even after ~$${cost} grading cost"></div>
+    </div>
+  </div>`;
+}
+
+/* value band chip for card view — compact version */
+function valueBandChipHTML(c){
+  if(isGone(c) || isGraded(c)) return "";
+  const st = gradeROIStatus(c);
+  if(!st || st.cls === "no-data" || st.cls === "low") return "";
+  const colourMap = {moderate:"var(--vf)",strong:"var(--accent)",exceptional:"var(--fire)"};
+  return `<span class="chip" style="color:${colourMap[st.cls]||"var(--ink-dim)"};border-color:${colourMap[st.cls]||"var(--line)"}">${st.cls==="exceptional"?"🚀":"📈"} ${esc(st.label)}</span>`;
 }
 
 /* ================= images ================= */
@@ -796,8 +903,7 @@ function cardHTML(c){
   if(gifted) chips.push(`<span class="chip" style="color:var(--rose)">🎁 Gift</span>`);
 
   const pc = pubClass(c);
-  const val = parsePrice(c.marketValue) || parsePrice(c.price);
-  const valStr = val ? `$${val.toLocaleString()}` : "";
+  const roiChip = valueBandChipHTML(c);
 
   return `<div class="card ${gone ? (sold ? "sold" : "gifted") : ""}" data-id="${esc(c.id)}">
     <div class="card-top">
@@ -807,10 +913,10 @@ function cardHTML(c){
       <div class="card-info">
         <div class="comic-title${pc?" "+pc:""}" style="${pc?`color:${PUB_COLOURS[c.publisher]||"var(--ink)"}`:""}">${esc(c.title||"Unknown")}</div>
         <div class="comic-sub">${esc([c.publisher, c.year, c.era].filter(Boolean).join(" · "))}${qtyOf(c)>1?` · ×${qtyOf(c)}`:""}</div>
-        ${valStr ? `<div class="comic-sub" style="color:var(--accent);font-size:11px;margin-top:1px">${valStr} CAD</div>` : ""}
-        <div class="chips">${chips.join("")}</div>
+        <div class="chips">${chips.join("")}${roiChip}</div>
       </div>
     </div>
+    ${gone?"":valueBandHTML(c)}
   </div>`;
 }
 
@@ -859,6 +965,8 @@ function renderDetail(){
         <button class="fire-tier-btn${fl===3?" active":""}" data-fl="3">🔥🔥🔥 Grail</button>
       </div>
     </div>
+
+    ${valueBandHTML(c)}
 
     <dl class="spec">
       <dt>Publisher</dt><dd>${tbd(c.publisher)}</dd>
@@ -1983,10 +2091,10 @@ const SEED = [{
   location:"",
   qty:1,
   notes:"First appearance of the Punisher (Frank Castle) and the Jackal (Miles Warren). Bronze Age mega-key. Cover by Gil Kane, interior art by Ross Andru. The Punisher has become one of Marvel's most iconic anti-heroes, spawning multiple solo series, films, and TV shows. One of the most valuable Bronze Age Marvel books.",
-  marketValue:"~$4,000 CAD (est.)",
-  gradedValue:"~$12,000 CAD (est.)",
+  marketValue:"~$400 CAD (est.)",
+  gradedValue:"~$1,400 CAD (est.)",
   gradeCandidate:true,
-  gradeCandidateReason:"Even in VG, a CGC 4.0–5.0 slab commands a significant premium over raw — strong grading ROI for a book this iconic.",
+  gradeCandidateReason:"VG raw ~$400 CAD vs CGC 4.5 slab ~$1,400 CAD — minus ~$50 grading cost, strong ROI on a Bronze Age mega-key.",
   lastValueCheck:"2026-08-17",
   soldDate:null,
   soldPrice:null,
