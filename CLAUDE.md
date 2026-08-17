@@ -277,3 +277,15 @@ For manual assignment or AI identification from labels:
 ## Changelog location
 
 The "What's new" section is hardcoded in `renderSync()` in `index.html`. Add new entries as `<li>` elements at the top of the `.changelog` list.
+
+## Chromoku (colour puzzle game)
+
+**The canonical Chromoku repo is `Ronacul/Chromoku` (private).** The
+`chromoku/` directory in this repo is a historical copy and is NOT the source
+of truth. All Chromoku development should target the private repo:
+
+1. Add the repo: `add_repo` → `Ronacul/Chromoku`
+2. Make changes in that repo's `index.html`
+3. Push to `Ronacul/Chromoku`, not to `wine-cellar/chromoku/`
+
+See `Ronacul/Chromoku/CHROMOKU.md` for the full game design doc.
