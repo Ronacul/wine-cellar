@@ -1,0 +1,2031 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>The Cave — Comic Book Vault</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#14171c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bangers&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#14171c; --panel:#1c2028; --panel2:#242a34;
+  --ink:#f0ece4; --ink-dim:#b0a898; --ink-faint:#7a7268;
+  --accent:#e8c840; --accent-soft:#f0d868;
+  --red:#c04040; --red-soft:#d06060;
+  --blue:#4088d0; --blue-soft:#60a0e0;
+  --line:rgba(240,236,228,.12);
+  --ok:#7da87b; --warn:#e8c840; --urgent:#c04040;
+  --marvel:#e04040; --dc:#2060c0; --image:#f08020;
+  --fire:#e8a020;
+  --grail:#c9a227;
+  --nm:#7da87b; --vf:#60a0e0; --fn:#e8c840; --vg:#d4842a; --gd:#c04040;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  font-size:15px; line-height:1.45; min-height:100vh;
+  padding-bottom:calc(64px + env(safe-area-inset-bottom));
+}
+.mono{font-family:"IBM Plex Mono",monospace}
+.comic{font-family:"Bangers",cursive}
+.tbd{color:var(--ink-faint); font-style:italic}
+
+/* ---------- header ---------- */
+header{
+  padding:18px 16px 12px; border-bottom:1px solid var(--line);
+  display:flex; align-items:baseline; justify-content:space-between; gap:8px;
+}
+header h1{
+  font-family:"Bangers",cursive; font-size:28px;
+  letter-spacing:.04em; color:var(--accent);
+}
+header h1 em{font-style:normal; color:var(--red-soft)}
+.book-count{font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--ink-faint)}
+
+/* ---------- tab bar ---------- */
+nav{
+  position:fixed; bottom:0; left:0; right:0; z-index:50;
+  background:var(--panel); border-top:1px solid var(--line);
+  display:flex; padding-bottom:env(safe-area-inset-bottom);
+}
+nav button{
+  flex:1; background:none; border:none; color:var(--ink-faint);
+  font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.06em;
+  text-transform:uppercase; padding:14px 4px 12px; cursor:pointer;
+}
+nav button.active{color:var(--ink)}
+nav button.active span{border-bottom:2px solid var(--accent); padding-bottom:4px}
+nav button:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
+
+/* ---------- controls ---------- */
+.toolbar{padding:12px 16px; display:flex; gap:8px; flex-wrap:wrap}
+.toolbar input[type=search]{
+  flex:1 1 100%; background:var(--panel); border:1px solid var(--line); border-radius:4px;
+  color:var(--ink); padding:9px 12px; font-size:15px;
+}
+.toolbar select{
+  flex:1; background:var(--panel); border:1px solid var(--line); border-radius:4px;
+  color:var(--ink-dim); padding:9px 8px; font-size:13px; min-width:0;
+}
+.toolbar .toggle-btn{
+  flex:none; background:var(--panel); border:1px solid var(--line); border-radius:4px;
+  color:var(--ink-dim); padding:9px 12px; font-size:12.5px; font-family:"IBM Plex Mono",monospace;
+  cursor:pointer;
+}
+.toolbar .toggle-btn.on{color:var(--accent); border-color:var(--accent)}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{
+  outline:2px solid var(--accent); outline-offset:1px;
+}
+
+/* ---------- filter bar ---------- */
+.filter-bar{display:flex;gap:6px;flex-wrap:wrap;padding:2px 0}
+.filter-trigger{
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.04em;
+  padding:5px 10px;border:1px solid var(--line);border-radius:14px;
+  color:var(--ink-faint);cursor:pointer;white-space:nowrap;background:none;
+  transition:all .15s;display:inline-flex;align-items:center;gap:4px;
+}
+.filter-trigger.active{color:var(--ink);border-color:var(--ink);background:rgba(255,255,255,.06)}
+.filter-trigger .ft-badge{
+  font-size:9px;background:var(--red);color:#fff;border-radius:6px;
+  min-width:14px;height:14px;display:inline-flex;align-items:center;
+  justify-content:center;padding:0 3px;
+}
+
+/* ---------- comic cards ---------- */
+.list{padding:0 16px}
+.list-heading{
+  font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--ink-faint); padding:14px 0 8px;
+}
+.card{
+  background:var(--panel); border:1px solid var(--line); border-radius:6px;
+  margin-bottom:12px; overflow:hidden; cursor:pointer;
+}
+.card-top{display:flex; gap:12px; padding:12px}
+.thumb{
+  width:64px; height:96px; flex:none; border-radius:3px; object-fit:cover;
+  background:var(--panel2); border:1px solid var(--line);
+}
+.thumb.empty{
+  display:flex; align-items:center; justify-content:center;
+  font-family:"Bangers",cursive; font-size:28px; color:var(--ink-faint);
+}
+.card-info{flex:1; min-width:0}
+.comic-title{
+  font-family:"Bangers",cursive; font-size:19px; line-height:1.2;
+  letter-spacing:.02em;
+}
+.comic-sub{font-size:12.5px; color:var(--ink-dim); margin-top:2px}
+.chips{display:flex; flex-wrap:wrap; gap:6px; margin-top:7px}
+.chip{
+  font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.04em;
+  padding:2px 7px; border:1px solid var(--line); border-radius:3px; color:var(--ink-dim);
+}
+.chip.issue{color:var(--accent); border-color:var(--accent); font-weight:600}
+.chip.key{color:var(--warn); border-color:var(--warn)}
+.chip.fire{color:var(--fire);border-color:var(--fire);text-shadow:0 0 6px rgba(232,160,32,.4)}
+.chip.marvel{color:var(--marvel)}
+.chip.dc{color:var(--dc)}
+.chip.image{color:var(--image)}
+.chip.grade-candidate{color:var(--grail);border-color:var(--grail)}
+.chip.graded{color:var(--ok);border-color:var(--ok)}
+.chip.condition{color:var(--ink-dim)}
+.chip.condition.nm{color:var(--nm)} .chip.condition.vf{color:var(--vf)}
+.chip.condition.fn{color:var(--fn)} .chip.condition.vg{color:var(--vg)}
+.chip.condition.gd,.chip.condition.fr,.chip.condition.pr{color:var(--gd)}
+.chip.box{color:var(--accent);border-color:var(--accent);font-weight:600}
+
+/* drank/sold/gifted styling */
+.card.sold{opacity:.45;filter:grayscale(.6)}
+.card.gifted{opacity:.55;filter:sepia(.2)}
+
+/* ---------- empty state ---------- */
+.empty-state{
+  text-align:center; padding:56px 32px; color:var(--ink-dim);
+}
+.empty-state .comic{font-size:22px; margin-bottom:8px; color:var(--ink)}
+
+/* ---------- forms ---------- */
+.sheet{padding:16px}
+.sheet h2{
+  font-family:"Bangers",cursive; font-size:26px; margin-bottom:16px;
+  letter-spacing:.03em;
+}
+.field{margin-bottom:14px}
+.field label{
+  display:block; font-family:"IBM Plex Mono",monospace; font-size:10.5px;
+  text-transform:uppercase; letter-spacing:.08em; color:var(--ink-faint); margin-bottom:5px;
+}
+.field input,.field select,.field textarea{
+  width:100%; background:var(--panel); border:1px solid var(--line); border-radius:4px;
+  color:var(--ink); padding:10px 12px; font-size:15px; font-family:inherit;
+}
+@keyframes needs-attention{
+  0%,100%{border-color:var(--accent); box-shadow:0 0 0 0 rgba(232,200,64,.0)}
+  50%{border-color:var(--accent); box-shadow:0 0 8px 2px rgba(232,200,64,.25)}
+}
+.field input.needs-att,.field select.needs-att,.field textarea.needs-att{
+  animation:needs-attention 2s ease-in-out 3;
+  border-color:var(--accent);
+}
+.field .att-dot{
+  display:inline-block; width:6px; height:6px; border-radius:50%;
+  background:var(--accent); margin-left:6px; vertical-align:middle;
+}
+.field textarea{min-height:64px; resize:vertical}
+.field.checkrow{display:flex; align-items:center; gap:8px}
+.field.checkrow input{width:auto}
+.field.checkrow label{margin:0; text-transform:none; font-size:14px; color:var(--ink)}
+.row2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px}
+
+.photo-zone{
+  border:1px dashed var(--ink-faint); border-radius:6px; padding:18px;
+  text-align:center; color:var(--ink-dim); cursor:default; margin-bottom:14px;
+  background:var(--panel);
+}
+.photo-zone img{max-width:120px; max-height:180px; border-radius:4px; display:block; margin:0 auto 10px}
+.photo-btn{
+  display:block; position:relative; padding:11px; margin:8px auto 0; max-width:280px;
+  background:var(--panel2); border:1px solid var(--ink-faint); border-radius:5px;
+  color:var(--ink); font-size:14px; cursor:pointer; text-align:center; overflow:hidden;
+}
+.photo-btn.ghost{background:none; color:var(--ink-dim); border-color:var(--line)}
+.photo-btn input{
+  position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; font-size:0;
+}
+
+.btn{
+  display:block; width:100%; padding:13px; border-radius:5px; border:none;
+  font-size:15px; font-weight:600; cursor:pointer; margin-bottom:10px;
+}
+.btn-primary{background:var(--accent); color:#14171c}
+.btn-ghost{background:none; border:1px solid var(--line); color:var(--ink-dim)}
+.btn-danger{background:none; border:1px solid var(--urgent); color:var(--urgent)}
+
+/* ---------- detail view ---------- */
+.detail-photo{width:100%; max-height:400px; object-fit:contain; background:var(--panel); border-radius:6px; margin-bottom:14px}
+.detail-name{font-family:"Bangers",cursive; font-size:28px; line-height:1.15; letter-spacing:.03em}
+.detail-sub{color:var(--ink-dim); margin:4px 0 14px}
+.spec{
+  display:grid; grid-template-columns:110px 1fr; gap:6px 14px;
+  padding:14px 0; border-top:1px solid var(--line); font-size:14px;
+}
+.spec dt{font-family:"IBM Plex Mono",monospace; font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-faint); padding-top:2px}
+.spec dd{color:var(--ink)}
+
+/* ---------- settings / sync ---------- */
+.note{font-size:12.5px; color:var(--ink-faint); margin-top:5px; line-height:1.5}
+.sync-status{
+  font-family:"IBM Plex Mono",monospace; font-size:12px; padding:10px 12px;
+  border:1px solid var(--line); border-radius:4px; color:var(--ink-dim);
+  margin-bottom:14px; white-space:pre-wrap; word-break:break-word;
+}
+.section-rule{border:none; border-top:1px solid var(--line); margin:22px 0}
+
+details.collapse{margin:18px 0}
+details.collapse summary{
+  font-family:"IBM Plex Mono",monospace; font-size:11px; text-transform:uppercase;
+  letter-spacing:.08em; color:var(--ink-faint); cursor:pointer; padding:10px 0;
+  list-style:none; display:flex; align-items:center; gap:6px;
+}
+details.collapse summary::-webkit-details-marker{display:none}
+details.collapse summary::before{content:"▸"; font-size:10px; transition:transform .15s}
+details.collapse[open] summary::before{transform:rotate(90deg)}
+details.collapse .collapse-body{padding:12px 0 0}
+
+.history-last{
+  display:flex; justify-content:space-between; align-items:baseline; gap:10px;
+  padding:6px 0; font-size:13px;
+}
+.history-list{list-style:none; padding:0; margin:0}
+.history-list li{
+  display:flex; justify-content:space-between; align-items:baseline; gap:10px;
+  padding:8px 0; border-bottom:1px solid var(--line); font-size:13px;
+}
+.history-list li:last-child{border-bottom:none}
+.hist-type{
+  font-family:"IBM Plex Mono",monospace; font-size:10px; text-transform:uppercase;
+  letter-spacing:.06em; padding:2px 6px; border-radius:3px; flex:none;
+}
+.hist-type.pull{background:rgba(125,168,123,.15); color:var(--ok)}
+.hist-type.push{background:rgba(192,64,64,.15); color:var(--urgent)}
+.hist-detail{color:var(--ink-dim); flex:1; min-width:0}
+.hist-time{color:var(--ink-faint); font-size:11px; font-family:"IBM Plex Mono",monospace; flex:none; text-align:right}
+
+.changelog{list-style:none; padding:0; margin:0}
+.changelog li{padding:10px 0; border-bottom:1px solid var(--line); font-size:13px; line-height:1.5}
+.changelog li:last-child{border-bottom:none}
+.cl-ver{font-family:"IBM Plex Mono",monospace; font-size:10px; color:var(--accent); text-transform:uppercase; letter-spacing:.06em; display:block; margin-bottom:3px}
+.cl-title{color:var(--ink); font-weight:600}
+.cl-desc{color:var(--ink-dim); font-size:12.5px}
+
+/* ---------- detail back & qty controls ---------- */
+.back-row{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.back-row button{background:none;border:none;color:var(--ink-faint);font-family:"IBM Plex Mono",monospace;font-size:13px;cursor:pointer;padding:4px 0}
+.back-row button:hover{color:var(--ink)}
+.qty-row{display:flex;align-items:center;gap:12px;margin:14px 0}
+.qty-btn{background:var(--panel2);border:1px solid var(--line);border-radius:4px;color:var(--ink);width:40px;height:40px;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.qty-btn:active{background:var(--accent);border-color:var(--accent);color:#14171c}
+.qty-display{font-family:"IBM Plex Mono",monospace;font-size:18px;min-width:32px;text-align:center}
+.stats-row{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.stat-pill{font-family:"IBM Plex Mono",monospace;font-size:11px;padding:4px 10px;border:1px solid var(--line);border-radius:12px;color:var(--ink-dim)}
+.stat-pill .n{color:var(--ink);font-weight:500}
+.tab-badge{font-size:9px;background:var(--red);color:#fff;border-radius:8px;padding:1px 5px;margin-left:3px;vertical-align:top}
+.toolbar select.sort{flex:1 1 100%;font-size:12px;color:var(--ink-faint)}
+
+/* ---------- fire tier picker ---------- */
+.fire-tier-picker{display:flex;gap:0;flex-wrap:wrap}
+.fire-tier-btn{background:var(--panel);border:1px solid var(--line);color:var(--ink-faint);font-family:"IBM Plex Mono",monospace;font-size:11px;padding:8px 10px;cursor:pointer;white-space:nowrap}
+.fire-tier-btn:first-child{border-radius:4px 0 0 4px}
+.fire-tier-btn:last-child{border-radius:0 4px 4px 0}
+.fire-tier-btn.active{color:var(--fire);border-color:var(--fire);background:rgba(232,160,32,.1)}
+
+/* ---------- condition picker ---------- */
+.condition-picker{display:flex;gap:0;flex-wrap:wrap}
+.condition-btn{background:var(--panel);border:1px solid var(--line);color:var(--ink-faint);font-family:"IBM Plex Mono",monospace;font-size:11px;padding:8px 10px;cursor:pointer;white-space:nowrap}
+.condition-btn:first-child{border-radius:4px 0 0 4px}
+.condition-btn:last-child{border-radius:0 4px 4px 0}
+.condition-btn.active{border-color:var(--ink);color:var(--ink);background:rgba(255,255,255,.08)}
+
+/* ---------- grading value box ---------- */
+.grade-box{
+  border:1px solid var(--grail);border-radius:6px;padding:14px;
+  margin:14px 0;background:rgba(201,162,39,.06);
+}
+.grade-box h3{font-family:"IBM Plex Mono",monospace;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--grail);margin-bottom:10px}
+.grade-row{display:flex;justify-content:space-between;align-items:baseline;padding:4px 0;font-size:14px}
+.grade-row .label{color:var(--ink-dim);font-size:12px}
+.grade-row .val{font-family:"IBM Plex Mono",monospace;font-weight:500}
+.grade-row .val.up{color:var(--ok)} .grade-row .val.down{color:var(--red)}
+
+/* ---------- stats ---------- */
+.stat-section-label{
+  font-family:"IBM Plex Mono",monospace; font-size:11px; text-transform:uppercase;
+  letter-spacing:.1em; color:var(--ink-faint); padding:20px 0 10px;
+}
+.bar-row{display:flex;align-items:center;gap:8px;padding:4px 0}
+.bar-label{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-dim);min-width:60px;text-align:right}
+.bar-track{flex:1;height:12px;background:var(--panel2);border-radius:2px;overflow:hidden}
+.bar-fill{height:100%;border-radius:2px;transition:width .3s}
+.bar-val{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-dim);min-width:28px}
+
+/* ---------- value ticker ---------- */
+.ticker-item{
+  display:flex;align-items:center;gap:12px;padding:12px;
+  border-bottom:1px solid var(--line);cursor:pointer;
+}
+.ticker-item:last-child{border-bottom:none}
+.ticker-name{flex:1;min-width:0}
+.ticker-title{font-family:"Bangers",cursive;font-size:15px;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ticker-sub{font-size:11px;color:var(--ink-dim)}
+.ticker-val{text-align:right;font-family:"IBM Plex Mono",monospace;font-size:13px}
+.ticker-change{font-size:11px}
+.ticker-change.up{color:var(--ok)} .ticker-change.down{color:var(--red)}
+
+/* ---------- inline price ---------- */
+.inline-price{display:flex;align-items:center;gap:8px}
+.inline-price input{background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--ink);padding:6px 10px;font-size:14px;width:140px}
+.inline-price button{background:var(--panel2);border:1px solid var(--line);border-radius:4px;color:var(--ink-dim);padding:6px 10px;font-size:12px;cursor:pointer;white-space:nowrap}
+.inline-price button:active{background:var(--accent);color:#14171c}
+
+/* ---------- shelf chips ---------- */
+.shelf-bar{display:flex;gap:4px;overflow-x:auto;padding:2px 0;-webkit-overflow-scrolling:touch}
+.shelf-chip{
+  font-family:"IBM Plex Mono",monospace;font-size:11px;padding:4px 8px;
+  border:1px solid var(--line);border-radius:10px;color:var(--ink-faint);
+  cursor:pointer;white-space:nowrap;background:none;flex:none;
+}
+.shelf-chip.active{color:var(--accent);border-color:var(--accent);background:rgba(232,200,64,.08)}
+.shelf-chip .sc-count{font-size:9px;opacity:.6;margin-left:2px}
+</style>
+</head>
+<body>
+<header>
+  <h1 class="comic">The <em>Cave</em></h1>
+  <span class="book-count mono" id="count"></span>
+</header>
+<div id="view"></div>
+<nav>
+  <button data-tab="collection" class="active"><span>Collection</span></button>
+  <button data-tab="hot"><span>🔥 Hot</span></button>
+  <button data-tab="add"><span>+ Add</span></button>
+  <button data-tab="stats"><span>Stats</span></button>
+  <button data-tab="value"><span>📈 Value</span></button>
+  <button data-tab="sync"><span>Sync</span></button>
+</nav>
+
+<script>
+/* ================= state ================= */
+const LS_COMICS = "cave.comics.v1";
+const LS_CFG    = "cave.comics.config.v1";
+const LS_HIST   = "cave.comics.synchistory.v1";
+let comics = JSON.parse(localStorage.getItem(LS_COMICS) || "[]");
+let cfg    = JSON.parse(localStorage.getItem(LS_CFG)   || "{}");
+let tab = "collection";
+let editingId = null;
+let detailId = null;
+let collectionScrollY = 0;
+let searchQ = "", pubFilter = "", sortBy = "title", collectionView = "cave";
+let filters = {fire:false, key:false, graded:false, gradeCandidate:false, raw:false};
+let boxFilters = new Set();
+let valueSort = "change-desc";
+
+const saveComics = () => localStorage.setItem(LS_COMICS, JSON.stringify(comics));
+let syncHistory = JSON.parse(localStorage.getItem(LS_HIST) || "[]");
+function logSync(type, detail){
+  syncHistory.unshift({type, detail, time: new Date().toLocaleString()});
+  if(syncHistory.length > 30) syncHistory = syncHistory.slice(0, 30);
+  localStorage.setItem(LS_HIST, JSON.stringify(syncHistory));
+}
+const saveCfg = () => localStorage.setItem(LS_CFG, JSON.stringify(cfg));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const esc = s => (s??"").toString().replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const YEAR = new Date().getFullYear();
+const tbd = v => (v===undefined||v===null||v==="") ? `<span class="tbd">TBD</span>` : esc(v);
+
+/* ================= constants ================= */
+const CONDITIONS = ["NM","VF","FN","VG","GD","FR","PR"];
+const CONDITION_LABELS = {NM:"Near Mint",VF:"Very Fine",FN:"Fine",VG:"Very Good",GD:"Good",FR:"Fair",PR:"Poor"};
+const CONDITION_COLOURS = {NM:"nm",VF:"vf",FN:"fn",VG:"vg",GD:"gd",FR:"gd",PR:"gd"};
+const ERAS = ["Golden","Silver","Bronze","Copper","Modern"];
+const ERA_YEARS = {Golden:"1938–1956",Silver:"1956–1970",Bronze:"1970–1985",Copper:"1985–1991",Modern:"1991–present"};
+const PUBLISHERS = ["Marvel","DC","Image","Dark Horse","IDW","Boom!","Valiant","Indie"];
+const PUB_COLOURS = {Marvel:"var(--marvel)",DC:"var(--dc)",Image:"var(--image)","Dark Horse":"#4a8c4a",IDW:"var(--ink-dim)","Boom!":"#c060c0",Valiant:"#60c0c0",Indie:"var(--ink-faint)"};
+
+/* ================= helpers ================= */
+function fireLevel(c){ const f = c.fire; if(f === true) return 1; return parseInt(f)||0; }
+function isFire(c){ return fireLevel(c) > 0; }
+function fireEmoji(c){ return "🔥".repeat(fireLevel(c)); }
+function fireLabel(c){ return ["","Notable","Key Issue","Grail"][fireLevel(c)]||""; }
+function isKey(c){ return !!(c.keyStatus); }
+function isGraded(c){ return !!c.graded; }
+function isGradeCandidate(c){ return !!c.gradeCandidate; }
+function qtyOf(c){ const q = parseInt(c.qty); return isNaN(q) ? 1 : q; }
+function isSold(c){ return qtyOf(c) <= 0 && !!c.soldDate; }
+function isGifted(c){ return qtyOf(c) <= 0 && !!c.giftedTo; }
+function isGone(c){ return qtyOf(c) <= 0; }
+
+function conditionClass(c){
+  const cond = (c.condition||"").toUpperCase();
+  return CONDITION_COLOURS[cond] || "";
+}
+
+function parsePrice(p){
+  if(!p) return null;
+  const m = p.match(/\$(\d+(?:\.\d+)?)/);
+  return m ? parseFloat(m[1]) : null;
+}
+
+function fmtPrice(p){
+  if(!p) return "—";
+  return p;
+}
+
+function getSource(c){
+  return c.source || "Unknown";
+}
+
+function pubClass(c){
+  const p = (c.publisher||"").toLowerCase();
+  if(p.includes("marvel")) return "marvel";
+  if(p.includes("dc")) return "dc";
+  if(p.includes("image")) return "image";
+  return "";
+}
+
+/* estimate era from year */
+function guessEra(year){
+  const y = parseInt(year);
+  if(!y) return "";
+  if(y <= 1956) return "Golden";
+  if(y <= 1970) return "Silver";
+  if(y <= 1985) return "Bronze";
+  if(y <= 1991) return "Copper";
+  return "Modern";
+}
+
+/* grading ROI: how much value would grading add? */
+function gradingROI(c){
+  const raw = parsePrice(c.marketValue) || parsePrice(c.price);
+  const graded = parsePrice(c.gradedValue);
+  if(!raw || !graded) return null;
+  const cost = 50; /* approximate grading cost CAD */
+  const gain = graded - raw - cost;
+  return {raw, graded, cost, gain, pct: Math.round((gain/raw)*100)};
+}
+
+/* ================= images ================= */
+function resizeImage(file){
+  return new Promise((resolve,reject)=>{
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 800;
+      let {width:w, height:h} = img;
+      if(w > MAX || h > MAX){ const r = Math.min(MAX/w, MAX/h); w = Math.round(w*r); h = Math.round(h*r); }
+      const c = document.createElement("canvas"); c.width=w; c.height=h;
+      c.getContext("2d").drawImage(img,0,0,w,h);
+      resolve(c.toDataURL("image/jpeg", 0.82));
+    };
+    img.onerror = reject;
+    img.src = URL.createObjectURL(file);
+  });
+}
+function imgSrc(c){
+  if(c.imageData) return c.imageData;
+  if(c.imagePath && cfg.owner && cfg.repo)
+    return `https://raw.githubusercontent.com/${cfg.owner}/${cfg.repo}/${cfg.branch||"main"}/comics/${c.imagePath}`;
+  return null;
+}
+function imgToBase64(imgEl){
+  const c = document.createElement("canvas");
+  c.width = imgEl.naturalWidth; c.height = imgEl.naturalHeight;
+  c.getContext("2d").drawImage(imgEl, 0, 0);
+  return c.toDataURL("image/jpeg", 0.82).split(",")[1];
+}
+
+/* ================= filter count helpers ================= */
+function filterCounts(baseItems){
+  return {
+    fire: baseItems.filter(c => isFire(c)).length,
+    key: baseItems.filter(c => isKey(c)).length,
+    graded: baseItems.filter(c => isGraded(c)).length,
+    gradeCandidate: baseItems.filter(c => isGradeCandidate(c)).length,
+    raw: baseItems.filter(c => !isGraded(c)).length,
+  };
+}
+function boxCounts(baseItems){
+  const counts = {};
+  baseItems.forEach(c => {
+    const loc = (c.location||"").trim();
+    if(loc && loc.length <= 3){
+      counts[loc.toUpperCase()] = (counts[loc.toUpperCase()]||0) + 1;
+    }
+  });
+  return counts;
+}
+
+/* ================= rendering ================= */
+const view = document.getElementById("view");
+const countEl = document.getElementById("count");
+
+function render(){
+  const _inCave = comics.filter(c=>!isGone(c));
+  const _count = _inCave.length;
+  const _books = _inCave.reduce((n,c)=>n+(qtyOf(c)),0);
+  const _sold = comics.filter(isSold).length;
+  const _gifted = comics.filter(isGifted).length;
+  let countParts = _count === _books ? `${_books} books` : `${_count} titles · ${_books} books`;
+  if(_sold) countParts += ` · ${_sold} sold`;
+  if(_gifted) countParts += ` · ${_gifted} gifted`;
+  countEl.textContent = countParts;
+
+  /* update hot badge */
+  const _hotCount = comics.filter(c => {
+    if(isGone(c)) return false;
+    return isGradeCandidate(c) || (isFire(c) && !isGraded(c));
+  }).length;
+  const hotBtn = document.querySelector('nav button[data-tab="hot"]');
+  if(hotBtn) hotBtn.innerHTML = `<span>🔥 Hot${_hotCount ? ` <span class="tab-badge">${_hotCount}</span>` : ""}</span>`;
+
+  if(tab==="collection") renderList(false);
+  else if(tab==="hot") renderList(true);
+  else if(tab==="add") renderForm();
+  else if(tab==="detail") renderDetail();
+  else if(tab==="stats") renderStats();
+  else if(tab==="value") renderValue();
+  else if(tab==="sync") renderSync();
+}
+
+/* ================= list rendering ================= */
+function renderList(hotMode){
+  const allComics = comics.slice();
+
+  /* base filter: in-cave vs sold/gifted vs all */
+  let items;
+  if(hotMode){
+    items = allComics.filter(c => !isGone(c) && (isGradeCandidate(c) || isFire(c) || isKey(c)));
+  } else if(collectionView === "sold"){
+    items = allComics.filter(c => isGone(c));
+  } else if(collectionView === "all"){
+    items = allComics;
+  } else {
+    items = allComics.filter(c => !isGone(c));
+  }
+
+  /* search */
+  if(searchQ){
+    const q = searchQ.toLowerCase();
+    items = items.filter(c =>
+      (c.publisher||"").toLowerCase().includes(q) ||
+      (c.title||"").toLowerCase().includes(q) ||
+      (c.issueNumber||"").toLowerCase().includes(q) ||
+      (c.keyStatus||"").toLowerCase().includes(q) ||
+      (c.characters||"").toLowerCase().includes(q) ||
+      (c.coverArtist||"").toLowerCase().includes(q) ||
+      (c.writer||"").toLowerCase().includes(q) ||
+      (c.notes||"").toLowerCase().includes(q) ||
+      (c.location||"").toLowerCase().includes(q) ||
+      (c.boxCode||"").toLowerCase().includes(q)
+    );
+  }
+
+  /* publisher filter */
+  if(pubFilter){
+    items = items.filter(c => (c.publisher||"") === pubFilter);
+  }
+
+  /* compute counts before chip filters */
+  const counts = filterCounts(items);
+  const bCounts = boxCounts(items);
+
+  /* chip filters */
+  if(filters.fire) items = items.filter(isFire);
+  if(filters.key) items = items.filter(isKey);
+  if(filters.graded) items = items.filter(isGraded);
+  if(filters.gradeCandidate) items = items.filter(isGradeCandidate);
+  if(filters.raw) items = items.filter(c => !isGraded(c));
+
+  /* box filters */
+  if(boxFilters.size){
+    items = items.filter(c => {
+      const loc = (c.location||"").trim().toUpperCase();
+      return boxFilters.has(loc);
+    });
+  }
+
+  /* sort */
+  if(hotMode){
+    /* sort by fire tier desc, then grade candidate, then key status */
+    items.sort((a,b) => {
+      const fa = fireLevel(a), fb = fireLevel(b);
+      if(fa !== fb) return fb - fa;
+      if(isGradeCandidate(a) !== isGradeCandidate(b)) return isGradeCandidate(a) ? -1 : 1;
+      return (a.title||"").localeCompare(b.title||"");
+    });
+  } else if(sortBy === "title"){
+    items.sort((a,b) => (a.title||"").localeCompare(b.title||"") || (a.issueNumber||"").localeCompare(b.issueNumber||"", undefined, {numeric:true}));
+  } else if(sortBy === "publisher"){
+    items.sort((a,b) => (a.publisher||"").localeCompare(b.publisher||"") || (a.title||"").localeCompare(b.title||""));
+  } else if(sortBy === "year-desc"){
+    items.sort((a,b) => (parseInt(b.year)||0) - (parseInt(a.year)||0));
+  } else if(sortBy === "year-asc"){
+    items.sort((a,b) => (parseInt(a.year)||0) - (parseInt(b.year)||0));
+  } else if(sortBy === "added"){
+    items.sort((a,b) => (b.added||"").localeCompare(a.added||""));
+  } else if(sortBy === "value"){
+    items.sort((a,b) => (parsePrice(b.marketValue)||parsePrice(b.price)||0) - (parsePrice(a.marketValue)||parsePrice(a.price)||0));
+  }
+
+  /* has sold/gifted books? */
+  const hasSold = comics.some(isGone);
+
+  /* box letters */
+  const boxLetters = Object.keys(bCounts).sort();
+
+  view.innerHTML = `
+    ${hotMode ? `<div class="sheet" style="padding-bottom:0"><h2>🔥 Hot Books</h2>
+      <div class="note" style="margin-top:-10px;margin-bottom:14px">Key issues, fire books, and grade candidates — your most valuable assets.</div>
+    </div>` : ""}
+    <div class="toolbar">
+      <input type="search" id="search" placeholder="Search title, publisher, character…" value="${esc(searchQ)}">
+      ${hotMode ? "" : `
+        <select id="pub-filter">
+          <option value="">All publishers</option>
+          ${PUBLISHERS.map(p=>`<option value="${esc(p)}"${pubFilter===p?" selected":""}>${esc(p)}</option>`).join("")}
+        </select>
+        <select class="sort" id="sort-by">
+          <option value="title"${sortBy==="title"?" selected":""}>Sort: Title</option>
+          <option value="publisher"${sortBy==="publisher"?" selected":""}>Sort: Publisher</option>
+          <option value="year-desc"${sortBy==="year-desc"?" selected":""}>Sort: Year ↓</option>
+          <option value="year-asc"${sortBy==="year-asc"?" selected":""}>Sort: Year ↑</option>
+          <option value="added"${sortBy==="added"?" selected":""}>Sort: Recently added</option>
+          <option value="value"${sortBy==="value"?" selected":""}>Sort: Value</option>
+        </select>
+      `}
+      <div class="filter-bar">
+        <button class="filter-trigger${filters.fire?" active":""}" id="f-fire">🔥 Fire <span class="ft-badge">${counts.fire}</span></button>
+        <button class="filter-trigger${filters.key?" active":""}" id="f-key">🔑 Key <span class="ft-badge">${counts.key}</span></button>
+        <button class="filter-trigger${filters.gradeCandidate?" active":""}" id="f-gc" style="${filters.gradeCandidate?"color:var(--grail);border-color:var(--grail)":""}">💎 Grade <span class="ft-badge">${counts.gradeCandidate}</span></button>
+        <button class="filter-trigger${filters.graded?" active":""}" id="f-graded" style="${filters.graded?"color:var(--ok);border-color:var(--ok)":""}">🏅 Slabbed <span class="ft-badge">${counts.graded}</span></button>
+        <button class="filter-trigger${filters.raw?" active":""}" id="f-raw">📖 Raw <span class="ft-badge">${counts.raw}</span></button>
+      </div>
+      ${!hotMode && boxLetters.length ? `<div class="shelf-bar">
+        ${boxLetters.map(l => `<button class="shelf-chip${boxFilters.has(l)?" active":""}" data-box="${esc(l)}">${esc(l)} <span class="sc-count">${bCounts[l]}</span></button>`).join("")}
+      </div>` : ""}
+      ${!hotMode && hasSold ? `
+        <div style="display:flex;gap:4px;width:100%">
+          <button class="toggle-btn${collectionView==="cave"?" on":""}" id="v-cave" style="flex:1;font-size:11px">In cave</button>
+          <button class="toggle-btn${collectionView==="sold"?" on":""}" id="v-sold" style="flex:1;font-size:11px">Sold/Gifted</button>
+          <button class="toggle-btn${collectionView==="all"?" on":""}" id="v-all" style="flex:1;font-size:11px">All</button>
+        </div>
+      ` : ""}
+    </div>
+    <div class="list" id="card-list">
+      ${items.length === 0 ? `<div class="empty-state"><div class="comic">No books here yet</div><div>${hotMode ? "Add some key issues or flag books for grading." : "Tap + Add to scan a cover."}</div></div>` : ""}
+      ${items.map(c => cardHTML(c)).join("")}
+    </div>`;
+
+  /* bind events */
+  const searchEl = document.getElementById("search");
+  if(searchEl){
+    searchEl.addEventListener("input", e=>{ searchQ = e.target.value; renderListOnly(hotMode); });
+    searchEl.addEventListener("focus", ()=> searchEl.select());
+  }
+  const pubEl = document.getElementById("pub-filter");
+  if(pubEl) pubEl.onchange = ()=>{ pubFilter = pubEl.value; render(); };
+  const sortEl = document.getElementById("sort-by");
+  if(sortEl) sortEl.onchange = ()=>{ sortBy = sortEl.value; render(); };
+
+  /* filter chips */
+  ["fire","key","gradeCandidate","graded","raw"].forEach(f => {
+    const el = document.getElementById("f-" + (f==="gradeCandidate"?"gc":f));
+    if(el) el.onclick = ()=>{ filters[f] = !filters[f]; render(); };
+  });
+
+  /* box chips */
+  document.querySelectorAll(".shelf-chip").forEach(btn => {
+    btn.onclick = () => {
+      const l = btn.dataset.box;
+      if(boxFilters.has(l)) boxFilters.delete(l); else boxFilters.add(l);
+      render();
+    };
+  });
+
+  /* view toggles */
+  ["cave","sold","all"].forEach(v => {
+    const el = document.getElementById("v-"+v);
+    if(el) el.onclick = ()=>{ collectionView = v; render(); };
+  });
+
+  /* card clicks */
+  document.querySelectorAll(".card").forEach(card => {
+    card.onclick = ()=>{
+      collectionScrollY = window.scrollY;
+      detailId = card.dataset.id;
+      tab = "detail";
+      history.pushState({tab:"detail", id:detailId}, "");
+      render(); window.scrollTo(0,0);
+    };
+  });
+}
+
+function renderListOnly(hotMode){
+  /* re-render just the card list for fast search */
+  let items;
+  const allComics = comics.slice();
+  if(hotMode){
+    items = allComics.filter(c => !isGone(c) && (isGradeCandidate(c) || isFire(c) || isKey(c)));
+  } else if(collectionView === "sold"){
+    items = allComics.filter(c => isGone(c));
+  } else if(collectionView === "all"){
+    items = allComics;
+  } else {
+    items = allComics.filter(c => !isGone(c));
+  }
+  if(searchQ){
+    const q = searchQ.toLowerCase();
+    items = items.filter(c =>
+      (c.publisher||"").toLowerCase().includes(q) ||
+      (c.title||"").toLowerCase().includes(q) ||
+      (c.issueNumber||"").toLowerCase().includes(q) ||
+      (c.keyStatus||"").toLowerCase().includes(q) ||
+      (c.characters||"").toLowerCase().includes(q) ||
+      (c.coverArtist||"").toLowerCase().includes(q) ||
+      (c.writer||"").toLowerCase().includes(q) ||
+      (c.notes||"").toLowerCase().includes(q)
+    );
+  }
+  if(pubFilter) items = items.filter(c => (c.publisher||"") === pubFilter);
+  if(filters.fire) items = items.filter(isFire);
+  if(filters.key) items = items.filter(isKey);
+  if(filters.graded) items = items.filter(isGraded);
+  if(filters.gradeCandidate) items = items.filter(isGradeCandidate);
+  if(filters.raw) items = items.filter(c => !isGraded(c));
+  if(boxFilters.size) items = items.filter(c => boxFilters.has((c.location||"").trim().toUpperCase()));
+
+  /* sort */
+  if(sortBy === "title") items.sort((a,b) => (a.title||"").localeCompare(b.title||"") || (a.issueNumber||"").localeCompare(b.issueNumber||"",undefined,{numeric:true}));
+  else if(sortBy === "publisher") items.sort((a,b) => (a.publisher||"").localeCompare(b.publisher||"") || (a.title||"").localeCompare(b.title||""));
+  else if(sortBy === "year-desc") items.sort((a,b) => (parseInt(b.year)||0) - (parseInt(a.year)||0));
+  else if(sortBy === "year-asc") items.sort((a,b) => (parseInt(a.year)||0) - (parseInt(b.year)||0));
+  else if(sortBy === "added") items.sort((a,b) => (b.added||"").localeCompare(a.added||""));
+  else if(sortBy === "value") items.sort((a,b) => (parsePrice(b.marketValue)||parsePrice(b.price)||0) - (parsePrice(a.marketValue)||parsePrice(a.price)||0));
+
+  const listEl = document.getElementById("card-list");
+  if(!listEl) return;
+  listEl.innerHTML = items.length === 0
+    ? `<div class="empty-state"><div class="comic">No matches</div></div>`
+    : items.map(c => cardHTML(c)).join("");
+  document.querySelectorAll(".card").forEach(card => {
+    card.onclick = ()=>{
+      collectionScrollY = window.scrollY;
+      detailId = card.dataset.id;
+      tab = "detail";
+      history.pushState({tab:"detail", id:detailId}, "");
+      render(); window.scrollTo(0,0);
+    };
+  });
+}
+
+function cardHTML(c){
+  const src = imgSrc(c);
+  const fl = fireLevel(c);
+  const gone = isGone(c);
+  const sold = isSold(c);
+  const gifted = isGifted(c);
+  const cardClass = sold ? "card sold" : (gifted ? "card gifted" : "card");
+  const condCls = conditionClass(c);
+
+  let chips = [];
+  if(c.issueNumber) chips.push(`<span class="chip issue">#${esc(c.issueNumber)}</span>`);
+  if(fl) chips.push(`<span class="chip fire">${fireEmoji(c)} ${esc(fireLabel(c))}</span>`);
+  if(isKey(c)) chips.push(`<span class="chip key">🔑 Key</span>`);
+  if(isGraded(c)) chips.push(`<span class="chip graded">🏅 ${esc((c.gradingCompany||"CGC"))} ${esc(String(c.grade||""))}</span>`);
+  else if(c.condition) chips.push(`<span class="chip condition ${condCls}">${esc(c.condition)}</span>`);
+  if(isGradeCandidate(c)) chips.push(`<span class="chip grade-candidate">💎 Grade</span>`);
+  if(c.location) chips.push(`<span class="chip box">${esc(c.location)}</span>`);
+  if(sold) chips.push(`<span class="chip" style="color:var(--ok)">Sold</span>`);
+  if(gifted) chips.push(`<span class="chip" style="color:var(--rose)">🎁 Gift</span>`);
+
+  const pc = pubClass(c);
+  const val = parsePrice(c.marketValue) || parsePrice(c.price);
+  const valStr = val ? `$${val.toLocaleString()}` : "";
+
+  return `<div class="card ${gone ? (sold ? "sold" : "gifted") : ""}" data-id="${esc(c.id)}">
+    <div class="card-top">
+      ${src
+        ? `<img class="thumb" src="${esc(src)}" alt="" loading="lazy">`
+        : `<div class="thumb empty">?</div>`}
+      <div class="card-info">
+        <div class="comic-title${pc?" "+pc:""}" style="${pc?`color:${PUB_COLOURS[c.publisher]||"var(--ink)"}`:""}">${esc(c.title||"Unknown")}</div>
+        <div class="comic-sub">${esc([c.publisher, c.year, c.era].filter(Boolean).join(" · "))}${qtyOf(c)>1?` · ×${qtyOf(c)}`:""}</div>
+        ${valStr ? `<div class="comic-sub" style="color:var(--accent);font-size:11px;margin-top:1px">${valStr} CAD</div>` : ""}
+        <div class="chips">${chips.join("")}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ================= detail view ================= */
+function renderDetail(){
+  const c = comics.find(x=>x.id===detailId);
+  if(!c){ tab="collection"; render(); return; }
+  const src = imgSrc(c);
+  const fl = fireLevel(c);
+  const pc = pubClass(c);
+  const condCls = conditionClass(c);
+  const roi = gradingROI(c);
+  const rawVal = parsePrice(c.marketValue) || parsePrice(c.price);
+  const gradedVal = parsePrice(c.gradedValue);
+  const purchaseVal = parsePrice(c.price);
+  const appreciation = rawVal && purchaseVal && purchaseVal > 0
+    ? Math.round(((rawVal - purchaseVal) / purchaseVal) * 100)
+    : null;
+
+  view.innerHTML = `<div class="sheet">
+    <div class="back-row">
+      <button id="back">← Back</button>
+      <button id="edit" style="margin-left:auto;color:var(--accent)">Edit</button>
+    </div>
+    ${src ? `<img class="detail-photo" src="${esc(src)}" alt="" crossorigin="anonymous">` : ""}
+    <div class="detail-name" style="${pc?`color:${PUB_COLOURS[c.publisher]||"var(--ink)"}`:""}">${fl ? fireEmoji(c)+" " : ""}${esc(c.title||"Unknown")}${c.issueNumber ? ` <span style="color:var(--accent)">#${esc(c.issueNumber)}</span>` : ""}</div>
+    <div class="detail-sub">${esc([c.publisher, c.year, c.era].filter(Boolean).join(" · "))}</div>
+
+    ${isKey(c) ? `<div style="margin:8px 0;padding:8px 12px;border:1px solid var(--warn);border-radius:4px;font-size:13px;color:var(--warn)">🔑 ${esc(c.keyStatus)}</div>` : ""}
+
+    <div class="qty-row">
+      <button class="qty-btn" id="qty-minus">−</button>
+      <span class="qty-display">${qtyOf(c)}</span>
+      <button class="qty-btn" id="qty-plus">+</button>
+      <span class="mono" style="font-size:12px;color:var(--ink-faint)">copies</span>
+    </div>
+
+    ${fl ? `<div style="margin:8px 0"><span class="chip fire" style="font-size:12px;padding:4px 10px">${fireEmoji(c)} ${esc(fireLabel(c))}</span></div>` : ""}
+
+    <div style="margin:10px 0">
+      <label style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-faint);display:block;margin-bottom:6px">Fire tier</label>
+      <div class="fire-tier-picker">
+        <button class="fire-tier-btn${fl===0?" active":""}" data-fl="0">None</button>
+        <button class="fire-tier-btn${fl===1?" active":""}" data-fl="1">🔥 Notable</button>
+        <button class="fire-tier-btn${fl===2?" active":""}" data-fl="2">🔥🔥 Key Issue</button>
+        <button class="fire-tier-btn${fl===3?" active":""}" data-fl="3">🔥🔥🔥 Grail</button>
+      </div>
+    </div>
+
+    <dl class="spec">
+      <dt>Publisher</dt><dd>${tbd(c.publisher)}</dd>
+      <dt>Title</dt><dd>${tbd(c.title)}</dd>
+      <dt>Issue</dt><dd>${c.issueNumber ? "#"+esc(c.issueNumber) : tbd("")}${c.variant ? ` <span style="color:var(--ink-dim)">(${esc(c.variant)})</span>` : ""}</dd>
+      <dt>Year</dt><dd>${tbd(c.year)}</dd>
+      <dt>Era</dt><dd>${tbd(c.era)}</dd>
+      <dt>Condition</dt><dd>${c.condition ? `<span class="chip condition ${condCls}" style="font-size:12px;padding:3px 8px">${esc(c.condition)}</span> ${esc(CONDITION_LABELS[c.condition]||"")}` : tbd("")}${isGraded(c) ? ` → <span class="chip graded" style="font-size:12px;padding:3px 8px">🏅 ${esc(c.gradingCompany||"CGC")} ${esc(String(c.grade||""))}</span>` : ""}</dd>
+      <dt>Writer</dt><dd>${tbd(c.writer)}</dd>
+      <dt>Cover art</dt><dd>${tbd(c.coverArtist)}</dd>
+      <dt>Characters</dt><dd>${tbd(c.characters)}</dd>
+      <dt>Price paid</dt><dd>
+        <div class="inline-price">
+          <input id="price-edit" value="${esc(c.price||"")}" placeholder="$XX">
+          <button id="save-price">Save</button>
+        </div>
+        ${appreciation !== null ? `<div style="font-size:11px;margin-top:4px;color:${appreciation >= 0 ? "var(--ok)" : "var(--red)"}">${appreciation >= 0 ? "▲" : "▼"} ${Math.abs(appreciation)}% since purchase</div>` : ""}
+      </dd>
+      <dt>Market value</dt><dd>${c.marketValue ? esc(c.marketValue) : tbd("")}${c.lastValueCheck ? ` <span style="font-size:10px;color:var(--ink-faint)">(${esc(c.lastValueCheck)})</span>` : ""}</dd>
+      <dt>Source</dt><dd>${tbd(c.source)}</dd>
+      <dt>Location</dt><dd>${tbd(c.location)}</dd>
+      <dt>Added</dt><dd>${tbd(c.added)}</dd>
+      ${c.notes ? `<dt>Notes</dt><dd>${esc(c.notes)}</dd>` : ""}
+      ${isSold(c) ? `<dt>Sold</dt><dd>${esc(c.soldDate||"")}${c.soldPrice ? " for " + esc(c.soldPrice) : ""}${c.soldTo ? " to " + esc(c.soldTo) : ""}</dd>` : ""}
+      ${isGifted(c) ? `<dt>Gifted</dt><dd>🎁 ${esc(c.giftedTo||"")}</dd>` : ""}
+    </dl>
+
+    ${isGradeCandidate(c) || roi ? `
+    <div class="grade-box">
+      <h3>💎 Grading analysis</h3>
+      ${c.gradeCandidateReason ? `<div style="font-size:13px;color:var(--ink-dim);margin-bottom:10px">${esc(c.gradeCandidateReason)}</div>` : ""}
+      ${roi ? `
+        <div class="grade-row"><span class="label">Raw value</span><span class="val">$${roi.raw}</span></div>
+        <div class="grade-row"><span class="label">Graded value (est.)</span><span class="val">$${roi.graded}</span></div>
+        <div class="grade-row"><span class="label">Grading cost (est.)</span><span class="val">−$${roi.cost}</span></div>
+        <div class="grade-row" style="border-top:1px solid var(--line);padding-top:8px;margin-top:4px">
+          <span class="label">Net gain</span>
+          <span class="val ${roi.gain>=0?"up":"down"}">${roi.gain>=0?"+":""}$${roi.gain} (${roi.pct>=0?"+":""}${roi.pct}%)</span>
+        </div>
+      ` : ""}
+      <div style="margin-top:10px">
+        <button class="btn btn-ghost" id="toggle-gc" style="border-color:var(--grail);color:var(--grail)">
+          ${isGradeCandidate(c) ? "✓ Marked as grade candidate" : "💎 Mark as grade candidate"}
+        </button>
+      </div>
+    </div>` : `
+    <div style="margin:14px 0">
+      <button class="btn btn-ghost" id="toggle-gc" style="border-color:var(--grail);color:var(--grail)">💎 Mark as grade candidate</button>
+    </div>`}
+
+    <div style="margin:14px 0">
+      <button class="btn btn-ghost" id="recheck-price" style="border-color:var(--accent);color:var(--accent)">✨ Identify / re-check value</button>
+      <div class="sync-status" id="recheck-st" style="display:none"></div>
+    </div>
+
+    <button class="btn btn-danger" id="del">Remove from collection</button>
+  </div>`;
+
+  /* bind events */
+  document.getElementById("back").onclick = ()=> history.back();
+  document.getElementById("edit").onclick = ()=>{
+    editingId = c.id; tab = "add"; render();
+  };
+
+  /* fire tier picker */
+  document.querySelectorAll(".fire-tier-btn").forEach(btn => {
+    btn.onclick = ()=>{
+      c.fire = parseInt(btn.dataset.fl);
+      saveComics(); render();
+    };
+  });
+
+  /* price inline save */
+  document.getElementById("save-price").onclick = ()=>{
+    c.price = document.getElementById("price-edit").value.trim();
+    saveComics();
+    document.getElementById("save-price").textContent = "✓";
+    setTimeout(()=>{ const el = document.getElementById("save-price"); if(el) el.textContent = "Save"; }, 1500);
+  };
+
+  /* grade candidate toggle */
+  document.getElementById("toggle-gc").onclick = ()=>{
+    c.gradeCandidate = !c.gradeCandidate;
+    saveComics(); render();
+  };
+
+  /* AI re-check */
+  document.getElementById("recheck-price").onclick = async ()=>{
+    const stEl = document.getElementById("recheck-st");
+    stEl.style.display = "block";
+    if(!cfg.gkey){ stEl.textContent = "Add a Gemini API key in Sync → Settings first."; return; }
+    const hasData = [c.publisher, c.title, c.issueNumber].filter(Boolean).length >= 2;
+    const photoEl = document.querySelector(".detail-photo");
+    let b64 = null;
+    if(photoEl && photoEl.naturalWidth){
+      try{ b64 = imgToBase64(photoEl); }catch(e){/* tainted canvas */}
+    }
+    if(!hasData && !b64){ stEl.textContent = "✗ No cover photo and no book data — open Edit and add a photo first."; return; }
+    const fullMode = !hasData && b64;
+    stEl.textContent = fullMode ? "Identifying comic from cover…" : "Checking values…";
+    try{
+      let body, prompt;
+      if(fullMode){
+        prompt = AI_PROMPT;
+      } else {
+        const desc = [c.publisher, c.title, c.issueNumber ? "#"+c.issueNumber : "", c.year, c.condition, c.variant].filter(Boolean).join(", ");
+        prompt = VALUE_PROMPT.replace("{{DESC}}", desc);
+      }
+      if(b64){
+        body = {contents:[{parts:[{inline_data:{mime_type:"image/jpeg",data:b64}},{text:prompt}]}]};
+        if(!fullMode) stEl.textContent = "Checking values with cover photo…";
+      } else {
+        body = {contents:[{parts:[{text:prompt}]}]};
+      }
+      const {r} = await callGemini(body, cfg.gkey, stEl);
+      const j = await r.json();
+      const text = ((j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts)||[]).map(p=>p.text||"").join("");
+      const rec = JSON.parse(text.replace(/```json|```/g,"").trim());
+      if(fullMode){
+        const fields = ["publisher","title","issueNumber","year","era","condition","variant","coverArtist","writer","characters","keyStatus","notes"];
+        let filled = 0;
+        fields.forEach(f => { if(rec[f] && !c[f]){ c[f] = rec[f]; filled++; } });
+        if(rec.price) c.price = rec.price;
+        if(rec.marketValue) c.marketValue = rec.marketValue;
+        if(rec.gradedValue) c.gradedValue = rec.gradedValue;
+        if(rec.fire !== undefined) c.fire = parseInt(rec.fire)||0;
+        if(rec.gradeCandidate) c.gradeCandidate = true;
+        if(rec.gradeCandidateReason) c.gradeCandidateReason = rec.gradeCandidateReason;
+        c.lastValueCheck = new Date().toISOString().slice(0,10);
+        saveComics();
+        const _fl = parseInt(rec.fire)||0;
+        stEl.textContent = "✓ Identified: " + [rec.publisher,rec.title,rec.issueNumber?"#"+rec.issueNumber:""].filter(Boolean).join(" ") + (_fl ? " " + "🔥".repeat(_fl) : "") + ` — filled ${filled} fields. Tap Edit to review.`;
+        setTimeout(()=> render(), 1500);
+      } else {
+        let updates = [];
+        if(rec.marketValue){ c.marketValue = rec.marketValue; updates.push("market: " + rec.marketValue); }
+        if(rec.gradedValue){ c.gradedValue = rec.gradedValue; updates.push("graded: " + rec.gradedValue); }
+        if(rec.gradeCandidate !== undefined){ c.gradeCandidate = rec.gradeCandidate; if(rec.gradeCandidate) updates.push("💎 grade candidate"); }
+        if(rec.gradeCandidateReason) c.gradeCandidateReason = rec.gradeCandidateReason;
+        if(rec.keyStatus && !c.keyStatus){ c.keyStatus = rec.keyStatus; updates.push("🔑 " + rec.keyStatus); }
+        c.lastValueCheck = new Date().toISOString().slice(0,10);
+        saveComics();
+        stEl.textContent = updates.length ? "✓ Updated: " + updates.join(" · ") : "✓ Values checked — no changes.";
+        setTimeout(()=> render(), 1500);
+      }
+    }catch(e){ stEl.textContent = "✗ " + e.message; }
+  };
+
+  /* qty controls */
+  document.getElementById("qty-minus").onclick = ()=>{
+    const prev = qtyOf(c);
+    if(prev <= 1){
+      /* last copy — ask sold or gifted */
+      showRemoveSheet(c);
+      return;
+    }
+    c.qty = prev - 1;
+    saveComics(); render();
+  };
+  document.getElementById("qty-plus").onclick = ()=>{
+    c.qty = (qtyOf(c))+1;
+    saveComics(); render();
+  };
+
+  document.getElementById("del").onclick = ()=>{
+    if(confirm("Remove this comic entirely from collection?")){
+      comics = comics.filter(x=>x.id!==c.id); saveComics(); history.back();
+    }
+  };
+}
+
+/* remove sheet — sold or gifted */
+function showRemoveSheet(c){
+  const overlay = document.createElement("div");
+  overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:flex;align-items:flex-end;justify-content:center";
+  overlay.innerHTML = `<div style="background:var(--panel);border:1px solid var(--line);border-radius:12px 12px 0 0;padding:20px;width:100%;max-width:420px">
+    <h3 class="comic" style="font-size:20px;margin-bottom:14px">Last copy — what happened?</h3>
+    <button class="btn btn-ghost" id="rs-sold" style="border-color:var(--ok);color:var(--ok)">💰 Sold it</button>
+    <button class="btn btn-ghost" id="rs-gift" style="border-color:var(--rose);color:var(--rose)">🎁 Gave as gift</button>
+    <button class="btn btn-ghost" id="rs-skip">Just mark as gone</button>
+    <button class="btn btn-ghost" id="rs-cancel" style="margin-top:8px">Cancel</button>
+    <div id="rs-form" style="display:none;margin-top:14px">
+      <div class="field"><label id="rs-form-label"></label><input id="rs-input" placeholder=""></div>
+      <div class="row2" id="rs-sold-fields" style="display:none">
+        <div class="field"><label>Sale price</label><input id="rs-sold-price" placeholder="$XX"></div>
+        <div class="field"><label>Sold to</label><input id="rs-sold-to" placeholder="Buyer"></div>
+      </div>
+      <button class="btn btn-primary" id="rs-confirm">Confirm</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+
+  let mode = null;
+  document.getElementById("rs-cancel").onclick = ()=> overlay.remove();
+  document.getElementById("rs-skip").onclick = ()=>{
+    c.qty = 0; c.soldDate = new Date().toISOString().slice(0,10);
+    saveComics(); overlay.remove(); render();
+  };
+  document.getElementById("rs-sold").onclick = ()=>{
+    mode = "sold";
+    document.getElementById("rs-form").style.display = "block";
+    document.getElementById("rs-form-label").textContent = "Sale details";
+    document.getElementById("rs-input").style.display = "none";
+    document.getElementById("rs-sold-fields").style.display = "grid";
+  };
+  document.getElementById("rs-gift").onclick = ()=>{
+    mode = "gift";
+    document.getElementById("rs-form").style.display = "block";
+    document.getElementById("rs-form-label").textContent = "Who did you give it to?";
+    document.getElementById("rs-input").style.display = "block";
+    document.getElementById("rs-input").placeholder = "Recipient / occasion";
+    document.getElementById("rs-sold-fields").style.display = "none";
+  };
+  document.getElementById("rs-confirm").onclick = ()=>{
+    c.qty = 0;
+    if(mode === "sold"){
+      c.soldDate = new Date().toISOString().slice(0,10);
+      c.soldPrice = document.getElementById("rs-sold-price").value.trim();
+      c.soldTo = document.getElementById("rs-sold-to").value.trim();
+    } else if(mode === "gift"){
+      c.giftedTo = document.getElementById("rs-input").value.trim() || "Gift";
+    }
+    saveComics(); overlay.remove(); render();
+  };
+}
+
+/* ================= Gemini AI ================= */
+const GEMINI_MODELS = ["gemini-3.5-flash","gemini-2.5-flash","gemini-3.1-flash-lite-preview"];
+async function callGemini(body, key, statusEl){
+  for(let m = 0; m < GEMINI_MODELS.length; m++){
+    const model = GEMINI_MODELS[m];
+    for(let attempt = 0; attempt < 3; attempt++){
+      const r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`,
+        {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)}
+      );
+      if(r.ok) return {r, model};
+      if(r.status === 429 || r.status === 503){
+        const wait = (attempt + 1) * 2;
+        if(statusEl) statusEl.textContent = `Model ${model} busy — retry ${attempt+1}/3 in ${wait}s…`;
+        await new Promise(ok => setTimeout(ok, wait * 1000));
+        continue;
+      }
+      if(r.status === 404 && m < GEMINI_MODELS.length - 1) break;
+      throw new Error("Gemini " + r.status + ": " + (await r.text()).slice(0,140));
+    }
+  }
+  throw new Error("All models busy — try again in a minute.");
+}
+
+const AI_PROMPT = `You are a comic book expert and price guide assistant. Read this comic book cover photo and return ONLY a JSON object (no markdown fences, no prose) with these fields — all strings unless noted:
+publisher, title (the series title, not the publisher), issueNumber (just the number), variant (cover variant description if any, empty string if standard cover), year (4-digit publication year), era (one of: Golden, Silver, Bronze, Copper, Modern), condition (estimate from the photo — one of: NM, VF, FN, VG, GD, FR, PR), coverArtist (cover artist if recognisable), writer (if known from the issue), characters (major characters featured, comma-separated),
+keyStatus (what makes this a key issue if applicable — e.g. "First appearance of Venom", "Death of Superman", empty string if not a key issue),
+fire (integer 0-3: 0 = regular issue, 1 = notable/sought-after cover or minor key, 2 = major key issue — significant first appearances, deaths, or events, 3 = grail — legendary books like Amazing Fantasy 15, Action Comics 1, Detective Comics 27, Incredible Hulk 181, Giant-Size X-Men 1. Be conservative: most comics are 0),
+price (estimated raw market value in CANADIAN DOLLARS, formatted like '~$XX CAD (est.)' — research-grade estimate based on title, issue significance, and typical market prices for the estimated condition),
+marketValue (same as price — current raw market value estimate),
+gradedValue (estimated value IF graded at the condition you estimated, in CAD — e.g. a VF book graded CGC 8.0 might be worth 2-3x raw. Format: '~$XX CAD (est.)'),
+gradeCandidate (boolean — true if the grading ROI seems worthwhile: the graded value minus ~$50 CAD grading cost exceeds the raw value by a meaningful margin),
+gradeCandidateReason (one sentence explaining why or why not it's worth grading),
+notes (brief notes about the issue — print run details, significance, notable features).
+Use empty strings for anything unreadable. Be accurate on key issue status — this is critical for valuation.`;
+
+const VALUE_PROMPT = `You are a comic book pricing expert. For this comic: {{DESC}}
+Return ONLY a JSON object (no markdown fences) with:
+marketValue (current raw market value in CANADIAN DOLLARS, formatted like '~$XX CAD (est.)'),
+gradedValue (estimated value if professionally graded at the stated or likely condition, in CAD),
+gradeCandidate (boolean — is grading ROI worthwhile after ~$50 CAD grading cost?),
+gradeCandidateReason (one sentence on grading recommendation),
+keyStatus (key issue status if any — first appearances, deaths, etc. Empty string if not a key).
+Base on current market data, recent sales, and guide prices. Be research-grade accurate.`;
+
+/* ================= add/edit form ================= */
+let pendingImage = null;
+function renderForm(){
+  const c = editingId ? comics.find(x=>x.id===editingId) : {};
+  pendingImage = c && c.imageData ? c.imageData : null;
+  const existingSrc = c ? imgSrc(c) : null;
+
+  view.innerHTML = `<div class="sheet">
+    <h2>${editingId ? "Edit book" : "New book"}</h2>
+    <div class="photo-zone">
+      ${existingSrc?`<img id="pv" src="${esc(existingSrc)}" alt="">`:`<img id="pv" style="display:none" alt="">`}
+      <label class="photo-btn">📷 Take photo of cover
+        <input type="file" id="cam" accept="image/*" capture="environment">
+      </label>
+      <label class="photo-btn ghost">🖼 Choose from gallery
+        <input type="file" id="gal" accept="image/*">
+      </label>
+      <button type="button" class="photo-btn" id="identify" style="border-color:var(--accent); color:var(--accent)">✨ Identify from cover</button>
+      <div class="sync-status" id="id-status" style="display:none; margin-top:8px"></div>
+    </div>
+
+    <div class="row2">
+      <div class="field"><label>Publisher</label>
+        <select id="f-pub">
+          <option value="">— select —</option>
+          ${PUBLISHERS.map(p=>`<option value="${esc(p)}"${(c.publisher||"")===p?" selected":""}>${esc(p)}</option>`).join("")}
+        </select>
+      </div>
+      <div class="field"><label>Year</label><input id="f-year" value="${esc(c.year||"")}" placeholder="e.g. 1988" inputmode="numeric"></div>
+    </div>
+
+    <div class="field"><label>Title</label><input id="f-title" value="${esc(c.title||"")}" placeholder="e.g. The Amazing Spider-Man"></div>
+
+    <div class="row3">
+      <div class="field"><label>Issue #</label><input id="f-issue" value="${esc(c.issueNumber||"")}" placeholder="300" inputmode="numeric"></div>
+      <div class="field"><label>Variant</label><input id="f-variant" value="${esc(c.variant||"")}" placeholder="e.g. 1:25"></div>
+      <div class="field"><label>Era</label>
+        <select id="f-era">
+          <option value="">—</option>
+          ${ERAS.map(e=>`<option value="${esc(e)}"${(c.era||"")===e?" selected":""}>${esc(e)}</option>`).join("")}
+        </select>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Condition (raw estimate)</label>
+      <div class="condition-picker">
+        ${CONDITIONS.map(cd => `<button class="condition-btn${(c.condition||"")=== cd?" active":""}" data-cond="${esc(cd)}">${esc(cd)}</button>`).join("")}
+      </div>
+    </div>
+
+    <div class="field.checkrow" style="display:flex;align-items:center;gap:8px;margin:14px 0">
+      <input type="checkbox" id="f-graded" ${c.graded?"checked":""}>
+      <label for="f-graded" style="font-size:14px;color:var(--ink)">Professionally graded (slabbed)</label>
+    </div>
+    <div id="graded-fields" style="display:${c.graded?"block":"none"}">
+      <div class="row2">
+        <div class="field"><label>Grading company</label>
+          <select id="f-gc">
+            <option value="CGC"${(c.gradingCompany||"CGC")==="CGC"?" selected":""}>CGC</option>
+            <option value="CBCS"${c.gradingCompany==="CBCS"?" selected":""}>CBCS</option>
+            <option value="PGX"${c.gradingCompany==="PGX"?" selected":""}>PGX</option>
+          </select>
+        </div>
+        <div class="field"><label>Grade</label><input id="f-grade" value="${esc(c.grade||"")}" placeholder="e.g. 9.6" inputmode="decimal"></div>
+      </div>
+    </div>
+
+    <div class="field"><label>Key issue status</label><input id="f-key" value="${esc(c.keyStatus||"")}" placeholder="e.g. First appearance of Venom"></div>
+
+    <div class="field">
+      <label>Fire tier</label>
+      <div class="fire-tier-picker">
+        <button class="fire-tier-btn${fireLevel(c)===0?" active":""}" data-fl="0">None</button>
+        <button class="fire-tier-btn${fireLevel(c)===1?" active":""}" data-fl="1">🔥 Notable</button>
+        <button class="fire-tier-btn${fireLevel(c)===2?" active":""}" data-fl="2">🔥🔥 Key</button>
+        <button class="fire-tier-btn${fireLevel(c)===3?" active":""}" data-fl="3">🔥🔥🔥 Grail</button>
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="field"><label>Cover artist</label><input id="f-artist" value="${esc(c.coverArtist||"")}"></div>
+      <div class="field"><label>Writer</label><input id="f-writer" value="${esc(c.writer||"")}"></div>
+    </div>
+
+    <div class="field"><label>Characters</label><input id="f-chars" value="${esc(c.characters||"")}" placeholder="Spider-Man, Venom"></div>
+
+    <div class="row2">
+      <div class="field"><label>Price paid</label><input id="f-price" value="${esc(c.price||"")}" placeholder="$25"></div>
+      <div class="field"><label>Source</label>
+        <select id="f-source-quick">
+          <option value="">— quick pick —</option>
+          <option value="LCS">Local comic shop</option>
+          <option value="eBay">eBay</option>
+          <option value="Convention">Convention</option>
+          <option value="Online">Online retailer</option>
+          <option value="Gift">Gift</option>
+          <option value="Inherited">Inherited</option>
+        </select>
+        <input id="f-source" value="${esc(c.source||"")}" placeholder="Where purchased" style="margin-top:6px">
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="field"><label>Box / location</label><input id="f-location" value="${esc(c.location||"")}" placeholder="e.g. A1"></div>
+      <div class="field"><label>Qty</label><input id="f-qty" value="${qtyOf(c)}" inputmode="numeric"></div>
+    </div>
+
+    <div class="field"><label>Notes</label><textarea id="f-notes" rows="3">${esc(c.notes||"")}</textarea></div>
+
+    <button class="btn btn-primary" id="save">${editingId ? "Update" : "Add to collection"}</button>
+    ${editingId ? `<button class="btn btn-ghost" id="cancel">Cancel</button>` : ""}
+  </div>`;
+
+  /* condition picker */
+  let selectedCondition = c.condition || "";
+  document.querySelectorAll(".condition-btn").forEach(btn => {
+    btn.onclick = ()=>{
+      selectedCondition = btn.dataset.cond;
+      document.querySelectorAll(".condition-btn").forEach(b => b.classList.toggle("active", b.dataset.cond === selectedCondition));
+    };
+  });
+
+  /* fire tier picker */
+  let selectedFire = fireLevel(c);
+  document.querySelectorAll(".fire-tier-btn").forEach(btn => {
+    btn.onclick = ()=>{
+      selectedFire = parseInt(btn.dataset.fl);
+      document.querySelectorAll(".fire-tier-btn").forEach(b => b.classList.toggle("active", parseInt(b.dataset.fl) === selectedFire));
+    };
+  });
+
+  /* graded checkbox toggle */
+  document.getElementById("f-graded").onchange = (e) => {
+    document.getElementById("graded-fields").style.display = e.target.checked ? "block" : "none";
+  };
+
+  /* source quick pick */
+  document.getElementById("f-source-quick").onchange = (e) => {
+    if(e.target.value){
+      document.getElementById("f-source").value = e.target.value;
+      e.target.selectedIndex = 0;
+    }
+  };
+
+  /* year → era auto-fill */
+  document.getElementById("f-year").addEventListener("blur", ()=>{
+    const yearVal = document.getElementById("f-year").value.trim();
+    const eraEl = document.getElementById("f-era");
+    if(yearVal && !eraEl.value){
+      const guess = guessEra(yearVal);
+      if(guess) eraEl.value = guess;
+    }
+  });
+
+  /* photo handlers */
+  const handlePhoto = async (file) => {
+    if(!file) return;
+    pendingImage = await resizeImage(file);
+    const pv = document.getElementById("pv");
+    pv.src = pendingImage; pv.style.display = "block";
+  };
+  document.getElementById("cam").onchange = (e) => handlePhoto(e.target.files[0]);
+  document.getElementById("gal").onchange = (e) => handlePhoto(e.target.files[0]);
+
+  /* identify */
+  document.getElementById("identify").onclick = async () => {
+    const stEl = document.getElementById("id-status");
+    stEl.style.display = "block";
+    if(!cfg.gkey){ stEl.textContent = "Add a Gemini API key in Sync → Settings first."; return; }
+    if(!pendingImage){ stEl.textContent = "Take or choose a cover photo first."; return; }
+    stEl.textContent = "Identifying comic from cover…";
+    try{
+      const b64 = pendingImage.split(",")[1];
+      const body = {contents:[{parts:[{inline_data:{mime_type:"image/jpeg",data:b64}},{text:AI_PROMPT}]}]};
+      const {r} = await callGemini(body, cfg.gkey, stEl);
+      const j = await r.json();
+      const text = ((j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts)||[]).map(p=>p.text||"").join("");
+      const rec = JSON.parse(text.replace(/```json|```/g,"").trim());
+
+      /* check for duplicates */
+      const dupe = comics.find(x =>
+        x.id !== (editingId||"") &&
+        (x.publisher||"").toLowerCase() === (rec.publisher||"").toLowerCase() &&
+        (x.title||"").toLowerCase() === (rec.title||"").toLowerCase() &&
+        (x.issueNumber||"") === (rec.issueNumber||"")
+      );
+      if(dupe){
+        stEl.innerHTML = `⚠️ Possible duplicate: <b>${esc(dupe.title)} #${esc(dupe.issueNumber)}</b> already in collection (×${qtyOf(dupe)}).<br>
+          <button class="btn btn-ghost" id="dupe-add" style="margin-top:8px;border-color:var(--ok);color:var(--ok)">Add another copy (+1)</button>`;
+        document.getElementById("dupe-add").onclick = ()=>{
+          dupe.qty = (qtyOf(dupe)) + 1; saveComics();
+          stEl.textContent = `✓ Added copy — now ×${qtyOf(dupe)}.`;
+        };
+      }
+
+      /* fill form fields */
+      const fieldMap = {
+        publisher:"f-pub", title:"f-title", issueNumber:"f-issue", variant:"f-variant",
+        year:"f-year", coverArtist:"f-artist", writer:"f-writer", characters:"f-chars",
+        keyStatus:"f-key", price:"f-price", notes:"f-notes"
+      };
+      let filled = 0;
+      Object.entries(fieldMap).forEach(([k,elId]) => {
+        if(rec[k]){
+          const el = document.getElementById(elId);
+          if(el && !el.value){
+            el.value = rec[k];
+            el.classList.add("needs-att");
+            filled++;
+          }
+        }
+      });
+      if(rec.era){
+        const eraEl = document.getElementById("f-era");
+        if(eraEl && !eraEl.value){ eraEl.value = rec.era; filled++; }
+      }
+      if(rec.condition){
+        selectedCondition = rec.condition;
+        document.querySelectorAll(".condition-btn").forEach(b => b.classList.toggle("active", b.dataset.cond === selectedCondition));
+        filled++;
+      }
+      if(rec.fire !== undefined){
+        selectedFire = parseInt(rec.fire)||0;
+        document.querySelectorAll(".fire-tier-btn").forEach(b => b.classList.toggle("active", parseInt(b.dataset.fl) === selectedFire));
+      }
+
+      const _fl = parseInt(rec.fire)||0;
+      if(!dupe){
+        stEl.textContent = "✓ Identified: " + [rec.publisher, rec.title, rec.issueNumber?"#"+rec.issueNumber:""].filter(Boolean).join(" ") + (_fl ? " " + "🔥".repeat(_fl) : "") + ` — filled ${filled} fields.`;
+      }
+    }catch(e){
+      stEl.textContent = "✗ " + e.message;
+    }
+  };
+
+  /* save */
+  document.getElementById("save").onclick = ()=>{
+    const data = {
+      publisher: document.getElementById("f-pub").value,
+      title: document.getElementById("f-title").value.trim(),
+      issueNumber: document.getElementById("f-issue").value.trim(),
+      variant: document.getElementById("f-variant").value.trim(),
+      year: document.getElementById("f-year").value.trim(),
+      era: document.getElementById("f-era").value,
+      condition: selectedCondition,
+      graded: document.getElementById("f-graded").checked,
+      gradingCompany: document.getElementById("f-graded").checked ? document.getElementById("f-gc").value : null,
+      grade: document.getElementById("f-graded").checked ? document.getElementById("f-grade").value.trim() : null,
+      keyStatus: document.getElementById("f-key").value.trim(),
+      fire: selectedFire,
+      coverArtist: document.getElementById("f-artist").value.trim(),
+      writer: document.getElementById("f-writer").value.trim(),
+      characters: document.getElementById("f-chars").value.trim(),
+      price: document.getElementById("f-price").value.trim(),
+      source: document.getElementById("f-source").value.trim(),
+      location: document.getElementById("f-location").value.trim(),
+      qty: parseInt(document.getElementById("f-qty").value) || 1,
+      notes: document.getElementById("f-notes").value.trim(),
+    };
+
+    if(editingId){
+      const existing = comics.find(x=>x.id===editingId);
+      if(existing) Object.assign(existing, data);
+      if(pendingImage && pendingImage !== existing.imageData){
+        existing.imageData = pendingImage;
+        existing.imageDirty = true;
+      }
+      saveComics();
+      editingId = null;
+      tab = "detail"; detailId = existing.id; render();
+    } else {
+      const newComic = {
+        id: uid(),
+        added: new Date().toISOString().slice(0,10),
+        ...data
+      };
+      if(pendingImage){
+        newComic.imageData = pendingImage;
+        newComic.imageDirty = true;
+      }
+      comics.push(newComic);
+      saveComics();
+      detailId = newComic.id; tab = "detail";
+      history.pushState({tab:"detail", id:detailId}, "");
+      render(); window.scrollTo(0,0);
+    }
+  };
+
+  /* cancel edit */
+  const cancelBtn = document.getElementById("cancel");
+  if(cancelBtn) cancelBtn.onclick = ()=>{
+    editingId = null; tab = "detail"; render();
+  };
+}
+
+/* ================= stats page ================= */
+function renderStats(){
+  const inCave = comics.filter(c=>!isGone(c));
+  const totalT = inCave.length;
+  const totalB = inCave.reduce((n,c)=>n+(qtyOf(c)),0);
+  const sold = comics.filter(isSold).length;
+  const gifted = comics.filter(isGifted).length;
+  const graded = inCave.filter(isGraded).length;
+  const keys = inCave.filter(isKey).length;
+
+  /* value estimate */
+  let totalVal = 0, priced = 0;
+  inCave.forEach(c=>{
+    const v = parsePrice(c.marketValue) || parsePrice(c.price);
+    if(v){ totalVal += v * qtyOf(c); priced++; }
+  });
+  const valStr = totalVal ? `~$${Math.round(totalVal).toLocaleString()} CAD` : "—";
+
+  /* fire counts */
+  const fire3 = inCave.filter(c=>fireLevel(c)===3).length;
+  const fire2 = inCave.filter(c=>fireLevel(c)===2).length;
+  const fire1 = inCave.filter(c=>fireLevel(c)===1).length;
+  const gc = inCave.filter(isGradeCandidate).length;
+
+  /* by publisher */
+  const byPub = {};
+  inCave.forEach(c=>{ const p = c.publisher||"Other"; byPub[p] = (byPub[p]||0) + qtyOf(c); });
+  const pubSorted = Object.entries(byPub).sort((a,b)=>b[1]-a[1]);
+  const maxPub = Math.max(...pubSorted.map(s=>s[1]),1);
+  const pubHTML = pubSorted.map(([label,cnt])=>{
+    const pct = Math.round((cnt/maxPub)*100);
+    const colour = PUB_COLOURS[label]||"var(--ink-dim)";
+    return `<div class="bar-row">
+      <span class="bar-label" style="width:80px">${esc(label)}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${colour}"></div></div>
+      <span class="bar-val">${cnt}</span>
+    </div>`;
+  }).join("");
+
+  /* by era */
+  const byEra = {};
+  inCave.forEach(c=>{ const e = c.era||guessEra(c.year)||"Unknown"; byEra[e] = (byEra[e]||0) + qtyOf(c); });
+  const eraOrder = ["Golden","Silver","Bronze","Copper","Modern","Unknown"];
+  const eraColours = {Golden:"var(--accent)",Silver:"#b0b8c0",Bronze:"#c09060",Copper:"var(--red-soft)",Modern:"var(--blue-soft)",Unknown:"var(--ink-faint)"};
+  const eraSorted = eraOrder.filter(e=>byEra[e]).map(e=>({era:e,count:byEra[e]}));
+  const maxEra = Math.max(...eraSorted.map(e=>e.count),1);
+  const eraHTML = eraSorted.map(e=>{
+    const pct = Math.round((e.count/maxEra)*100);
+    return `<div class="bar-row">
+      <span class="bar-label" style="width:60px">${esc(e.era)}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${eraColours[e.era]||"var(--ink-faint)"}"></div></div>
+      <span class="bar-val">${e.count}</span>
+    </div>`;
+  }).join("");
+
+  /* by decade */
+  const byDecade = {};
+  inCave.forEach(c=>{
+    if(c.year){
+      const d = Math.floor(parseInt(c.year)/10)*10;
+      if(d) byDecade[d+"s"] = (byDecade[d+"s"]||0) + qtyOf(c);
+    }
+  });
+  const decades = Object.keys(byDecade).sort();
+  const maxDec = Math.max(...Object.values(byDecade),1);
+  const decHTML = decades.map(d=>{
+    const pct = Math.round((byDecade[d]/maxDec)*100);
+    return `<div class="bar-row">
+      <span class="bar-label">${esc(d)}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:var(--blue-soft)"></div></div>
+      <span class="bar-val">${byDecade[d]}</span>
+    </div>`;
+  }).join("");
+
+  /* price distribution */
+  const priceBuckets = {"$0–10":0,"$10–25":0,"$25–50":0,"$50–100":0,"$100–500":0,"$500+":0};
+  const bucketColours = ["var(--ok)","var(--blue-soft)","var(--accent)","var(--red-soft)","var(--fire)","var(--grail)"];
+  inCave.forEach(c=>{
+    const p = parsePrice(c.marketValue) || parsePrice(c.price);
+    if(p){
+      const qty = qtyOf(c);
+      if(p<10) priceBuckets["$0–10"]+=qty;
+      else if(p<25) priceBuckets["$10–25"]+=qty;
+      else if(p<50) priceBuckets["$25–50"]+=qty;
+      else if(p<100) priceBuckets["$50–100"]+=qty;
+      else if(p<500) priceBuckets["$100–500"]+=qty;
+      else priceBuckets["$500+"]+=qty;
+    }
+  });
+  const maxPrice = Math.max(...Object.values(priceBuckets),1);
+  const priceHTML = Object.entries(priceBuckets).map(([label,cnt],i)=>{
+    const pct = Math.round((cnt/maxPrice)*100);
+    return `<div class="bar-row">
+      <span class="bar-label">${esc(label)}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${bucketColours[i]}"></div></div>
+      <span class="bar-val">${cnt}</span>
+    </div>`;
+  }).join("");
+
+  /* condition breakdown */
+  const byCond = {};
+  inCave.filter(c=>!isGraded(c)).forEach(c=>{
+    const cond = c.condition||"Unknown";
+    byCond[cond] = (byCond[cond]||0) + qtyOf(c);
+  });
+  const condOrder = [...CONDITIONS, "Unknown"];
+  const condColours = {NM:"var(--nm)",VF:"var(--vf)",FN:"var(--fn)",VG:"var(--vg)",GD:"var(--gd)",FR:"var(--gd)",PR:"var(--gd)",Unknown:"var(--ink-faint)"};
+  const condSorted = condOrder.filter(c=>byCond[c]);
+  const maxCond = Math.max(...condSorted.map(c=>byCond[c]),1);
+  const condHTML = condSorted.map(c=>{
+    const pct = Math.round((byCond[c]/maxCond)*100);
+    return `<div class="bar-row">
+      <span class="bar-label">${esc(c)}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${condColours[c]||"var(--ink-faint)"}"></div></div>
+      <span class="bar-val">${byCond[c]}</span>
+    </div>`;
+  }).join("");
+
+  /* random picker */
+  const pickable = inCave.filter(c => isFire(c) || isKey(c));
+
+  view.innerHTML = `<div class="sheet">
+    <h2 class="comic">Collection Stats</h2>
+
+    <div class="stats-row" style="justify-content:center;gap:12px">
+      <span class="stat-pill"><span class="n">${totalT}</span> titles</span>
+      <span class="stat-pill"><span class="n">${totalB}</span> books</span>
+      <span class="stat-pill" style="border-color:var(--accent)"><span class="n" style="color:var(--accent)">${valStr}</span></span>
+    </div>
+    <div class="stats-row" style="justify-content:center;gap:12px;margin-top:4px">
+      ${fire3?`<span class="stat-pill" style="border-color:var(--fire)"><span class="n" style="color:var(--fire)">🔥🔥🔥 ${fire3}</span> grails</span>`:""}
+      ${fire2?`<span class="stat-pill" style="border-color:var(--fire)"><span class="n" style="color:var(--fire)">🔥🔥 ${fire2}</span> keys</span>`:""}
+      ${fire1?`<span class="stat-pill" style="border-color:var(--fire)"><span class="n" style="color:var(--fire)">🔥 ${fire1}</span> notable</span>`:""}
+      ${keys?`<span class="stat-pill" style="border-color:var(--warn)"><span class="n" style="color:var(--warn)">🔑 ${keys}</span> key issues</span>`:""}
+      ${gc?`<span class="stat-pill" style="border-color:var(--grail)"><span class="n" style="color:var(--grail)">💎 ${gc}</span> grade candidates</span>`:""}
+    </div>
+    <div class="stats-row" style="justify-content:center;gap:12px;margin-top:4px">
+      ${graded?`<span class="stat-pill" style="border-color:var(--ok)"><span class="n" style="color:var(--ok)">🏅 ${graded}</span> graded</span>`:""}
+      ${sold?`<span class="stat-pill"><span class="n">${sold}</span> sold</span>`:""}
+      ${gifted?`<span class="stat-pill" style="border-color:var(--rose)"><span class="n" style="color:var(--rose)">🎁 ${gifted}</span> gifted</span>`:""}
+      <span class="stat-pill"><span class="n">${priced}</span> priced</span>
+    </div>
+
+    <div class="stat-section-label">🎲 What should I read tonight?</div>
+    <div id="random-area">
+      <button class="btn btn-ghost" id="random-btn" style="border-color:var(--accent);color:var(--accent)">🎲 Pick a random book</button>
+    </div>
+
+    <div class="stat-section-label">Books by publisher</div>
+    ${pubHTML}
+
+    <div class="stat-section-label">Books by era</div>
+    ${eraHTML}
+
+    <div class="stat-section-label">Books by decade</div>
+    ${decHTML}
+
+    <div class="stat-section-label">Condition breakdown (raw books)</div>
+    ${condHTML}
+
+    <div class="stat-section-label">Value range (CAD)</div>
+    ${priceHTML}
+  </div>`;
+
+  /* random picker */
+  const allPick = inCave.length ? inCave : [];
+  const bindRandom = () => {
+    const btn = document.getElementById("random-btn");
+    if(!btn) return;
+    btn.onclick = ()=>{
+      if(!allPick.length){ document.getElementById("random-area").innerHTML = `<div class="note">No books to pick from!</div>`; return; }
+      const pick = allPick[Math.floor(Math.random()*allPick.length)];
+      const src = imgSrc(pick);
+      document.getElementById("random-area").innerHTML = `
+        <div class="card" id="random-card" data-id="${esc(pick.id)}" style="cursor:pointer">
+          <div class="card-top">
+            ${src?`<img class="thumb" src="${esc(src)}" alt="">`:`<div class="thumb empty">?</div>`}
+            <div class="card-info">
+              <div class="comic-title">${isFire(pick)?fireEmoji(pick)+" ":""}${esc(pick.title||"")}${pick.issueNumber ? " #"+esc(pick.issueNumber) : ""}</div>
+              <div class="comic-sub">${esc([pick.publisher, pick.year].filter(Boolean).join(" · "))}</div>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-ghost" id="random-btn" style="border-color:var(--accent);color:var(--accent)">🎲 Pick another</button>`;
+      document.getElementById("random-card").onclick = ()=>{
+        collectionScrollY = 0; detailId = pick.id; tab="detail";
+        history.pushState({tab:"detail", id:detailId}, "");
+        render(); window.scrollTo(0,0);
+      };
+      bindRandom();
+    };
+  };
+  bindRandom();
+}
+
+/* ================= value / appreciation tab ================= */
+function renderValue(){
+  const inCave = comics.filter(c=>!isGone(c));
+
+  /* totals */
+  let totalAcq = 0, totalMarket = 0, totalGradedVal = 0;
+  inCave.forEach(c=>{
+    const acq = parsePrice(c.price);
+    const mkt = parsePrice(c.marketValue);
+    const gv = parsePrice(c.gradedValue);
+    if(acq) totalAcq += acq * qtyOf(c);
+    if(mkt) totalMarket += mkt * qtyOf(c);
+    if(gv) totalGradedVal += gv * qtyOf(c);
+  });
+
+  const overallPct = totalAcq > 0 ? Math.round(((totalMarket - totalAcq)/totalAcq)*100) : null;
+
+  /* grade candidates with ROI */
+  const candidates = inCave
+    .filter(c => isGradeCandidate(c) || (parsePrice(c.gradedValue) && !isGraded(c)))
+    .map(c => ({comic:c, roi:gradingROI(c)}))
+    .filter(x => x.roi)
+    .sort((a,b) => b.roi.gain - a.roi.gain);
+
+  /* ticker items */
+  let tickerItems = inCave.map(c => {
+    const acq = parsePrice(c.price);
+    const mkt = parsePrice(c.marketValue);
+    const change = (acq && mkt) ? Math.round(((mkt-acq)/acq)*100) : null;
+    return {comic:c, acq, mkt, change};
+  }).filter(x => x.mkt);
+
+  /* sort ticker */
+  if(valueSort === "change-desc") tickerItems.sort((a,b) => (b.change||0)-(a.change||0));
+  else if(valueSort === "change-asc") tickerItems.sort((a,b) => (a.change||0)-(b.change||0));
+  else if(valueSort === "name") tickerItems.sort((a,b) => (a.comic.title||"").localeCompare(b.comic.title||""));
+  else if(valueSort === "value-desc") tickerItems.sort((a,b) => (b.mkt||0)-(a.mkt||0));
+
+  const tickerHTML = tickerItems.map(({comic:c, acq, mkt, change}) => {
+    const chgClass = change !== null ? (change >= 0 ? "up" : "down") : "";
+    const chgStr = change !== null ? `${change >= 0 ? "▲" : "▼"} ${Math.abs(change)}%` : "";
+    return `<div class="ticker-item" data-id="${esc(c.id)}">
+      <div class="ticker-name">
+        <div class="ticker-title">${isFire(c)?fireEmoji(c)+" ":""}${esc(c.title||"")}${c.issueNumber ? " #"+esc(c.issueNumber) : ""}</div>
+        <div class="ticker-sub">${esc(c.publisher||"")} · ${esc(c.year||"")}</div>
+      </div>
+      <div class="ticker-val">
+        <div>$${mkt.toLocaleString()}</div>
+        <div class="ticker-change ${chgClass}">${chgStr}</div>
+      </div>
+    </div>`;
+  }).join("");
+
+  view.innerHTML = `<div class="sheet">
+    <h2 class="comic">📈 Collection Value</h2>
+
+    <div class="stats-row" style="justify-content:center;gap:12px">
+      <span class="stat-pill"><span class="n">$${Math.round(totalAcq).toLocaleString()}</span> cost</span>
+      <span class="stat-pill" style="border-color:var(--accent)"><span class="n" style="color:var(--accent)">$${Math.round(totalMarket).toLocaleString()}</span> value</span>
+      ${overallPct !== null ? `<span class="stat-pill" style="border-color:${overallPct>=0?"var(--ok)":"var(--red)"}"><span class="n" style="color:${overallPct>=0?"var(--ok)":"var(--red)"}">${overallPct>=0?"▲":"▼"} ${Math.abs(overallPct)}%</span></span>` : ""}
+    </div>
+    ${totalGradedVal ? `<div class="stats-row" style="justify-content:center;gap:12px;margin-top:4px">
+      <span class="stat-pill" style="border-color:var(--grail)"><span class="n" style="color:var(--grail)">$${Math.round(totalGradedVal).toLocaleString()}</span> if all graded</span>
+    </div>` : ""}
+
+    <div style="margin:16px 0">
+      <button class="btn btn-ghost" id="recheck-all" style="border-color:var(--accent);color:var(--accent)">✨ Update all market values (AI)</button>
+      <div class="note">Uses Gemini to estimate current values for all books. ~1 book/sec.</div>
+      <div class="sync-status" id="recheck-all-st" style="display:none"></div>
+    </div>
+
+    ${candidates.length ? `
+    <div class="stat-section-label">💎 Top grading candidates</div>
+    ${candidates.slice(0,10).map(({comic:c, roi}) => `
+      <div class="ticker-item" data-id="${esc(c.id)}">
+        <div class="ticker-name">
+          <div class="ticker-title">${esc(c.title||"")} #${esc(c.issueNumber||"")}</div>
+          <div class="ticker-sub">${esc(c.condition||"")} → graded · ${esc(c.publisher||"")}</div>
+        </div>
+        <div class="ticker-val">
+          <div class="ticker-change ${roi.gain>=0?"up":"down"}">+$${roi.gain}</div>
+          <div style="font-size:10px;color:var(--ink-faint)">$${roi.raw} → $${roi.graded}</div>
+        </div>
+      </div>
+    `).join("")}` : ""}
+
+    <div class="stat-section-label" style="display:flex;justify-content:space-between;align-items:center">
+      Value ticker
+      <select id="val-sort" style="background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--ink-dim);padding:4px 8px;font-size:11px;font-family:'IBM Plex Mono',monospace">
+        <option value="change-desc"${valueSort==="change-desc"?" selected":""}>Gainers ↓</option>
+        <option value="change-asc"${valueSort==="change-asc"?" selected":""}>Losers ↓</option>
+        <option value="value-desc"${valueSort==="value-desc"?" selected":""}>Total value ↓</option>
+        <option value="name"${valueSort==="name"?" selected":""}>A–Z</option>
+      </select>
+    </div>
+    <div id="ticker-list">
+      ${tickerHTML || `<div class="note">No priced books yet. Add prices or run the AI value check.</div>`}
+    </div>
+  </div>`;
+
+  /* sort handler */
+  const sortEl = document.getElementById("val-sort");
+  if(sortEl) sortEl.onchange = ()=>{ valueSort = sortEl.value; renderValue(); };
+
+  /* ticker item clicks */
+  document.querySelectorAll(".ticker-item").forEach(el => {
+    el.style.cursor = "pointer";
+    el.onclick = ()=>{
+      detailId = el.dataset.id; tab = "detail";
+      history.pushState({tab:"detail", id:detailId}, "");
+      render(); window.scrollTo(0,0);
+    };
+  });
+
+  /* bulk value recheck */
+  let recheckAbort = false;
+  const recheckBtn = document.getElementById("recheck-all");
+  if(recheckBtn) recheckBtn.onclick = async ()=>{
+    const rst = document.getElementById("recheck-all-st");
+    rst.style.display = "block";
+    if(!cfg.gkey){ rst.textContent = "Add a Gemini API key in Settings first."; return; }
+    recheckAbort = false;
+    recheckBtn.textContent = "⏹ Stop"; recheckBtn.onclick = ()=>{ recheckAbort = true; };
+    let updated = 0;
+    for(let i = 0; i < comics.length; i++){
+      if(recheckAbort){ rst.textContent = `Stopped. Updated ${updated}/${i} books checked.`; break; }
+      const c = comics[i];
+      if(isGone(c)) continue;
+      const desc = [c.publisher, c.title, c.issueNumber?"#"+c.issueNumber:"", c.year, c.condition].filter(Boolean).join(", ");
+      if(!desc) continue;
+      rst.textContent = `Checking ${i+1}/${comics.length}: ${c.title||""} #${c.issueNumber||""}…`;
+      try{
+        const prompt = VALUE_PROMPT.replace("{{DESC}}", desc);
+        const body = {contents:[{parts:[{text:prompt}]}]};
+        const {r} = await callGemini(body, cfg.gkey, rst);
+        const j = await r.json();
+        const text = ((j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts)||[]).map(p=>p.text||"").join("");
+        const rec = JSON.parse(text.replace(/```json|```/g,"").trim());
+        if(rec.marketValue){ c.marketValue = rec.marketValue; updated++; }
+        if(rec.gradedValue) c.gradedValue = rec.gradedValue;
+        if(rec.gradeCandidate !== undefined) c.gradeCandidate = rec.gradeCandidate;
+        if(rec.gradeCandidateReason) c.gradeCandidateReason = rec.gradeCandidateReason;
+        if(rec.keyStatus && !c.keyStatus) c.keyStatus = rec.keyStatus;
+        c.lastValueCheck = new Date().toISOString().slice(0,10);
+        saveComics();
+      }catch(e){
+        rst.textContent = `Error on ${c.title||""}: ${e.message}. Continuing…`;
+        await new Promise(ok => setTimeout(ok, 1000));
+      }
+    }
+    if(!recheckAbort) rst.textContent = `✓ Done. Updated ${updated} of ${comics.filter(c=>!isGone(c)).length} books.`;
+    recheckBtn.textContent = "✨ Update all market values (AI)";
+    recheckBtn.onclick = arguments.callee;
+    renderValue();
+  };
+}
+
+/* ================= GitHub sync ================= */
+async function ghPut(path, contentB64, message){
+  const url = `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${path}`;
+  const existing = await fetch(url, {headers:{"Authorization":`Bearer ${cfg.token}`,"Accept":"application/vnd.github.v3+json"}});
+  let sha;
+  if(existing.ok){ sha = (await existing.json()).sha; }
+  const body = {message, content:contentB64};
+  if(sha) body.sha = sha;
+  if(cfg.branch && cfg.branch !== "main") body.branch = cfg.branch;
+  const r = await fetch(url, {
+    method:"PUT",
+    headers:{"Authorization":`Bearer ${cfg.token}`,"Accept":"application/vnd.github.v3+json","Content-Type":"application/json"},
+    body:JSON.stringify(body)
+  });
+  if(!r.ok) throw new Error(`GitHub ${r.status}: ${(await r.text()).slice(0,120)}`);
+}
+function b64EncodeUnicode(str){
+  return btoa(unescape(encodeURIComponent(str)));
+}
+
+async function pushAll(statusEl){
+  if(!cfg.owner||!cfg.repo||!cfg.token) throw new Error("Fill in owner, repo, and token first.");
+  const dirty = comics.filter(c=>c.imageData && c.imageDirty!==false);
+  let i=0;
+  for(const c of dirty){
+    i++;
+    statusEl.textContent = `Uploading cover ${i}/${dirty.length}…`;
+    const path = `comics/images/${c.id}.jpg`;
+    const b64 = c.imageData.split(",")[1];
+    await ghPut(path, b64, `Add cover ${c.title||""} #${c.issueNumber||""}`.trim());
+    c.imagePath = `images/${c.id}.jpg`; c.imageDirty = false;
+  }
+  statusEl.textContent = "Writing comics.json…";
+  const clean = comics.map(({imageData, imageDirty, ...rest})=>rest);
+  await ghPut("comics/data/comics.json", b64EncodeUnicode(JSON.stringify(clean,null,2)), `Update collection (${clean.length} comics)`);
+  comics.forEach(c=>{ if(c.imagePath){ delete c.imageData; delete c.imageDirty; } });
+  saveComics();
+  cfg.lastSync = new Date().toLocaleString(); saveCfg();
+  logSync("push", `${clean.length} comics, ${dirty.length} cover${dirty.length!==1?"s":""}`);
+  statusEl.textContent = `✓ Synced ${clean.length} comics at ${cfg.lastSync}`;
+}
+async function pullAll(statusEl){
+  if(!cfg.owner||!cfg.repo) throw new Error("Fill in owner and repo first.");
+  statusEl.textContent = "Fetching comics.json…";
+  const url = `https://raw.githubusercontent.com/${cfg.owner}/${cfg.repo}/${cfg.branch||"main"}/comics/data/comics.json?t=${Date.now()}`;
+  const r = await fetch(url);
+  if(!r.ok) throw new Error("Could not read comics/data/comics.json ("+r.status+"). Has the collection been pushed yet?");
+  const remote = await r.json();
+  if(!Array.isArray(remote)) throw new Error("comics.json is not a list.");
+  if(comics.length && !confirm(`Replace the ${comics.length} local comics with ${remote.length} from GitHub?`)){
+    statusEl.textContent = "Pull cancelled."; return;
+  }
+  comics = remote; saveComics();
+  cfg.lastSync = new Date().toLocaleString(); saveCfg();
+  logSync("pull", `${comics.length} comics loaded`);
+  statusEl.textContent = `✓ Loaded ${comics.length} comics from GitHub.`;
+  render();
+}
+
+function renderSync(){
+  const notSet = `<span class="tbd">not set</span>`;
+  const lastSync = syncHistory.length ? syncHistory[0] : null;
+  const lastSyncHTML = lastSync
+    ? `<div class="history-last"><span class="hist-type ${esc(lastSync.type)}">${esc(lastSync.type)}</span><span class="hist-detail">${esc(lastSync.detail)}</span><span class="hist-time">${esc(lastSync.time)}</span></div>`
+    : `<div class="note">No sync activity yet.</div>`;
+  const olderHistHTML = syncHistory.length > 1
+    ? `<details class="collapse"><summary>Older entries</summary><div class="collapse-body"><ul class="history-list">${syncHistory.slice(1).map(h =>
+        `<li><span class="hist-type ${esc(h.type)}">${esc(h.type)}</span><span class="hist-detail">${esc(h.detail)}</span><span class="hist-time">${esc(h.time)}</span></li>`
+      ).join("")}</ul></div></details>`
+    : "";
+
+  view.innerHTML = `<div class="sheet">
+    <h2 class="comic">Sync with GitHub</h2>
+    <button class="btn btn-primary" id="pull">Pull collection from GitHub</button>
+    <div class="note">Pull replaces this device's list with the repo copy — use it when opening the site on a new device or to get the latest data.</div>
+    <div class="sync-status" id="st">${cfg.lastSync? "Last sync: "+esc(cfg.lastSync) : "Not synced yet. Comics are saved on this device either way."}</div>
+    <hr class="section-rule">
+    <button class="btn btn-ghost" id="push">Push collection to GitHub</button>
+    <div class="note">Push uploads new cover photos and writes <span class="mono">comics/data/comics.json</span> — overwrites the repo with what's on this device.</div>
+
+    <hr class="section-rule">
+    <button class="btn btn-ghost" id="recheck-all-sync" style="border-color:var(--accent);color:var(--accent)">✨ Re-check all values (AI)</button>
+    <div class="note">Uses Gemini to estimate market values in CAD for all comics. ~1 book/sec. You can stop anytime.</div>
+    <div class="sync-status" id="recheck-all-st" style="display:none"></div>
+
+    <div class="sync-history-section">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-faint);padding:10px 0">Sync history</div>
+      ${lastSyncHTML}
+      ${olderHistHTML}
+    </div>
+
+    <details class="collapse">
+      <summary>What's new</summary>
+      <div class="collapse-body">
+        <ul class="changelog">
+          <li><span class="cl-ver">Aug 2026</span>
+            <span class="cl-title">📚 The Cave — Comic Book Vault</span><br>
+            <span class="cl-desc">Initial release. Cover scanning with AI identification (Gemini). Collection management with publisher, era, condition tracking. Fire tier system (🔥 Notable → 🔥🔥 Key Issue → 🔥🔥🔥 Grail). Grade candidate detection with ROI analysis. Market value tracking with stock-ticker UI. GitHub sync for backup.</span></li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="collapse">
+      <summary>Settings &amp; API keys</summary>
+      <div class="collapse-body">
+        <div class="field"><label>GitHub username (owner)</label><input id="c-owner" value="${esc(cfg.owner)}" placeholder="e.g. ronacul" autocapitalize="off">
+          <div class="note">Currently: ${cfg.owner?esc(cfg.owner):notSet}</div></div>
+        <div class="field"><label>Repository name</label><input id="c-repo" value="${esc(cfg.repo)}" placeholder="e.g. wine-cellar" autocapitalize="off">
+          <div class="note">Currently: ${cfg.repo?esc(cfg.repo):notSet}</div></div>
+        <div class="field"><label>Branch</label><input id="c-branch" value="${esc(cfg.branch||"main")}" placeholder="e.g. main" autocapitalize="off">
+          <div class="note">Currently: ${esc(cfg.branch||"main")}</div></div>
+        <div class="field"><label>Personal access token</label><input id="c-token" type="password" value="${esc(cfg.token)}" autocapitalize="off">
+          <div class="note">Fine-grained token with <b>Contents: read &amp; write</b> on this one repo. Stored only in this browser. Currently: ${cfg.token?"a token is saved":notSet}</div>
+        </div>
+        <div class="field"><label>Gemini API key (cover scanning)</label><input id="c-gkey" type="password" value="${esc(cfg.gkey)}" autocapitalize="off">
+          <div class="note">Free key from <b>aistudio.google.com</b>. Enables the ✨ Identify button on the add-book form. Currently: ${cfg.gkey?"a key is saved":notSet}</div>
+        </div>
+        <button class="btn btn-ghost" id="savecfg">Save settings</button>
+      </div>
+    </details>
+  </div>`;
+
+  const st = document.getElementById("st");
+  document.getElementById("savecfg").onclick = ()=>{
+    cfg.owner=document.getElementById("c-owner").value.trim();
+    cfg.repo=document.getElementById("c-repo").value.trim();
+    cfg.branch=document.getElementById("c-branch").value.trim()||"main";
+    cfg.token=document.getElementById("c-token").value.trim();
+    cfg.gkey=document.getElementById("c-gkey").value.trim();
+    saveCfg(); st.textContent="Settings saved."; renderSync();
+  };
+  document.getElementById("push").onclick = async ()=>{
+    document.getElementById("savecfg").click();
+    try{ await pushAll(st); } catch(e){ st.textContent = "✗ " + e.message; }
+  };
+  document.getElementById("pull").onclick = async ()=>{
+    document.getElementById("savecfg").click();
+    try{ await pullAll(st); } catch(e){ st.textContent = "✗ " + e.message; }
+  };
+
+  /* bulk value recheck from sync page */
+  let recheckAbort = false;
+  document.getElementById("recheck-all-sync").onclick = async ()=>{
+    const rst = document.getElementById("recheck-all-st");
+    rst.style.display = "block";
+    if(!cfg.gkey){ rst.textContent = "Add a Gemini API key in Settings below first."; return; }
+    recheckAbort = false;
+    const btn = document.getElementById("recheck-all-sync");
+    btn.textContent = "⏹ Stop"; btn.onclick = ()=>{ recheckAbort = true; };
+    let updated = 0;
+    for(let i = 0; i < comics.length; i++){
+      if(recheckAbort){ rst.textContent = `Stopped. Updated ${updated}/${i} books checked.`; break; }
+      const c = comics[i];
+      if(isGone(c)) continue;
+      const desc = [c.publisher, c.title, c.issueNumber?"#"+c.issueNumber:"", c.year, c.condition].filter(Boolean).join(", ");
+      if(!desc) continue;
+      rst.textContent = `Checking ${i+1}/${comics.length}: ${c.title||""} #${c.issueNumber||""}…`;
+      try{
+        const prompt = VALUE_PROMPT.replace("{{DESC}}", desc);
+        const body = {contents:[{parts:[{text:prompt}]}]};
+        const {r} = await callGemini(body, cfg.gkey, rst);
+        const j = await r.json();
+        const text = ((j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts)||[]).map(p=>p.text||"").join("");
+        const rec = JSON.parse(text.replace(/```json|```/g,"").trim());
+        if(rec.marketValue){ c.marketValue = rec.marketValue; updated++; }
+        if(rec.gradedValue) c.gradedValue = rec.gradedValue;
+        if(rec.gradeCandidate !== undefined) c.gradeCandidate = rec.gradeCandidate;
+        if(rec.gradeCandidateReason) c.gradeCandidateReason = rec.gradeCandidateReason;
+        if(rec.keyStatus && !c.keyStatus) c.keyStatus = rec.keyStatus;
+        c.lastValueCheck = new Date().toISOString().slice(0,10);
+        saveComics();
+      }catch(e){
+        rst.textContent = `Error on ${c.title||""}: ${e.message}. Continuing…`;
+        await new Promise(ok => setTimeout(ok, 1000));
+      }
+    }
+    if(!recheckAbort) rst.textContent = `✓ Done. Updated ${updated} of ${comics.filter(c=>!isGone(c)).length} books.`;
+    btn.textContent = "✨ Re-check all values (AI)";
+  };
+}
+
+/* ================= navigation ================= */
+const SEED = [{
+  id:"sample-asm-300",
+  added:"2026-08-16",
+  publisher:"Marvel",
+  title:"The Amazing Spider-Man",
+  issueNumber:"300",
+  variant:"",
+  year:"1988",
+  era:"Copper",
+  condition:"VF",
+  graded:false,
+  grade:null,
+  gradingCompany:null,
+  keyStatus:"First full appearance of Venom (Eddie Brock)",
+  fire:2,
+  coverArtist:"Todd McFarlane",
+  writer:"David Michelinie",
+  characters:"Spider-Man, Venom",
+  price:"$400 CAD",
+  source:"LCS",
+  location:"A1",
+  qty:1,
+  notes:"First full appearance of Venom. Todd McFarlane cover and interior art. Copper Age key. One of the most sought-after modern keys.",
+  marketValue:"~$650 CAD (est.)",
+  gradedValue:"~$1,800 CAD (est.)",
+  gradeCandidate:true,
+  gradeCandidateReason:"VF raw to CGC 8.0 would significantly increase value — strong ROI after grading cost.",
+  lastValueCheck:"2026-08-16",
+  soldDate:null,
+  soldPrice:null,
+  soldTo:null,
+  giftedTo:null,
+  imagePath:null
+}];
+if(!localStorage.getItem(LS_COMICS)) { comics = SEED; saveComics(); }
+
+function setTab(t, restoreScroll){
+  tab = t;
+  document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("active", b.dataset.tab===t));
+  render();
+  if(restoreScroll !== undefined) window.scrollTo(0, restoreScroll);
+  else window.scrollTo(0, 0);
+}
+document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click", ()=>{
+  editingId = null;
+  setTab(b.dataset.tab);
+}));
+
+/* browser back/forward */
+window.addEventListener("popstate", (e)=>{
+  if(e.state && e.state.tab==="detail"){
+    detailId = e.state.id; tab="detail"; render(); window.scrollTo(0,0);
+  } else {
+    tab="collection"; setTab("collection", collectionScrollY);
+  }
+});
+
+(async ()=>{
+  render();
+  if(!comics.length && cfg.owner && cfg.repo){
+    try{
+      const r = await fetch(`https://raw.githubusercontent.com/${cfg.owner}/${cfg.repo}/${cfg.branch||"main"}/comics/data/comics.json?t=${Date.now()}`);
+      if(r.ok){ comics = await r.json(); saveComics(); render(); }
+    }catch(e){}
+  }
+})();
+</script>
+</body>
+</html>
