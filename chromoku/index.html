@@ -265,7 +265,7 @@ h1{
    (positioned outside the shape boundary) is not clipped away. */
 .swatch.shaped{background:transparent; box-shadow:none}
 .swatch.shaped::before{content:""; position:absolute; inset:0; background:var(--c);
-  clip-path:var(--clip)}
+  clip-path:var(--clip); border-radius:3px}
 .swatch.shaped.on{box-shadow:0 0 0 3px var(--bg),0 0 0 6px var(--c)}
 .swatch.shaped.done::before{opacity:.35}
 /* Scramble mode: Stroop-style interference — colours get random shape
