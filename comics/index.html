@@ -1998,10 +1998,10 @@ function renderSync(){
         <div class="field"><label>Branch</label><input id="c-branch" value="${esc(cfg.branch||"main")}" placeholder="e.g. main" autocapitalize="off">
           <div class="note">Currently: ${esc(cfg.branch||"main")}</div></div>
         <div class="field"><label>Personal access token</label><input id="c-token" type="password" value="${esc(cfg.token)}" autocapitalize="off">
-          <div class="note">Fine-grained token with <b>Contents: read &amp; write</b> on this one repo. Stored only in this browser. Currently: ${cfg.token?"a token is saved":notSet}</div>
+          <div class="note">Fine-grained token with <b>Contents: read &amp; write</b> on this one repo. Stored only in this browser. <a href="https://github.com/settings/tokens?type=beta" target="_blank" rel="noopener" style="color:var(--accent)">Create one on GitHub →</a><br>Currently: ${cfg.token?"a token is saved":notSet}</div>
         </div>
         <div class="field"><label>Gemini API key (cover scanning)</label><input id="c-gkey" type="password" value="${esc(cfg.gkey)}" autocapitalize="off">
-          <div class="note">Free key from <b>aistudio.google.com</b>. Enables the ✨ Identify button on the add-book form. Currently: ${cfg.gkey?"a key is saved":notSet}</div>
+          <div class="note">Free key — no credit card needed. Enables the ✨ Identify button on the add-book form. <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--accent)">Get a key from Google AI Studio →</a><br>Currently: ${cfg.gkey?"a key is saved":notSet}</div>
         </div>
         <button class="btn btn-ghost" id="savecfg">Save settings</button>
       </div>
