@@ -2202,6 +2202,9 @@ function renderSync(){
       <div class="collapse-body">
         <ul class="changelog">
           <li><span class="cl-ver">Aug 18 2026</span>
+            <span class="cl-title">✂️ Trim to cover shape + grading fix</span><br>
+            <span class="cl-desc">New "Trim to cover shape" button crops photos to comic book proportions (2:3). Fixed AI grading fields (marketValue, gradedValue, gradeCandidate) not being saved — run "Update market values" on the Value tab to backfill existing books. Memory leak fixes: smaller images (600px/0.72), blob URL cleanup, canvas freeing. Camera-return navigation fix for iOS.</span></li>
+          <li><span class="cl-ver">Aug 18 2026</span>
             <span class="cl-title">📸 Photo storage fix</span><br>
             <span class="cl-desc">Cover photos now stored in IndexedDB instead of localStorage — fixes "low memory" errors when scanning covers. Existing photos migrate automatically. Also fixed AI publisher detection ("Marvel Comics" → "Marvel").</span></li>
           <li><span class="cl-ver">Aug 2026</span>
