@@ -996,7 +996,7 @@
     "name": "Merlot - Grenache",
     "vintage": "2009",
     "type": "Red",
-    "qty": 1,
+    "qty": 0,
     "region": "Pays d'Oc IGP, France",
     "drinkFrom": "2011",
     "drinkTo": "2014",
@@ -1008,7 +1008,20 @@
     "price": "~$12 CAD (est.)",
     "location": "E",
     "notes": "Merlot and Grenache. A simple, easy-drinking rustic Southern French red blend; based on typical IGP Pays d'Oc standards, this bottle is likely well past its prime drinking window.",
-    "imagePath": "images/msgrsjwdb0b3z.jpg"
+    "imagePath": "images/msgrsjwdb0b3z.jpg",
+    "tastingHistory": [
+      {
+        "date": "2026-08-17",
+        "rating": 4,
+        "notes": "Good, Daniela found it a little strong/chewy",
+        "bottleNum": 1
+      }
+    ],
+    "drankDate": "2026-08-16",
+    "rating": 4,
+    "drinkNotes": "Good, Daniela found it a little strong/chewy",
+    "buyAgain": null,
+    "giftedTo": null
   },
   {
     "id": "msgruglpwvbtm",
