@@ -659,17 +659,24 @@ function valueBandChipHTML(c){
 /* ================= images ================= */
 function resizeImage(file){
   return new Promise((resolve,reject)=>{
+    const blobUrl = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => {
-      const MAX = 800;
+      const MAX = 600; /* smaller than 800 — saves ~40% memory on mobile */
       let {width:w, height:h} = img;
       if(w > MAX || h > MAX){ const r = Math.min(MAX/w, MAX/h); w = Math.round(w*r); h = Math.round(h*r); }
       const c = document.createElement("canvas"); c.width=w; c.height=h;
-      c.getContext("2d").drawImage(img,0,0,w,h);
-      resolve(c.toDataURL("image/jpeg", 0.82));
+      const ctx = c.getContext("2d");
+      ctx.drawImage(img,0,0,w,h);
+      const dataUrl = c.toDataURL("image/jpeg", 0.72);
+      /* free memory: revoke blob, zero canvas, drop references */
+      URL.revokeObjectURL(blobUrl);
+      c.width = 0; c.height = 0;
+      img.src = "";
+      resolve(dataUrl);
     };
-    img.onerror = reject;
-    img.src = URL.createObjectURL(file);
+    img.onerror = (e) => { URL.revokeObjectURL(blobUrl); reject(e); };
+    img.src = blobUrl;
   });
 }
 function imgSrc(c){
@@ -1645,33 +1652,42 @@ function renderForm(){
       notes: document.getElementById("f-notes").value.trim(),
     };
 
-    if(editingId){
-      const existing = comics.find(x=>x.id===editingId);
-      if(existing) Object.assign(existing, data);
-      if(pendingImage && pendingImage !== existing._photoUrl){
-        await savePhoto(existing.id, pendingImage);
-        existing._photoUrl = pendingImage;
-        existing.imageDirty = true;
+    try {
+      if(editingId){
+        const existing = comics.find(x=>x.id===editingId);
+        if(existing) Object.assign(existing, data);
+        if(pendingImage && pendingImage !== existing._photoUrl){
+          await savePhoto(existing.id, pendingImage).catch(()=>{});
+          existing._photoUrl = pendingImage;
+          existing.imageDirty = true;
+        }
+        pendingImage = null; /* free memory */
+        saveComics();
+        editingId = null;
+        tab = "detail"; detailId = existing.id; render();
+      } else {
+        const newComic = {
+          id: uid(),
+          added: new Date().toISOString().slice(0,10),
+          ...data
+        };
+        if(pendingImage){
+          await savePhoto(newComic.id, pendingImage).catch(()=>{});
+          newComic._photoUrl = pendingImage;
+          newComic.imageDirty = true;
+        }
+        pendingImage = null; /* free memory */
+        comics.push(newComic);
+        saveComics();
+        detailId = newComic.id; tab = "detail";
+        history.pushState({tab:"detail", id:detailId}, "");
+        render(); window.scrollTo(0,0);
       }
+    } catch(e) {
+      console.error("Save error:", e);
+      /* still navigate even if photo storage failed */
       saveComics();
-      editingId = null;
-      tab = "detail"; detailId = existing.id; render();
-    } else {
-      const newComic = {
-        id: uid(),
-        added: new Date().toISOString().slice(0,10),
-        ...data
-      };
-      if(pendingImage){
-        await savePhoto(newComic.id, pendingImage);
-        newComic._photoUrl = pendingImage;
-        newComic.imageDirty = true;
-      }
-      comics.push(newComic);
-      saveComics();
-      detailId = newComic.id; tab = "detail";
-      history.pushState({tab:"detail", id:detailId}, "");
-      render(); window.scrollTo(0,0);
+      tab = "collection"; render();
     }
   };
 
@@ -2264,12 +2280,15 @@ if(!localStorage.getItem(LS_COMICS)) { comics = SEED; saveComics(); }
 function setTab(t, restoreScroll){
   tab = t;
   document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("active", b.dataset.tab===t));
+  /* push tab state so camera return doesn't lose Add tab */
+  if(t === "add") history.replaceState({tab:"add"}, "");
   render();
   if(restoreScroll !== undefined) window.scrollTo(0, restoreScroll);
   else window.scrollTo(0, 0);
 }
 document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click", ()=>{
   editingId = null;
+  pendingImage = null; /* free memory when leaving Add tab */
   setTab(b.dataset.tab);
 }));
 
@@ -2277,10 +2296,29 @@ document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click", (
 window.addEventListener("popstate", (e)=>{
   if(e.state && e.state.tab==="detail"){
     detailId = e.state.id; tab="detail"; render(); window.scrollTo(0,0);
+  } else if(e.state && e.state.tab){
+    tab = e.state.tab; render();
   } else {
     tab="collection"; setTab("collection", collectionScrollY);
   }
 });
+/* save/restore state when iOS kills + restores the page (camera, low memory) */
+window.addEventListener("pagehide", ()=>{
+  sessionStorage.setItem("cave.comics.tab", tab);
+  if(editingId) sessionStorage.setItem("cave.comics.editing", editingId);
+  if(detailId) sessionStorage.setItem("cave.comics.detail", detailId);
+});
+(function restoreState(){
+  const savedTab = sessionStorage.getItem("cave.comics.tab");
+  if(savedTab && savedTab !== "collection"){
+    tab = savedTab;
+    editingId = sessionStorage.getItem("cave.comics.editing") || null;
+    detailId = sessionStorage.getItem("cave.comics.detail") || null;
+    sessionStorage.removeItem("cave.comics.tab");
+    sessionStorage.removeItem("cave.comics.editing");
+    sessionStorage.removeItem("cave.comics.detail");
+  }
+})();
 
 (async ()=>{
   /* migrate any base64 photos from localStorage → IndexedDB (one-time) */
