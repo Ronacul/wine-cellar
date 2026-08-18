@@ -407,7 +407,75 @@ let filters = {fire:false, key:false, graded:false, gradeCandidate:false, raw:fa
 let boxFilters = new Set();
 let valueSort = "change-desc";
 
-const saveComics = () => localStorage.setItem(LS_COMICS, JSON.stringify(comics));
+/* ---- IndexedDB photo store (avoids localStorage quota) ---- */
+const IDB_NAME = "cave-comics-photos";
+const IDB_STORE = "photos";
+let _idb = null;
+function openPhotoDB(){
+  if(_idb) return Promise.resolve(_idb);
+  return new Promise((resolve, reject)=>{
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = ()=> req.result.createObjectStore(IDB_STORE);
+    req.onsuccess = ()=>{ _idb = req.result; resolve(_idb); };
+    req.onerror = ()=> reject(req.error);
+  });
+}
+async function savePhoto(id, dataUrl){
+  const db = await openPhotoDB();
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(IDB_STORE, "readwrite");
+    tx.objectStore(IDB_STORE).put(dataUrl, id);
+    tx.oncomplete = resolve; tx.onerror = ()=> reject(tx.error);
+  });
+}
+async function getPhoto(id){
+  const db = await openPhotoDB();
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(IDB_STORE, "readonly");
+    const req = tx.objectStore(IDB_STORE).get(id);
+    req.onsuccess = ()=> resolve(req.result || null);
+    req.onerror = ()=> reject(req.error);
+  });
+}
+async function deletePhoto(id){
+  const db = await openPhotoDB();
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(IDB_STORE, "readwrite");
+    tx.objectStore(IDB_STORE).delete(id);
+    tx.oncomplete = resolve; tx.onerror = ()=> reject(tx.error);
+  });
+}
+async function allPhotoKeys(){
+  const db = await openPhotoDB();
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(IDB_STORE, "readonly");
+    const req = tx.objectStore(IDB_STORE).getAllKeys();
+    req.onsuccess = ()=> resolve(req.result || []);
+    req.onerror = ()=> reject(req.error);
+  });
+}
+/* migrate any imageData still stuck in localStorage comics → IndexedDB */
+async function migratePhotos(){
+  let migrated = 0;
+  for(const c of comics){
+    if(c.imageData){
+      await savePhoto(c.id, c.imageData);
+      c.imageDirty = c.imageDirty !== false; /* preserve dirty flag */
+      delete c.imageData;
+      migrated++;
+    }
+  }
+  if(migrated) saveComics();
+}
+
+const saveComics = () => {
+  /* strip transient photo data before saving — photos live in IndexedDB */
+  const safe = comics.map(c => {
+    const {imageData, _photoUrl, ...rest} = c;
+    return rest;
+  });
+  localStorage.setItem(LS_COMICS, JSON.stringify(safe));
+};
 let syncHistory = JSON.parse(localStorage.getItem(LS_HIST) || "[]");
 function logSync(type, detail){
   syncHistory.unshift({type, detail, time: new Date().toLocaleString()});
@@ -428,6 +496,25 @@ const ERAS = ["Golden","Silver","Bronze","Copper","Modern"];
 const ERA_YEARS = {Golden:"1938–1956",Silver:"1956–1970",Bronze:"1970–1985",Copper:"1985–1991",Modern:"1991–present"};
 const PUBLISHERS = ["Marvel","DC","Image","Dark Horse","IDW","Boom!","Valiant","Indie"];
 const PUB_COLOURS = {Marvel:"var(--marvel)",DC:"var(--dc)",Image:"var(--image)","Dark Horse":"#4a8c4a",IDW:"var(--ink-dim)","Boom!":"#c060c0",Valiant:"#60c0c0",Indie:"var(--ink-faint)"};
+/* normalise AI publisher strings to match PUBLISHERS select options */
+function normalisePub(raw){
+  if(!raw) return "";
+  const s = raw.trim();
+  const lo = s.toLowerCase().replace(/[^a-z0-9! ]/g,"");
+  const map = {
+    "marvel":"Marvel","marvel comics":"Marvel","marvel entertainment":"Marvel",
+    "dc":"DC","dc comics":"DC","detective comics":"DC",
+    "image":"Image","image comics":"Image",
+    "dark horse":"Dark Horse","dark horse comics":"Dark Horse",
+    "idw":"IDW","idw publishing":"IDW",
+    "boom":"Boom!","boom studios":"Boom!","boom! studios":"Boom!",
+    "valiant":"Valiant","valiant comics":"Valiant","valiant entertainment":"Valiant",
+  };
+  if(map[lo]) return map[lo];
+  /* partial match — e.g. "Marvel" inside "Marvel Comics Group" */
+  for(const p of PUBLISHERS){ if(lo.includes(p.toLowerCase().replace(/[^a-z0-9! ]/g,""))) return p; }
+  return s; /* return original if no match — user can pick manually */
+}
 
 /* ================= helpers ================= */
 function fireLevel(c){ const f = c.fire; if(f === true) return 1; return parseInt(f)||0; }
@@ -586,9 +673,16 @@ function resizeImage(file){
   });
 }
 function imgSrc(c){
-  if(c.imageData) return c.imageData;
+  if(c._photoUrl) return c._photoUrl; /* in-memory cache from IndexedDB */
   if(c.imagePath && cfg.owner && cfg.repo)
     return `https://raw.githubusercontent.com/${cfg.owner}/${cfg.repo}/${cfg.branch||"main"}/comics/${c.imagePath}`;
+  return null;
+}
+/* load photo from IndexedDB into transient _photoUrl for display */
+async function loadPhoto(c){
+  if(c._photoUrl) return c._photoUrl;
+  const data = await getPhoto(c.id).catch(()=>null);
+  if(data){ c._photoUrl = data; return data; }
   return null;
 }
 function imgToBase64(imgEl){
@@ -649,6 +743,27 @@ function render(){
   else if(tab==="stats") renderStats();
   else if(tab==="value") renderValue();
   else if(tab==="sync") renderSync();
+
+  /* lazy-load photos from IndexedDB for cards without a GitHub URL */
+  loadPendingPhotos();
+}
+async function loadPendingPhotos(){
+  const emptyThumbs = document.querySelectorAll(".card .thumb.empty");
+  for(const el of emptyThumbs){
+    const card = el.closest(".card");
+    if(!card) continue;
+    const id = card.dataset.id;
+    if(!id) continue;
+    const data = await getPhoto(id).catch(()=>null);
+    if(data){
+      const img = document.createElement("img");
+      img.className = "thumb"; img.alt = ""; img.loading = "lazy"; img.src = data;
+      el.replaceWith(img);
+      /* cache in-memory for detail view */
+      const c = comics.find(x=>x.id===id);
+      if(c) c._photoUrl = data;
+    }
+  }
 }
 
 /* ================= list rendering ================= */
@@ -941,7 +1056,7 @@ function renderDetail(){
       <button id="back">← Back</button>
       <button id="edit" style="margin-left:auto;color:var(--accent)">Edit</button>
     </div>
-    ${src ? `<img class="detail-photo" src="${esc(src)}" alt="" crossorigin="anonymous">` : ""}
+    ${src ? `<img class="detail-photo" id="detail-photo" src="${esc(src)}" alt="" crossorigin="anonymous">` : `<div id="detail-photo-placeholder"></div>`}
     <div class="detail-name" style="${pc?`color:${PUB_COLOURS[c.publisher]||"var(--ink)"}`:""}">${fl ? fireEmoji(c)+" " : ""}${esc(c.title||"Unknown")}${c.issueNumber ? ` <span style="color:var(--accent)">#${esc(c.issueNumber)}</span>` : ""}</div>
     <div class="detail-sub">${esc([c.publisher, c.year, c.era].filter(Boolean).join(" · "))}</div>
 
@@ -1024,6 +1139,19 @@ function renderDetail(){
 
     <button class="btn btn-danger" id="del">Remove from collection</button>
   </div>`;
+
+  /* lazy-load photo from IndexedDB if not from GitHub */
+  if(!src){
+    loadPhoto(c).then(data=>{
+      if(!data) return;
+      const ph = document.getElementById("detail-photo-placeholder");
+      if(ph){
+        const img = document.createElement("img");
+        img.className = "detail-photo"; img.alt = ""; img.crossOrigin = "anonymous"; img.src = data;
+        ph.replaceWith(img);
+      }
+    });
+  }
 
   /* bind events */
   document.getElementById("back").onclick = ()=> history.back();
@@ -1242,7 +1370,7 @@ Base on current market data, recent sales, and guide prices. Be research-grade a
 let pendingImage = null;
 function renderForm(){
   const c = editingId ? comics.find(x=>x.id===editingId) : {};
-  pendingImage = c && c.imageData ? c.imageData : null;
+  pendingImage = c && c._photoUrl ? c._photoUrl : null;
   const existingSrc = c ? imgSrc(c) : null;
 
   view.innerHTML = `<div class="sheet">
@@ -1393,6 +1521,16 @@ function renderForm(){
     }
   });
 
+  /* load pending photo from IndexedDB if editing */
+  if(editingId && !pendingImage){
+    loadPhoto(c).then(data=>{
+      if(!data) return;
+      pendingImage = data;
+      const pv = document.getElementById("pv");
+      if(pv && !pv.src){ pv.src = data; pv.style.display = "block"; }
+    });
+  }
+
   /* photo handlers */
   const handlePhoto = async (file) => {
     if(!file) return;
@@ -1436,11 +1574,19 @@ function renderForm(){
 
       /* fill form fields */
       const fieldMap = {
-        publisher:"f-pub", title:"f-title", issueNumber:"f-issue", variant:"f-variant",
+        title:"f-title", issueNumber:"f-issue", variant:"f-variant",
         year:"f-year", coverArtist:"f-artist", writer:"f-writer", characters:"f-chars",
         keyStatus:"f-key", price:"f-price", notes:"f-notes"
       };
       let filled = 0;
+      /* publisher needs normalisation — AI returns "Marvel Comics" but select has "Marvel" */
+      if(rec.publisher){
+        const pubEl = document.getElementById("f-pub");
+        if(pubEl && !pubEl.value){
+          pubEl.value = normalisePub(rec.publisher);
+          if(pubEl.value){ pubEl.classList.add("needs-att"); filled++; }
+        }
+      }
       Object.entries(fieldMap).forEach(([k,elId]) => {
         if(rec[k]){
           const el = document.getElementById(elId);
@@ -1475,7 +1621,7 @@ function renderForm(){
   };
 
   /* save */
-  document.getElementById("save").onclick = ()=>{
+  document.getElementById("save").onclick = async ()=>{
     const data = {
       publisher: document.getElementById("f-pub").value,
       title: document.getElementById("f-title").value.trim(),
@@ -1502,8 +1648,9 @@ function renderForm(){
     if(editingId){
       const existing = comics.find(x=>x.id===editingId);
       if(existing) Object.assign(existing, data);
-      if(pendingImage && pendingImage !== existing.imageData){
-        existing.imageData = pendingImage;
+      if(pendingImage && pendingImage !== existing._photoUrl){
+        await savePhoto(existing.id, pendingImage);
+        existing._photoUrl = pendingImage;
         existing.imageDirty = true;
       }
       saveComics();
@@ -1516,7 +1663,8 @@ function renderForm(){
         ...data
       };
       if(pendingImage){
-        newComic.imageData = pendingImage;
+        await savePhoto(newComic.id, pendingImage);
+        newComic._photoUrl = pendingImage;
         newComic.imageDirty = true;
       }
       comics.push(newComic);
@@ -1908,20 +2056,26 @@ function b64EncodeUnicode(str){
 
 async function pushAll(statusEl){
   if(!cfg.owner||!cfg.repo||!cfg.token) throw new Error("Fill in owner, repo, and token first.");
-  const dirty = comics.filter(c=>c.imageData && c.imageDirty!==false);
+  /* find comics with dirty photos in IndexedDB */
+  const dirtyIds = await allPhotoKeys();
+  const dirty = comics.filter(c => dirtyIds.includes(c.id) && c.imageDirty !== false);
   let i=0;
   for(const c of dirty){
     i++;
     statusEl.textContent = `Uploading cover ${i}/${dirty.length}…`;
+    const photoData = await getPhoto(c.id);
+    if(!photoData) continue;
     const path = `comics/images/${c.id}.jpg`;
-    const b64 = c.imageData.split(",")[1];
+    const b64 = photoData.split(",")[1];
     await ghPut(path, b64, `Add cover ${c.title||""} #${c.issueNumber||""}`.trim());
     c.imagePath = `images/${c.id}.jpg`; c.imageDirty = false;
+    /* clean up IndexedDB now that photo is on GitHub */
+    await deletePhoto(c.id);
+    delete c._photoUrl;
   }
   statusEl.textContent = "Writing comics.json…";
-  const clean = comics.map(({imageData, imageDirty, ...rest})=>rest);
+  const clean = comics.map(({_photoUrl, imageDirty, ...rest})=>rest);
   await ghPut("comics/data/comics.json", b64EncodeUnicode(JSON.stringify(clean,null,2)), `Update collection (${clean.length} comics)`);
-  comics.forEach(c=>{ if(c.imagePath){ delete c.imageData; delete c.imageDirty; } });
   saveComics();
   cfg.lastSync = new Date().toLocaleString(); saveCfg();
   logSync("push", `${clean.length} comics, ${dirty.length} cover${dirty.length!==1?"s":""}`);
@@ -1981,6 +2135,9 @@ function renderSync(){
       <summary>What's new</summary>
       <div class="collapse-body">
         <ul class="changelog">
+          <li><span class="cl-ver">Aug 18 2026</span>
+            <span class="cl-title">📸 Photo storage fix</span><br>
+            <span class="cl-desc">Cover photos now stored in IndexedDB instead of localStorage — fixes "low memory" errors when scanning covers. Existing photos migrate automatically. Also fixed AI publisher detection ("Marvel Comics" → "Marvel").</span></li>
           <li><span class="cl-ver">Aug 2026</span>
             <span class="cl-title">📚 The Cave — Comic Book Vault</span><br>
             <span class="cl-desc">Initial release. Cover scanning with AI identification (Gemini). Collection management with publisher, era, condition tracking. Fire tier system (🔥 Notable → 🔥🔥 Key Issue → 🔥🔥🔥 Grail). Grade candidate detection with ROI analysis. Market value tracking with stock-ticker UI. GitHub sync for backup.</span></li>
@@ -2126,6 +2283,8 @@ window.addEventListener("popstate", (e)=>{
 });
 
 (async ()=>{
+  /* migrate any base64 photos from localStorage → IndexedDB (one-time) */
+  await migratePhotos().catch(()=>{});
   render();
   if(!comics.length && cfg.owner && cfg.repo){
     try{

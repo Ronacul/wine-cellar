@@ -569,7 +569,82 @@ let cbBoxAudit = [];     /* audit results per wine */
 let cbBoxShelf = "";     /* default shelf section for the box */
 let cbBoxLocation = "";  /* default location/rack for the box */
 
-const saveWines = () => localStorage.setItem(LS_WINES, JSON.stringify(wines));
+/* ---- IndexedDB photo store (avoids localStorage quota) ---- */
+const IDB_NAME = "cave-wine-photos";
+const IDB_STORE = "photos";
+let _idb = null;
+function openPhotoDB(){
+  if(_idb) return Promise.resolve(_idb);
+  return new Promise((resolve, reject)=>{
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = ()=> req.result.createObjectStore(IDB_STORE);
+    req.onsuccess = ()=>{ _idb = req.result; resolve(_idb); };
+    req.onerror = ()=> reject(req.error);
+  });
+}
+async function savePhoto(id, dataUrl){
+  const db = await openPhotoDB();
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(IDB_STORE, "readwrite");
+    tx.objectStore(IDB_STORE).put(dataUrl, id);
+    tx.oncomplete = resolve; tx.onerror = ()=> reject(tx.error);
+  });
+}
+async function getPhoto(id){
+  const db = await openPhotoDB();
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(IDB_STORE, "readonly");
+    const req = tx.objectStore(IDB_STORE).get(id);
+    req.onsuccess = ()=> resolve(req.result || null);
+    req.onerror = ()=> reject(req.error);
+  });
+}
+async function deletePhoto(id){
+  const db = await openPhotoDB();
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(IDB_STORE, "readwrite");
+    tx.objectStore(IDB_STORE).delete(id);
+    tx.oncomplete = resolve; tx.onerror = ()=> reject(tx.error);
+  });
+}
+async function allPhotoKeys(){
+  const db = await openPhotoDB();
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(IDB_STORE, "readonly");
+    const req = tx.objectStore(IDB_STORE).getAllKeys();
+    req.onsuccess = ()=> resolve(req.result || []);
+    req.onerror = ()=> reject(req.error);
+  });
+}
+/* migrate any imageData still stuck in localStorage wines → IndexedDB */
+async function migratePhotos(){
+  let migrated = 0;
+  for(const w of wines){
+    if(w.imageData){
+      await savePhoto(w.id, w.imageData);
+      w.imageDirty = w.imageDirty !== false;
+      delete w.imageData;
+      migrated++;
+    }
+  }
+  if(migrated) saveWines();
+}
+/* load photo from IndexedDB into transient _photoUrl for display */
+async function loadPhoto(w){
+  if(w._photoUrl) return w._photoUrl;
+  const data = await getPhoto(w.id).catch(()=>null);
+  if(data){ w._photoUrl = data; return data; }
+  return null;
+}
+
+const saveWines = () => {
+  /* strip transient photo data before saving — photos live in IndexedDB */
+  const safe = wines.map(w => {
+    const {imageData, _photoUrl, ...rest} = w;
+    return rest;
+  });
+  localStorage.setItem(LS_WINES, JSON.stringify(safe));
+};
 let syncHistory = JSON.parse(localStorage.getItem(LS_HIST) || "[]");
 function logSync(type, detail){
   syncHistory.unshift({type, detail, time: new Date().toLocaleString()});
@@ -720,7 +795,7 @@ function resizeImage(file){
   });
 }
 function imgSrc(w){
-  if(w.imageData) return w.imageData;
+  if(w._photoUrl) return w._photoUrl; /* in-memory cache from IndexedDB */
   if(w.imagePath && cfg.owner && cfg.repo)
     return `https://raw.githubusercontent.com/${cfg.owner}/${cfg.repo}/${cfg.branch||"main"}/${w.imagePath}`;
   return null;
@@ -785,6 +860,26 @@ function render(){
   else if(tab==="stats") renderStats();
   else if(tab==="value") renderValue();
   else if(tab==="sync") renderSync();
+
+  /* lazy-load photos from IndexedDB for cards without a GitHub URL */
+  loadPendingPhotos();
+}
+async function loadPendingPhotos(){
+  const emptyThumbs = document.querySelectorAll(".card .thumb.empty");
+  for(const el of emptyThumbs){
+    const card = el.closest(".card");
+    if(!card) continue;
+    const id = card.dataset.id;
+    if(!id) continue;
+    const data = await getPhoto(id).catch(()=>null);
+    if(data){
+      const img = document.createElement("img");
+      img.className = "thumb"; img.alt = ""; img.loading = "lazy"; img.src = data;
+      el.replaceWith(img);
+      const w = wines.find(x=>x.id===id);
+      if(w) w._photoUrl = data;
+    }
+  }
 }
 
 /* mountain SVG for peak icon — colored by status */
@@ -1322,7 +1417,7 @@ function renderDetail(){
 
   view.innerHTML = `<div class="sheet">
     <div class="back-row"><button id="back-top">← Back</button></div>
-    ${src?`<img class="detail-photo" src="${esc(src)}" alt="Label photo" crossorigin="anonymous">`:""}
+    ${src?`<img class="detail-photo" id="detail-photo" src="${esc(src)}" alt="Label photo" crossorigin="anonymous">`:`<div id="detail-photo-placeholder"></div>`}
     <div class="detail-name serif">${isFire(w)?fireEmoji(w)+" ":""}${esc(w.producer||"")} ${esc(w.name||"")}</div>
     <div class="detail-sub">${esc([w.vintage,w.type,w.region].filter(Boolean).join(" · "))}</div>
     <div class="chips" style="margin-bottom:10px">
@@ -1388,6 +1483,19 @@ function renderDetail(){
     };
   }
   document.getElementById("edit").onclick = ()=>{ editingId=w.id; tab="add"; render(); };
+  /* lazy-load photo from IndexedDB if not from GitHub */
+  if(!src){
+    loadPhoto(w).then(data=>{
+      if(!data) return;
+      const ph = document.getElementById("detail-photo-placeholder");
+      if(ph){
+        const img = document.createElement("img");
+        img.className = "detail-photo"; img.alt = "Label photo"; img.crossOrigin = "anonymous"; img.src = data;
+        ph.replaceWith(img);
+      }
+    });
+  }
+
   document.getElementById("back-top").onclick = ()=>{ history.back(); };
   /* delete tasting history entries */
   document.querySelectorAll(".tl-del").forEach(btn => {
@@ -1616,7 +1724,7 @@ let pendingImage = null;
 function renderForm(){
   if(cbBoxMode){ renderCBBox(); return; }
   const w = editingId ? wines.find(x=>x.id===editingId) : {};
-  pendingImage = w && w.imageData ? w.imageData : null;
+  pendingImage = w && w._photoUrl ? w._photoUrl : null;
   const existingSrc = w ? imgSrc(w) : null;
   const _isCB = (w.source||"").startsWith("CB");
   const _cbParts = (w.source||"").match(/\((\d{2})\/(\d{2})\)/);
@@ -1776,6 +1884,14 @@ function renderForm(){
   });
 
   const pv = document.getElementById("pv");
+  /* load pending photo from IndexedDB if editing */
+  if(editingId && !pendingImage){
+    loadPhoto(w).then(data=>{
+      if(!data) return;
+      pendingImage = data;
+      if(pv && !pv.src){ pv.src = data; pv.style.display = "block"; }
+    });
+  }
   const handlePhoto = async (input)=>{
     if(!input.files[0]) return;
     pendingImage = await resizeImage(input.files[0]);
@@ -1848,7 +1964,7 @@ function renderForm(){
           const dupeBtn = document.getElementById("dupe-add");
           if(dupeBtn) dupeBtn.onclick = ()=>{
             dupe.qty = qtyOf(dupe) + 1;
-            if(pendingImage && !dupe.imageData){ dupe.imageData = pendingImage; dupe.imageDirty = true; }
+            if(pendingImage && !dupe._photoUrl){ savePhoto(dupe.id, pendingImage); dupe._photoUrl = pendingImage; dupe.imageDirty = true; }
             saveWines(); editingId = null; tab = "detail"; detailId = dupe.id;
             history.pushState({tab:"detail", id:detailId}, "");
             render(); window.scrollTo(0,0);
@@ -1857,7 +1973,7 @@ function renderForm(){
       }
     }catch(e){ st.textContent = "✗ " + e.message + " — tap Identify to try again."; }
   };
-  document.getElementById("save").onclick = ()=>{
+  document.getElementById("save").onclick = async ()=>{
     const g = id => document.getElementById(id).value.trim();
     /* combine CB source with date fields */
     let sourceVal = g("f-source");
@@ -1889,7 +2005,11 @@ function renderForm(){
       pairings:g("f-pair"), source:sourceVal, price:g("f-price"),
       location:g("f-loc"), notes:g("f-notes")
     });
-    if(pendingImage){ rec.imageData = pendingImage; rec.imagePath = rec.imagePath || null; rec.imageDirty = true; }
+    if(pendingImage){
+      await savePhoto(rec.id, pendingImage);
+      rec._photoUrl = pendingImage;
+      rec.imageDirty = true;
+    }
     if(!editingId) wines.push(rec);
     saveWines(); editingId=null; tab="cellar"; setTab("cellar");
   };
@@ -2243,7 +2363,7 @@ function renderCBBox(){
           tastingHistory: [],
           imagePath: null
         };
-        if(cbBoxLabels[i]){ rec.imageData = cbBoxLabels[i]; rec.imageDirty = true; }
+        if(cbBoxLabels[i]){ savePhoto(rec.id, cbBoxLabels[i]); rec._photoUrl = cbBoxLabels[i]; rec.imageDirty = true; }
         wines.push(rec);
         added.push(rec);
       });
@@ -2791,20 +2911,26 @@ function b64EncodeUnicode(str){
 }
 async function pushAll(statusEl){
   if(!cfg.owner||!cfg.repo||!cfg.token) throw new Error("Fill in owner, repo, and token first.");
-  const dirty = wines.filter(w=>w.imageData && w.imageDirty!==false);
+  /* find wines with dirty photos in IndexedDB */
+  const dirtyIds = await allPhotoKeys();
+  const dirty = wines.filter(w => dirtyIds.includes(w.id) && w.imageDirty !== false);
   let i=0;
   for(const w of dirty){
     i++;
     statusEl.textContent = `Uploading photo ${i}/${dirty.length}…`;
+    const photoData = await getPhoto(w.id);
+    if(!photoData) continue;
     const path = `images/${w.id}.jpg`;
-    const b64 = w.imageData.split(",")[1];
+    const b64 = photoData.split(",")[1];
     await ghPut(path, b64, `Add label photo ${w.producer||""} ${w.vintage||""}`.trim());
     w.imagePath = path; w.imageDirty = false;
+    /* clean up IndexedDB now that photo is on GitHub */
+    await deletePhoto(w.id);
+    delete w._photoUrl;
   }
   statusEl.textContent = "Writing wines.json…";
-  const clean = wines.map(({imageData, imageDirty, ...rest})=>rest);
+  const clean = wines.map(({_photoUrl, imageDirty, ...rest})=>rest);
   await ghPut("data/wines.json", b64EncodeUnicode(JSON.stringify(clean,null,2)), `Update cellar (${clean.length} wines)`);
-  wines.forEach(w=>{ if(w.imagePath){ delete w.imageData; delete w.imageDirty; } });
   saveWines();
   cfg.lastSync = new Date().toLocaleString(); saveCfg();
   logSync("push", `${clean.length} wines, ${dirty.length} photo${dirty.length!==1?"s":""}`);
@@ -2869,6 +2995,9 @@ function renderSync(){
       <summary>What's new</summary>
       <div class="collapse-body">
         <ul class="changelog">
+          <li><span class="cl-ver">Aug 18, 2026</span>
+            <span class="cl-title">📸 Photo storage fix</span><br>
+            <span class="cl-desc">Label photos now stored in IndexedDB instead of localStorage — fixes "low memory" errors when scanning labels on mobile. Existing photos migrate automatically on first load.</span></li>
           <li><span class="cl-ver">Aug 12, 2026</span>
             <span class="cl-title">📦 CB Box Loader</span><br>
             <span class="cl-desc">New "+CB Box" button on the Add tab — photograph the Charlie's Burgers info sheet and AI reads all wines at once. Then snap a label photo per bottle for cross-verification. Adds all bottles in one go with the CB source and date pre-filled.</span></li>
@@ -3073,6 +3202,8 @@ window.addEventListener("popstate", (e)=>{
 });
 
 (async ()=>{
+  /* migrate any base64 photos from localStorage → IndexedDB (one-time) */
+  await migratePhotos().catch(()=>{});
   render();
   if(!wines.length && cfg.owner && cfg.repo){
     try{
