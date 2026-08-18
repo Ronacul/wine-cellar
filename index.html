@@ -781,17 +781,24 @@ function starsHTML(rating, size){
 /* ================= images ================= */
 function resizeImage(file){
   return new Promise((resolve,reject)=>{
+    const blobUrl = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => {
-      const MAX = 800;
+      const MAX = 600; /* smaller than 800 — saves ~40% memory on mobile */
       let {width:w, height:h} = img;
       if(w > MAX || h > MAX){ const r = Math.min(MAX/w, MAX/h); w = Math.round(w*r); h = Math.round(h*r); }
       const c = document.createElement("canvas"); c.width=w; c.height=h;
-      c.getContext("2d").drawImage(img,0,0,w,h);
-      resolve(c.toDataURL("image/jpeg", 0.82));
+      const ctx = c.getContext("2d");
+      ctx.drawImage(img,0,0,w,h);
+      const dataUrl = c.toDataURL("image/jpeg", 0.72);
+      /* free memory: revoke blob, zero canvas, drop references */
+      URL.revokeObjectURL(blobUrl);
+      c.width = 0; c.height = 0;
+      img.src = "";
+      resolve(dataUrl);
     };
-    img.onerror = reject;
-    img.src = URL.createObjectURL(file);
+    img.onerror = (e) => { URL.revokeObjectURL(blobUrl); reject(e); };
+    img.src = blobUrl;
   });
 }
 function imgSrc(w){
@@ -2005,13 +2012,20 @@ function renderForm(){
       pairings:g("f-pair"), source:sourceVal, price:g("f-price"),
       location:g("f-loc"), notes:g("f-notes")
     });
-    if(pendingImage){
-      await savePhoto(rec.id, pendingImage);
-      rec._photoUrl = pendingImage;
-      rec.imageDirty = true;
+    try {
+      if(pendingImage){
+        await savePhoto(rec.id, pendingImage).catch(()=>{});
+        rec._photoUrl = pendingImage;
+        rec.imageDirty = true;
+      }
+      pendingImage = null; /* free memory */
+      if(!editingId) wines.push(rec);
+      saveWines(); editingId=null; tab="cellar"; setTab("cellar");
+    } catch(e) {
+      console.error("Save error:", e);
+      if(!editingId) wines.push(rec);
+      saveWines(); editingId=null; tab="cellar"; setTab("cellar");
     }
-    if(!editingId) wines.push(rec);
-    saveWines(); editingId=null; tab="cellar"; setTab("cellar");
   };
   const c = document.getElementById("cancel");
   if(c) c.onclick = ()=>{ editingId=null; tab="detail"; render(); };
@@ -3182,12 +3196,15 @@ if(!localStorage.getItem(LS_WINES)) { wines = SEED; saveWines(); }
 function setTab(t, restoreScroll){
   tab = t;
   document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("active", b.dataset.tab===t));
+  /* push tab state so camera return doesn't lose Add tab */
+  if(t === "add") history.replaceState({tab:"add"}, "");
   render();
   if(restoreScroll !== undefined) window.scrollTo(0, restoreScroll);
   else window.scrollTo(0, 0);
 }
 document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click", ()=>{
   editingId = null;
+  pendingImage = null; /* free memory when switching tabs */
   if(b.dataset.tab !== "add") cbBoxMode = false;
   setTab(b.dataset.tab);
 }));
@@ -3196,10 +3213,29 @@ document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click", (
 window.addEventListener("popstate", (e)=>{
   if(e.state && e.state.tab==="detail"){
     detailId = e.state.id; tab="detail"; render(); window.scrollTo(0,0);
+  } else if(e.state && e.state.tab){
+    tab = e.state.tab; render();
   } else {
     tab="cellar"; setTab("cellar", cellarScrollY);
   }
 });
+/* save/restore state when iOS kills + restores the page (camera, low memory) */
+window.addEventListener("pagehide", ()=>{
+  sessionStorage.setItem("cave.wine.tab", tab);
+  if(editingId) sessionStorage.setItem("cave.wine.editing", editingId);
+  if(detailId) sessionStorage.setItem("cave.wine.detail", detailId);
+});
+(function restoreState(){
+  const savedTab = sessionStorage.getItem("cave.wine.tab");
+  if(savedTab && savedTab !== "cellar"){
+    tab = savedTab;
+    editingId = sessionStorage.getItem("cave.wine.editing") || null;
+    detailId = sessionStorage.getItem("cave.wine.detail") || null;
+    sessionStorage.removeItem("cave.wine.tab");
+    sessionStorage.removeItem("cave.wine.editing");
+    sessionStorage.removeItem("cave.wine.detail");
+  }
+})();
 
 (async ()=>{
   /* migrate any base64 photos from localStorage → IndexedDB (one-time) */
