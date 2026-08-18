@@ -1375,9 +1375,11 @@ Base on current market data, recent sales, and guide prices. Be research-grade a
 
 /* ================= add/edit form ================= */
 let pendingImage = null;
+let pendingAiFields = {}; /* stash AI-only fields (marketValue, gradedValue, gradeCandidate, etc.) until save */
 function renderForm(){
   const c = editingId ? comics.find(x=>x.id===editingId) : {};
   pendingImage = c && c._photoUrl ? c._photoUrl : null;
+  pendingAiFields = {};
   const existingSrc = c ? imgSrc(c) : null;
 
   view.innerHTML = `<div class="sheet">
@@ -1655,6 +1657,13 @@ function renderForm(){
         document.querySelectorAll(".fire-tier-btn").forEach(b => b.classList.toggle("active", parseInt(b.dataset.fl) === selectedFire));
       }
 
+      /* stash AI-only fields that have no form input — merged into comic on save */
+      if(rec.marketValue) pendingAiFields.marketValue = rec.marketValue;
+      if(rec.gradedValue) pendingAiFields.gradedValue = rec.gradedValue;
+      if(rec.gradeCandidate !== undefined) pendingAiFields.gradeCandidate = !!rec.gradeCandidate;
+      if(rec.gradeCandidateReason) pendingAiFields.gradeCandidateReason = rec.gradeCandidateReason;
+      pendingAiFields.lastValueCheck = new Date().toISOString().slice(0,10);
+
       const _fl = parseInt(rec.fire)||0;
       if(!dupe){
         stEl.textContent = "✓ Identified: " + [rec.publisher, rec.title, rec.issueNumber?"#"+rec.issueNumber:""].filter(Boolean).join(" ") + (_fl ? " " + "🔥".repeat(_fl) : "") + ` — filled ${filled} fields.`;
@@ -1688,6 +1697,10 @@ function renderForm(){
       qty: parseInt(document.getElementById("f-qty").value) || 1,
       notes: document.getElementById("f-notes").value.trim(),
     };
+
+    /* merge AI-only fields (marketValue, gradedValue, gradeCandidate, etc.) */
+    Object.assign(data, pendingAiFields);
+    pendingAiFields = {};
 
     try {
       if(editingId){
@@ -2325,7 +2338,7 @@ function setTab(t, restoreScroll){
 }
 document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click", ()=>{
   editingId = null;
-  pendingImage = null; /* free memory when leaving Add tab */
+  pendingImage = null; pendingAiFields = {}; /* free memory when leaving Add tab */
   setTab(b.dataset.tab);
 }));
 
