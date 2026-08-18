@@ -1390,6 +1390,7 @@ function renderForm(){
       <label class="photo-btn ghost">🖼 Choose from gallery
         <input type="file" id="gal" accept="image/*">
       </label>
+      <button type="button" class="photo-btn" id="trim-sq" style="display:none; border-color:var(--ink-dim); color:var(--ink-dim)">✂️ Trim square</button>
       <button type="button" class="photo-btn" id="identify" style="border-color:var(--accent); color:var(--accent)">✨ Identify from cover</button>
       <div class="sync-status" id="id-status" style="display:none; margin-top:8px"></div>
     </div>
@@ -1539,14 +1540,42 @@ function renderForm(){
   }
 
   /* photo handlers */
+  const showTrimBtn = () => {
+    const tb = document.getElementById("trim-sq");
+    if(tb && pendingImage) tb.style.display = "block";
+  };
   const handlePhoto = async (file) => {
     if(!file) return;
     pendingImage = await resizeImage(file);
     const pv = document.getElementById("pv");
     pv.src = pendingImage; pv.style.display = "block";
+    showTrimBtn();
   };
   document.getElementById("cam").onchange = (e) => handlePhoto(e.target.files[0]);
   document.getElementById("gal").onchange = (e) => handlePhoto(e.target.files[0]);
+  if(pendingImage) showTrimBtn(); /* show trim for pre-loaded edit photo */
+
+  /* trim to square — centre-crops the cover to a 1:1 aspect ratio */
+  document.getElementById("trim-sq").onclick = () => {
+    if(!pendingImage) return;
+    const img = new Image();
+    img.onload = () => {
+      const side = Math.min(img.width, img.height);
+      const sx = Math.round((img.width - side) / 2);
+      const sy = Math.round((img.height - side) / 2);
+      const c = document.createElement("canvas");
+      c.width = side; c.height = side;
+      const ctx = c.getContext("2d");
+      ctx.drawImage(img, sx, sy, side, side, 0, 0, side, side);
+      pendingImage = c.toDataURL("image/jpeg", 0.72);
+      c.width = 0; c.height = 0; /* free canvas memory */
+      img.src = "";
+      const pv = document.getElementById("pv");
+      pv.src = pendingImage;
+      document.getElementById("trim-sq").style.display = "none"; /* hide after trim */
+    };
+    img.src = pendingImage;
+  };
 
   /* identify */
   document.getElementById("identify").onclick = async () => {
