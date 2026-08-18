@@ -1751,6 +1751,7 @@ function renderForm(){
       <label class="photo-btn ghost">🖼 Choose from gallery
         <input type="file" id="gal" accept="image/*">
       </label>
+      <button type="button" class="photo-btn" id="trim-sq" style="display:none; border-color:var(--ink-dim); color:var(--ink-dim)">✂️ Trim square</button>
       <button type="button" class="photo-btn" id="identify" style="border-color:var(--gold); color:var(--gold)">✨ Identify from label</button>
       <div class="note" id="ai-st"></div>
     </div>
@@ -1899,13 +1900,41 @@ function renderForm(){
       if(pv && !pv.src){ pv.src = data; pv.style.display = "block"; }
     });
   }
+  const showTrimBtn = () => {
+    const tb = document.getElementById("trim-sq");
+    if(tb && pendingImage) tb.style.display = "block";
+  };
   const handlePhoto = async (input)=>{
     if(!input.files[0]) return;
     pendingImage = await resizeImage(input.files[0]);
     pv.src = pendingImage; pv.style.display="block";
+    showTrimBtn();
   };
   document.getElementById("cam").addEventListener("change", e=>handlePhoto(e.target));
   document.getElementById("gal").addEventListener("change", e=>handlePhoto(e.target));
+  if(pendingImage) showTrimBtn(); /* show trim for pre-loaded edit photo */
+
+  /* trim to square — centre-crops the label to a 1:1 aspect ratio */
+  document.getElementById("trim-sq").onclick = () => {
+    if(!pendingImage) return;
+    const img = new Image();
+    img.onload = () => {
+      const side = Math.min(img.width, img.height);
+      const sx = Math.round((img.width - side) / 2);
+      const sy = Math.round((img.height - side) / 2);
+      const c = document.createElement("canvas");
+      c.width = side; c.height = side;
+      const ctx = c.getContext("2d");
+      ctx.drawImage(img, sx, sy, side, side, 0, 0, side, side);
+      pendingImage = c.toDataURL("image/jpeg", 0.72);
+      c.width = 0; c.height = 0; /* free canvas memory */
+      img.src = "";
+      pv.src = pendingImage;
+      document.getElementById("trim-sq").style.display = "none"; /* hide after trim */
+    };
+    img.src = pendingImage;
+  };
+
   document.getElementById("identify").onclick = async ()=>{
     const st = document.getElementById("ai-st");
     if(!cfg.gkey){ st.textContent = "Add a free Gemini API key in the Sync tab first (aistudio.google.com)."; return; }
