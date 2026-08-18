@@ -1390,7 +1390,7 @@ function renderForm(){
       <label class="photo-btn ghost">🖼 Choose from gallery
         <input type="file" id="gal" accept="image/*">
       </label>
-      <button type="button" class="photo-btn" id="trim-sq" style="display:none; border-color:var(--ink-dim); color:var(--ink-dim)">✂️ Trim square</button>
+      <button type="button" class="photo-btn" id="trim-sq" style="display:none; border-color:var(--ink-dim); color:var(--ink-dim)">✂️ Trim to cover shape</button>
       <button type="button" class="photo-btn" id="identify" style="border-color:var(--accent); color:var(--accent)">✨ Identify from cover</button>
       <div class="sync-status" id="id-status" style="display:none; margin-top:8px"></div>
     </div>
@@ -1555,18 +1555,26 @@ function renderForm(){
   document.getElementById("gal").onchange = (e) => handlePhoto(e.target.files[0]);
   if(pendingImage) showTrimBtn(); /* show trim for pre-loaded edit photo */
 
-  /* trim to square — centre-crops the cover to a 1:1 aspect ratio */
+  /* trim to comic cover shape — centre-crops to 2:3 aspect ratio (standard comic proportions) */
   document.getElementById("trim-sq").onclick = () => {
     if(!pendingImage) return;
     const img = new Image();
     img.onload = () => {
-      const side = Math.min(img.width, img.height);
-      const sx = Math.round((img.width - side) / 2);
-      const sy = Math.round((img.height - side) / 2);
+      const RATIO = 2 / 3; /* width:height — standard comic cover */
+      let cw, ch;
+      if(img.width / img.height > RATIO){
+        /* image is wider than 2:3 — crop width */
+        ch = img.height; cw = Math.round(ch * RATIO);
+      } else {
+        /* image is taller than 2:3 — crop height */
+        cw = img.width; ch = Math.round(cw / RATIO);
+      }
+      const sx = Math.round((img.width - cw) / 2);
+      const sy = Math.round((img.height - ch) / 2);
       const c = document.createElement("canvas");
-      c.width = side; c.height = side;
+      c.width = cw; c.height = ch;
       const ctx = c.getContext("2d");
-      ctx.drawImage(img, sx, sy, side, side, 0, 0, side, side);
+      ctx.drawImage(img, sx, sy, cw, ch, 0, 0, cw, ch);
       pendingImage = c.toDataURL("image/jpeg", 0.72);
       c.width = 0; c.height = 0; /* free canvas memory */
       img.src = "";
