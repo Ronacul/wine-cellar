@@ -183,6 +183,48 @@ h1{
 .pu .pu-icon{font-size:16px; line-height:1}
 .pu .pu-n{font-weight:700; font-variant-numeric:tabular-nums; color:var(--ink)}
 .pu:hover{background:var(--panel); border-color:var(--line)}
+/* Streak chip — shown next to the subtitle when the player has a streak going. */
+.streak-chip{
+  display:inline-flex; align-items:center; gap:2px;
+  font-family:var(--mono); font-size:10px; font-weight:700;
+  color:#e8a020; letter-spacing:.04em; vertical-align:1px;
+}
+/* Near-miss vignette — creeps in as the clock runs low during levels. */
+.vignette{
+  position:fixed; inset:0; pointer-events:none; z-index:900;
+  box-shadow:inset 0 0 80px rgba(231,76,60,0); transition:box-shadow 1s;
+}
+.vignette.warn{box-shadow:inset 0 0 60px rgba(231,76,60,.12)}
+.vignette.danger{box-shadow:inset 0 0 80px rgba(231,76,60,.28)}
+/* Camera shake on life loss */
+@keyframes shake{
+  0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)}
+  40%{transform:translateX(5px)} 60%{transform:translateX(-4px)}
+  80%{transform:translateX(3px)}
+}
+.shake{animation:shake .4s ease-out}
+/* Confetti canvas — overlays the board on win */
+.confetti{position:fixed; inset:0; pointer-events:none; z-index:1000}
+/* Challenge banner — shown when playing someone's challenge */
+.challenge-bar{
+  display:flex; align-items:center; gap:8px; justify-content:center;
+  padding:6px 14px; border-radius:9px; background:var(--panel2);
+  font-family:var(--mono); font-size:11px; color:var(--ink-dim);
+  width:100%; max-width:400px; margin-bottom:4px;
+}
+.challenge-bar .ghost-time{font-weight:700; color:var(--ink)}
+/* Progression interstitial */
+.prog-stage{
+  display:flex; gap:4px; justify-content:center; margin:12px 0;
+  font-size:22px;
+}
+.prog-stage .st{opacity:.35; transition:opacity .3s}
+.prog-stage .st.done{opacity:1}
+.prog-stage .st.current{opacity:1; transform:scale(1.25)}
+.prog-unlock{
+  text-align:center; font-family:var(--mono); font-size:12px;
+  color:#c9a227; margin:8px 0; letter-spacing:.04em;
+}
 .stars-big{
   text-align:center; font-size:34px; letter-spacing:6px; margin:2px 0 16px;
   color:var(--line-2);
@@ -517,6 +559,7 @@ html.dev .dev-only{display:grid}
   <div class="palette pal-pad" id="palette"></div>
 </div>
 
+<div class="vignette" id="vignette"></div>
 <div class="overlay hide" id="overlay"><div class="modal" id="modal"></div></div>
 <div class="toast hide" id="toast"></div>
 </div>
@@ -1532,6 +1575,16 @@ function tickTimer(){
     bar.style.width = (frac * 100).toFixed(2) + "%";
     bar.className = "tbar-fill" + (frozen ? "" : frac < 0.12 ? " danger" : frac < 0.34 ? " warn" : "");
   }
+  // Near-miss tension: vignette + haptic
+  const vig = document.getElementById("vignette");
+  if (vig && !frozen && state.started && !state.done){
+    vig.className = "vignette" + (left < 10000 ? " danger" : left < 30000 ? " warn" : "");
+    if (left < 5000 && left > 0 && Math.floor(left / 250) % 4 === 0){
+      try { navigator.vibrate && navigator.vibrate(30); } catch {}
+    }
+  } else if (vig){
+    vig.className = "vignette";
+  }
   if (left <= 0 && !state.done && state.started && !frozen) failLevel();
 }
 
@@ -1707,6 +1760,7 @@ function render(){
   renderBoard(); renderPalette(); renderSub();
   paintCompletedUnits();
   applySharp();
+  renderChallengeBar();
 }
 
 const heartsHTML = p => Array.from({ length:LIVES_MAX }, (_, i) =>
@@ -1802,13 +1856,20 @@ function renderLevelBar(){
 function renderSub(){
   const sObj = sizeOf(state.size);
   const dObj = diffOf2(state.diff, state.n);
-  document.getElementById("sub").textContent =
-    state.mode === "levels"
-      ? "Stage " + state.lvl.cfg.stage + " · step " + state.lvl.cfg.step
-      : (state.practice ? "Practice" : "#" + state.day) + " · "
-        + (state.latin ? "Latin " : "") + sObj.label + " " + dObj.label
-        + (state.dbl ? " · Double" : "")
-        + (state.scramble ? " · Scramble" : "");
+  const sub = document.getElementById("sub");
+  const base = state.mode === "levels"
+    ? "Stage " + state.lvl.cfg.stage + " · step " + state.lvl.cfg.step
+    : (state.practice ? "Practice" : "#" + state.day) + " · "
+      + (state.latin ? "Latin " : "") + sObj.label + " " + dObj.label
+      + (state.dbl ? " · Double" : "")
+      + (state.scramble ? " · Scramble" : "");
+  // Streak chip — visible at a glance, not buried in the win modal
+  const st = load(LS_STATS, blankStats());
+  if (st.streak > 1 && state.mode !== "levels"){
+    sub.innerHTML = base + ' <span class="streak-chip">🔥' + st.streak + '</span>';
+  } else {
+    sub.textContent = base;
+  }
 }
 
 function renderSizes(){
@@ -2237,6 +2298,9 @@ function win(){
   saveProgress();
   tickTimer();          // freeze the header on the final time, not the last tick
   paintUndo();          // grey the undo — the solved board isn't unwindable
+  // Clear vignette on win too
+  const vig = document.getElementById("vignette");
+  if (vig) vig.className = "vignette";
 
   if (state.mode === "levels"){ winLevel(); return; }
   if (state.practice){ markWon(); setTimeout(showWin, 1100); return; }
@@ -2252,6 +2316,7 @@ function win(){
   const bk = compositeId(state.size, state.diff);
   if (!st.best[bk] || secs < st.best[bk]) st.best[bk] = secs;
   save(LS_STATS, st);
+  recordLeaderboard();
 
   markWon();
   renderDiffs();
@@ -2278,6 +2343,7 @@ function winLevel(){
 
   markWon();
   setTimeout(() => {
+    fireConfetti();
     const hintsUsed = totalHints();
     openModal(
       "<h2>Level " + lv.cfg.level + " cleared</h2>"
@@ -2302,7 +2368,7 @@ function winLevel(){
       document.getElementById("badgeWrap").appendChild(badge);
     } catch { /* canvas unavailable */ }
     document.getElementById("shareBtn").onclick = shareAsImage;
-    document.getElementById("mNext").onclick = () => { closeModal(); loadLevel(lv.cfg.level + 1); };
+    document.getElementById("mNext").onclick = () => showProgression(lv.cfg.level + 1);
     document.getElementById("mRetry").onclick = () => { closeModal(); loadLevel(lv.cfg.level); };
     document.getElementById("mStop").onclick = () => { closeModal(); enterDaily(); };
   }, 1100);
@@ -2313,12 +2379,20 @@ function winLevel(){
 function failLevel(){
   stopTimer();
   state.done = true;
+  // Clear vignette
+  const vig = document.getElementById("vignette");
+  if (vig) vig.className = "vignette";
   const p = progress();
   p.lives = Math.max(0, p.lives - 1);
   if (p.lives === LIVES_MAX - 1 && !p.livesAt) p.livesAt = Date.now();
   if (p.lives < LIVES_MAX) p.livesAt = p.livesAt || Date.now();
   saveProgress2(p);
   renderLevelBar();
+  // Camera shake on life loss
+  const board = document.getElementById("board");
+  board.classList.add("shake");
+  try { navigator.vibrate && navigator.vibrate([50, 30, 50]); } catch {}
+  setTimeout(() => board.classList.remove("shake"), 500);
 
   const out = p.lives <= 0;
   openModal(
@@ -2338,6 +2412,62 @@ function failLevel(){
   document.getElementById("mBack").onclick = () => { closeModal(); enterDaily(); };
 }
 
+/* ================= confetti ================= */
+
+// Lightweight particle burst — fires on win. Canvas cleans itself up after the
+// last particle falls offscreen. Colour pulled from the game's own HUES palette.
+function fireConfetti(){
+  const cvs = document.createElement("canvas");
+  cvs.className = "confetti";
+  cvs.width = window.innerWidth;  cvs.height = window.innerHeight;
+  document.body.appendChild(cvs);
+  const ctx = cvs.getContext("2d");
+  const colours = HUES.slice(0, Math.min(9, HUES.length)).map(h => h.hex);
+  const N = 120;
+  const particles = [];
+  for (let i = 0; i < N; i++){
+    particles.push({
+      x: cvs.width * 0.5 + (Math.random() - 0.5) * cvs.width * 0.4,
+      y: cvs.height * 0.45,
+      vx: (Math.random() - 0.5) * 12,
+      vy: -Math.random() * 14 - 4,
+      w: 4 + Math.random() * 6,
+      h: 3 + Math.random() * 4,
+      rot: Math.random() * Math.PI * 2,
+      rv: (Math.random() - 0.5) * 0.3,
+      col: colours[Math.floor(Math.random() * colours.length)],
+      grav: 0.18 + Math.random() * 0.06,
+      life: 1,
+    });
+  }
+  let raf;
+  function tick(){
+    ctx.clearRect(0, 0, cvs.width, cvs.height);
+    let alive = false;
+    for (const p of particles){
+      p.x += p.vx; p.y += p.vy;
+      p.vy += p.grav;
+      p.vx *= 0.99;
+      p.rot += p.rv;
+      p.life -= 0.006;
+      if (p.life <= 0 || p.y > cvs.height + 20) continue;
+      alive = true;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.globalAlpha = Math.min(1, p.life * 2);
+      ctx.fillStyle = p.col;
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.restore();
+    }
+    if (alive) raf = requestAnimationFrame(tick);
+    else cvs.remove();
+  }
+  raf = requestAnimationFrame(tick);
+  // Safety net: remove canvas after 4s even if particles linger
+  setTimeout(() => { cancelAnimationFrame(raf); cvs.remove(); }, 4000);
+}
+
 /* ================= share ================= */
 
 function emojiGrid(L){
@@ -2350,17 +2480,161 @@ function emojiGrid(L){
   return out;
 }
 
-// One grid, not a stack of them. Emoji cannot nest a mark inside a mark, so
-// text sharing carries the outer layer; the in-app solved view shows the true
-// nested board. Reworking this into a badge that does not spoil the answer is
-// still open.
+// Share text shows emoji hints — row counts of unique colours — without spoiling
+// the actual solution. Teases the grid's shape, keeps copy small.
+function spoilerFreeGrid(){
+  const n = state.n, g = state.layers[0].grid;
+  const rows = [];
+  for (let r = 0; r < n; r++){
+    const counts = {};
+    for (let c = 0; c < n; c++){
+      const v = g[r * n + c];
+      if (v !== null && v !== undefined) counts[v] = (counts[v] || 0) + 1;
+    }
+    // One emoji per unique colour used in this row, capped at n
+    const uniq = Object.keys(counts).length;
+    rows.push(uniq === n ? "✅" : "🟩".repeat(uniq) + "⬜".repeat(n - uniq));
+  }
+  return rows.join("\n");
+}
+
 function shareText(){
   const mods = (state.dbl ? " · Double" : "") + (state.scramble ? " · Scramble" : "");
+  const st = load(LS_STATS, blankStats());
+  const streakLine = st.streak > 1 ? "🔥 " + st.streak + " day streak\n" : "";
   return SHARE_NAME + " #" + state.day + " · " + sizeOf(state.size).label + " " + diffOf2(state.diff, state.n).label + mods + " ✨\n"
-       + "⏱️ " + fmtTime(elapsedMs()) + "\n\n" + emojiGrid(0) + "\n";
+       + "⏱️ " + fmtTime(elapsedMs()) + "\n"
+       + streakLine + "\n"
+       + spoilerFreeGrid() + "\n";
 }
 
 const copyShare = () => copyText(shareText());
+
+/* ================= challenge link ================= */
+
+// URL format: ?challenge=<day>-<sizeId>-<diffId>-<seconds>
+// A friend shares a link; the recipient sees a ghost time to beat.
+function buildChallengeURL(){
+  const secs = Math.floor(elapsedMs() / 1000);
+  const base = location.href.split("?")[0].split("#")[0];
+  return base + "?challenge=" + state.day + "-" + state.size + "-" + state.diff + "-" + secs;
+}
+
+function getChallengeTime(){
+  const q = new URLSearchParams(location.search).get("challenge");
+  if (!q) return null;
+  const parts = q.split("-");
+  if (parts.length < 4) return null;
+  const day = parseInt(parts[0], 10);
+  const secs = parseInt(parts[parts.length - 1], 10);
+  // Only valid if it matches today's puzzle
+  if (day !== dayNumber() || isNaN(secs)) return null;
+  return secs;
+}
+
+function shareChallenge(){
+  const url = buildChallengeURL();
+  const text = "⚡ Beat my Chromoku time!\n"
+    + SHARE_NAME + " #" + state.day + " · " + fmtTime(elapsedMs()) + "\n"
+    + url;
+  copyText(text);
+}
+
+// Show the ghost time bar if a challenge is active
+function renderChallengeBar(){
+  let bar = document.getElementById("challengeBar");
+  const t = getChallengeTime();
+  if (!t){
+    if (bar) bar.remove();
+    return;
+  }
+  if (!bar){
+    bar = document.createElement("div");
+    bar.id = "challengeBar";
+    bar.className = "challenge-bar";
+    const wrap = document.querySelector(".play");
+    if (wrap) wrap.insertBefore(bar, wrap.firstChild);
+  }
+  bar.innerHTML = '⚡ Challenge: beat <span class="ghost-time">' + fmtTime(t * 1000) + '</span>';
+}
+
+/* ================= progression interstitial ================= */
+
+// Brief screen between levels showing the player's journey through the stage.
+function showProgression(nextLevel){
+  const cfg = levelConfig(nextLevel);
+  const prevStage = nextLevel > 1 ? levelConfig(nextLevel - 1).stage : 0;
+  const step = cfg.step;
+  const theme = cfg.theme || WORLDS[cfg.world - 1];
+  const isNewWorld = nextLevel > 1 && cfg.world !== levelConfig(nextLevel - 1).world;
+  const isNewStage = nextLevel > 1 && cfg.stage !== prevStage;
+
+  // Build the step pips for this stage
+  let pips = '<div class="prog-stage">';
+  for (let s = 1; s <= LEVELS_PER_STAGE; s++){
+    const cls = s < step ? "st done" : s === step ? "st current" : "st";
+    pips += '<span class="' + cls + '">' + (s < step ? "✦" : s === step ? "◆" : "◇") + '</span>';
+  }
+  pips += '</div>';
+
+  let unlock = '';
+  if (isNewWorld){
+    unlock = '<div class="prog-unlock">🔓 ' + theme.name + ' unlocked — ' + theme.unlock + '</div>';
+  } else if (isNewStage){
+    unlock = '<div class="prog-unlock">Stage ' + cfg.stage + ' of ' + theme.name + '</div>';
+  }
+
+  openModal(
+    '<h2 style="color:' + theme.tint + '">' + theme.name + '</h2>'
+    + '<p class="lede">Stage ' + cfg.stage + ' · step ' + step + '</p>'
+    + pips
+    + unlock
+    + '<button class="btn" id="mGo">Play</button>'
+    + '<button class="btn ghost" id="mBack2">Done for now</button>'
+  );
+  document.getElementById("mGo").onclick = () => { closeModal(); loadLevel(nextLevel); };
+  document.getElementById("mBack2").onclick = () => { closeModal(); enterDaily(); };
+}
+
+/* ================= daily leaderboard (local) ================= */
+
+// Lightweight "leaderboard" — stores the player's own best times per puzzle
+// config. No server needed; the share/challenge flow lets friends compare.
+const LS_BOARD = "chromoku.board.v1";
+
+function recordLeaderboard(){
+  if (state.mode === "levels" || state.practice) return;
+  const key = state.day + "-" + compositeId(state.size, state.diff);
+  const secs = Math.floor(elapsedMs() / 1000);
+  const board = load(LS_BOARD, {});
+  if (!board[key] || secs < board[key].secs){
+    board[key] = { secs, day:state.day, size:state.size, diff:state.diff, ts:Date.now() };
+  }
+  // Keep only last 30 days of entries to avoid unbounded growth
+  const cutoff = dayNumber() - 30;
+  for (const k of Object.keys(board)){
+    if (board[k].day < cutoff) delete board[k];
+  }
+  save(LS_BOARD, board);
+}
+
+function leaderboardHTML(){
+  const board = load(LS_BOARD, {});
+  const today = dayNumber();
+  const entries = Object.values(board)
+    .filter(e => e.day >= today - 7)
+    .sort((a, b) => b.day - a.day || a.secs - b.secs);
+  if (!entries.length) return '';
+  let html = '<div class="lb-section"><h3 style="margin:12px 0 6px; font-size:13px; color:var(--ink-dim)">Recent bests</h3>';
+  for (const e of entries.slice(0, 5)){
+    const dayLabel = e.day === today ? "Today" : (today - e.day) + "d ago";
+    html += '<div style="display:flex; justify-content:space-between; font-family:var(--mono); font-size:11px; padding:2px 0; color:var(--ink-dim)">'
+      + '<span>' + dayLabel + ' · ' + sizeOf(e.size).label + ' ' + diffOf2(e.diff, sizeOf(e.size).n).label + '</span>'
+      + '<span style="font-weight:700; color:var(--ink)">' + fmtTime(e.secs * 1000) + '</span></div>';
+  }
+  html += '</div>';
+  return html;
+}
 
 async function copyText(text){
   try {
@@ -2384,6 +2658,46 @@ const HINT_LIMITS = { reveals:3, freezes:2, adds:2 };
 const FREEZE_SECS = 15;
 const ADD_SECS = 30;
 
+// Regenerating power-up pool — global across levels, stored in progress.
+// Pool recharges one unit every POOL_REGEN_MIN minutes, capped at POOL_MAX.
+const POOL_MAX = 7;
+const POOL_REGEN_MIN = 20;  // one charge every 20 min
+
+function powerPool(){
+  const p = progress();
+  if (p.pool === undefined){ p.pool = POOL_MAX; p.poolAt = null; }
+  // Regen elapsed charges
+  if (p.pool < POOL_MAX && p.poolAt){
+    const elapsed = Date.now() - p.poolAt;
+    const regen = Math.floor(elapsed / (POOL_REGEN_MIN * 60 * 1000));
+    if (regen > 0){
+      p.pool = Math.min(POOL_MAX, p.pool + regen);
+      p.poolAt = p.pool >= POOL_MAX ? null : p.poolAt + regen * POOL_REGEN_MIN * 60 * 1000;
+      saveProgress2(p);
+    }
+  }
+  return p;
+}
+
+function usePoolCharge(){
+  const p = powerPool();
+  if (p.pool <= 0) return false;
+  p.pool--;
+  if (!p.poolAt) p.poolAt = Date.now();
+  saveProgress2(p);
+  return true;
+}
+
+function poolRemaining(){ return powerPool().pool; }
+
+function nextPoolRegenMs(){
+  const p = powerPool();
+  if (p.pool >= POOL_MAX || !p.poolAt) return 0;
+  const elapsed = Date.now() - p.poolAt;
+  const cycleMs = POOL_REGEN_MIN * 60 * 1000;
+  return cycleMs - (elapsed % cycleMs);
+}
+
 function totalHints(){ return state.hints.reveals + state.hints.freezes + state.hints.adds; }
 
 // Power-ups: always visible during levels so the player can fire them
@@ -2399,12 +2713,22 @@ function renderPowerups(){
   const revLeft = HINT_LIMITS.reveals - state.hints.reveals;
   const frzLeft = HINT_LIMITS.freezes - state.hints.freezes;
   const addLeft = HINT_LIMITS.adds - state.hints.adds;
+  const pool = poolRemaining();
+  const noPool = pool <= 0;
+  const revDis = revLeft <= 0 || noPool;
+  const frzDis = frzLeft <= 0 || noPool;
+  const addDis = addLeft <= 0 || noPool;
+  // Pool indicator
+  const regenMs = nextPoolRegenMs();
+  const regenStr = noPool && regenMs > 0
+    ? ' <span style="font-size:9px;color:var(--ink-dim)">⚡' + Math.ceil(regenMs / 60000) + 'm</span>' : '';
   el.innerHTML =
-    '<button class="pu" id="puReveal"' + (revLeft <= 0 ? " disabled" : "") + '>'
+    '<span style="font-size:9px;color:var(--ink-dim);font-family:var(--mono)">⚡' + pool + '/' + POOL_MAX + regenStr + '</span> '
+    + '<button class="pu" id="puReveal"' + (revDis ? " disabled" : "") + '>'
     + '<span class="pu-icon">💡</span><span class="pu-n">' + revLeft + '</span></button>'
-    + '<button class="pu" id="puFreeze"' + (frzLeft <= 0 ? " disabled" : "") + '>'
+    + '<button class="pu" id="puFreeze"' + (frzDis ? " disabled" : "") + '>'
     + '<span class="pu-icon">⏸</span><span class="pu-n">' + frzLeft + '</span></button>'
-    + '<button class="pu" id="puAdd"' + (addLeft <= 0 ? " disabled" : "") + '>'
+    + '<button class="pu" id="puAdd"' + (addDis ? " disabled" : "") + '>'
     + '<span class="pu-icon">⏰</span><span class="pu-n">' + addLeft + '</span></button>';
   const pR = document.getElementById("puReveal");
   if (pR) pR.onclick = () => { revealCell(); renderPowerups(); };
@@ -2481,6 +2805,7 @@ function showHintModal(){
 function revealCell(){
   if (state.done) return;
   if (state.hints.reveals >= HINT_LIMITS.reveals){ toast("No reveals left"); return; }
+  if (state.mode === "levels" && poolRemaining() <= 0){ toast("Power-up pool empty — recharges over time"); return; }
   // Collect all empty, non-given cells across all layers
   const empties = [];
   for (let L = 0; L < state.layers.length; L++)
@@ -2490,6 +2815,7 @@ function revealCell(){
   if (!empties.length){ toast("Board is full"); return; }
   const pick = empties[Math.floor(Math.random() * empties.length)];
   state.hints.reveals++;
+  if (state.mode === "levels") usePoolCharge();
   state.layers[pick.L].givens[pick.i] = true;   // lock it like a given
   placeColour(pick.L, pick.i, state.layers[pick.L].solution[pick.i]);
   // Glow effect
@@ -2501,7 +2827,9 @@ function revealCell(){
 function freezeClock(){
   if (state.done || state.mode !== "levels") return;
   if (state.hints.freezes >= HINT_LIMITS.freezes){ toast("No freezes left"); return; }
+  if (poolRemaining() <= 0){ toast("Power-up pool empty — recharges over time"); return; }
   state.hints.freezes++;
+  usePoolCharge();
   // Mechanically: stop the timer for FREEZE_SECS, then restart it.
   stopTimer();
   state.frozenUntil = Date.now() + FREEZE_SECS * 1000;
@@ -2517,7 +2845,9 @@ function freezeClock(){
 function addTime(){
   if (state.done || state.mode !== "levels") return;
   if (state.hints.adds >= HINT_LIMITS.adds){ toast("No time adds left"); return; }
+  if (poolRemaining() <= 0){ toast("Power-up pool empty — recharges over time"); return; }
   state.hints.adds++;
+  usePoolCharge();
   state.limitMs += ADD_SECS * 1000;
   toast("⏰ +" + ADD_SECS + "s · " + (HINT_LIMITS.adds - state.hints.adds) + " left");
   saveProgress();
@@ -2849,14 +3179,19 @@ function miniBoard(){
 }
 
 function showWin(){
+  fireConfetti();
   const st = load(LS_STATS, blankStats());
   const hintsUsed = totalHints();
+  // Challenge info — if they beat a friend's time, celebrate it
+  const challTime = getChallengeTime();
+  const beatChall = challTime && elapsedMs() < challTime * 1000;
   openModal(
     "<h2>Solved</h2>"
     + '<p class="lede">' + SHARE_NAME + " #" + state.day + " · " + sizeOf(state.size).label + " " + diffOf2(state.diff, state.n).label
     + (hintsUsed ? ' · 💡×' + hintsUsed : '') + "</p>"
     + '<div class="win-time">' + fmtTime(elapsedMs()) + "</div>"
     + '<div class="badge-wrap" id="badgeWrap"></div>'
+    + (beatChall ? '<p class="lede" style="color:var(--ok)">⚡ Beat the challenge time!</p>' : '')
     + '<div class="stats">'
     + '<div class="stat"><div class="n">' + st.streak + '</div><div class="l">Streak</div></div>'
     + '<div class="stat"><div class="n">' + st.played + '</div><div class="l">Solved</div></div>'
@@ -2865,6 +3200,8 @@ function showWin(){
     + "</div>"
     + '<button class="btn" id="shareBtn">Share badge</button>'
     + '<button class="btn ghost" id="shareTxt">Copy as text</button>'
+    + '<button class="btn ghost" id="challBtn">⚡ Challenge a friend</button>'
+    + leaderboardHTML()
     + '<button class="btn ghost" onclick="closeModal()">Close</button>'
   );
   // Render the share badge canvas into the modal
@@ -2876,6 +3213,7 @@ function showWin(){
   }
   document.getElementById("shareBtn").onclick = shareAsImage;
   document.getElementById("shareTxt").onclick = copyShare;
+  document.getElementById("challBtn").onclick = shareChallenge;
 }
 
 /* ================= toast ================= */
@@ -3097,6 +3435,8 @@ window.CHROMOKU = { state, DIFFS, SIZES, DIFFICULTIES, CURR_SIZES, CURR_DIFFS,
                     paintCompletedUnits, applySharp, shareAsImage,
                     rotatedMarkSet, buildMarks, emojiFor,
                     render, winLevel, enterDaily,
+                    fireConfetti, shareChallenge, showProgression,
+                    poolRemaining, powerPool,
                     get activePalette(){ return activePalette; },
                     set activePalette(v){ activePalette = v; } };
 </script>
