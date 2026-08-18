@@ -428,6 +428,25 @@ const ERAS = ["Golden","Silver","Bronze","Copper","Modern"];
 const ERA_YEARS = {Golden:"1938–1956",Silver:"1956–1970",Bronze:"1970–1985",Copper:"1985–1991",Modern:"1991–present"};
 const PUBLISHERS = ["Marvel","DC","Image","Dark Horse","IDW","Boom!","Valiant","Indie"];
 const PUB_COLOURS = {Marvel:"var(--marvel)",DC:"var(--dc)",Image:"var(--image)","Dark Horse":"#4a8c4a",IDW:"var(--ink-dim)","Boom!":"#c060c0",Valiant:"#60c0c0",Indie:"var(--ink-faint)"};
+/* normalise AI publisher strings to match PUBLISHERS select options */
+function normalisePub(raw){
+  if(!raw) return "";
+  const s = raw.trim();
+  const lo = s.toLowerCase().replace(/[^a-z0-9! ]/g,"");
+  const map = {
+    "marvel":"Marvel","marvel comics":"Marvel","marvel entertainment":"Marvel",
+    "dc":"DC","dc comics":"DC","detective comics":"DC",
+    "image":"Image","image comics":"Image",
+    "dark horse":"Dark Horse","dark horse comics":"Dark Horse",
+    "idw":"IDW","idw publishing":"IDW",
+    "boom":"Boom!","boom studios":"Boom!","boom! studios":"Boom!",
+    "valiant":"Valiant","valiant comics":"Valiant","valiant entertainment":"Valiant",
+  };
+  if(map[lo]) return map[lo];
+  /* partial match — e.g. "Marvel" inside "Marvel Comics Group" */
+  for(const p of PUBLISHERS){ if(lo.includes(p.toLowerCase().replace(/[^a-z0-9! ]/g,""))) return p; }
+  return s; /* return original if no match — user can pick manually */
+}
 
 /* ================= helpers ================= */
 function fireLevel(c){ const f = c.fire; if(f === true) return 1; return parseInt(f)||0; }
@@ -1436,11 +1455,19 @@ function renderForm(){
 
       /* fill form fields */
       const fieldMap = {
-        publisher:"f-pub", title:"f-title", issueNumber:"f-issue", variant:"f-variant",
+        title:"f-title", issueNumber:"f-issue", variant:"f-variant",
         year:"f-year", coverArtist:"f-artist", writer:"f-writer", characters:"f-chars",
         keyStatus:"f-key", price:"f-price", notes:"f-notes"
       };
       let filled = 0;
+      /* publisher needs normalisation — AI returns "Marvel Comics" but select has "Marvel" */
+      if(rec.publisher){
+        const pubEl = document.getElementById("f-pub");
+        if(pubEl && !pubEl.value){
+          pubEl.value = normalisePub(rec.publisher);
+          if(pubEl.value){ pubEl.classList.add("needs-att"); filled++; }
+        }
+      }
       Object.entries(fieldMap).forEach(([k,elId]) => {
         if(rec[k]){
           const el = document.getElementById(elId);
