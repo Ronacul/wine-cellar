@@ -79,6 +79,11 @@ h1{
   font-family:var(--mono); font-size:14px; font-variant-numeric:tabular-nums;
   color:var(--ink-dim); min-width:44px; text-align:right;
 }
+/* In levels the clock is the stakes — make it impossible to miss. */
+.timer.lvl{font-size:20px; font-weight:700; color:var(--ink); min-width:56px}
+.timer.lvl.warn{color:#d4842a}
+.timer.lvl.danger{color:var(--error); animation:pulse-clock .6s infinite alternate}
+@keyframes pulse-clock{from{opacity:1} to{opacity:.45}}
 
 /* ================= difficulty ================= */
 .diffs{
@@ -162,6 +167,22 @@ h1{
 .tbar-fill.danger{background:var(--error)}
 .timer.warn{color:#d4842a}
 .timer.danger{color:var(--error); font-weight:600}
+/* Power-up bar — always visible during levels, not buried in a modal. */
+.powerups{
+  display:flex; gap:6px; justify-content:center; width:100%; max-width:400px;
+  margin-top:-8px; margin-bottom:2px;
+}
+.pu{
+  display:flex; align-items:center; gap:4px; padding:4px 10px;
+  border-radius:9px; background:var(--panel2); font-family:var(--mono);
+  font-size:12px; color:var(--ink-dim); transition:transform .1s, background .15s;
+  cursor:pointer; user-select:none; border:1px solid transparent;
+}
+.pu:active{transform:scale(.92)}
+.pu[disabled]{opacity:.3; pointer-events:none}
+.pu .pu-icon{font-size:16px; line-height:1}
+.pu .pu-n{font-weight:700; font-variant-numeric:tabular-nums; color:var(--ink)}
+.pu:hover{background:var(--panel); border-color:var(--line)}
 .stars-big{
   text-align:center; font-size:34px; letter-spacing:6px; margin:2px 0 16px;
   color:var(--line-2);
@@ -491,6 +512,7 @@ html.dev .dev-only{display:grid}
     </div>
   </div>
   <div class="tbarwrap" id="tbarwrap" style="display:none"><div class="tbar-fill" id="tbar"></div></div>
+  <div class="powerups" id="powerups" style="display:none"></div>
   <div class="board-wrap"><div class="board" id="board"></div></div>
   <div class="palette pal-pad" id="palette"></div>
 </div>
@@ -1502,7 +1524,7 @@ function tickTimer(){
 
   const left = Math.max(0, state.limitMs - elapsedMs());
   el.textContent = fmtTime(left);
-  el.className = "timer" + (frozen ? " frozen" : left < 10000 ? " danger" : left < 30000 ? " warn" : "");
+  el.className = "timer lvl" + (frozen ? " frozen" : left < 10000 ? " danger" : left < 30000 ? " warn" : "");
 
   const bar = document.getElementById("tbar");
   if (bar){
@@ -1766,7 +1788,8 @@ function renderLevelBar(){
     + "</div>";
   const tw = document.getElementById("tbarwrap");
   if (tw) tw.style.display = "";
-  document.getElementById("lvBack").onclick = enterDaily;
+  document.getElementById("lvBack").onclick = confirmQuitLevel;
+  renderPowerups();
   // The axis toggles belong to the daily; a level chooses its own config.
   for (const id of ["latinToggle", "dblToggle", "scrambleToggle", "lvlToggle"]){
     const b = document.getElementById(id);
@@ -1835,6 +1858,8 @@ function renderDiffs(){
   if (lb) lb.onclick = () => loadLevel(progress().level);
   const tw = document.getElementById("tbarwrap");
   if (tw) tw.style.display = "none";
+  const pu = document.getElementById("powerups");
+  if (pu) pu.style.display = "none";
   const lt = document.getElementById("latinToggle");
   lt.className = "dbl" + (state.latin ? " on" : "");
   lt.textContent = state.latin ? "Latin ✓" : "Latin";
@@ -2361,6 +2386,55 @@ const ADD_SECS = 30;
 
 function totalHints(){ return state.hints.reveals + state.hints.freezes + state.hints.adds; }
 
+// Power-ups: always visible during levels so the player can fire them
+// without opening a modal. The hint modal still exists for daily mode
+// (where only Reveal applies) and as a fallback info panel.
+function renderPowerups(){
+  const el = document.getElementById("powerups");
+  if (!el) return;
+  if (state.mode !== "levels" || state.done){
+    el.style.display = "none"; return;
+  }
+  el.style.display = "";
+  const revLeft = HINT_LIMITS.reveals - state.hints.reveals;
+  const frzLeft = HINT_LIMITS.freezes - state.hints.freezes;
+  const addLeft = HINT_LIMITS.adds - state.hints.adds;
+  el.innerHTML =
+    '<button class="pu" id="puReveal"' + (revLeft <= 0 ? " disabled" : "") + '>'
+    + '<span class="pu-icon">💡</span><span class="pu-n">' + revLeft + '</span></button>'
+    + '<button class="pu" id="puFreeze"' + (frzLeft <= 0 ? " disabled" : "") + '>'
+    + '<span class="pu-icon">⏸</span><span class="pu-n">' + frzLeft + '</span></button>'
+    + '<button class="pu" id="puAdd"' + (addLeft <= 0 ? " disabled" : "") + '>'
+    + '<span class="pu-icon">⏰</span><span class="pu-n">' + addLeft + '</span></button>';
+  const pR = document.getElementById("puReveal");
+  if (pR) pR.onclick = () => { revealCell(); renderPowerups(); };
+  const pF = document.getElementById("puFreeze");
+  if (pF) pF.onclick = () => { freezeClock(); renderPowerups(); };
+  const pA = document.getElementById("puAdd");
+  if (pA) pA.onclick = () => { addTime(); renderPowerups(); };
+}
+
+// Quitting a timed level costs a life — warn first.
+function confirmQuitLevel(){
+  if (state.done){ enterDaily(); return; }
+  openModal(
+    '<h2>Quit level?</h2>'
+    + '<p class="lede">You\'ll lose a life.</p>'
+    + '<div class="hearts big">' + heartsHTML(progress()) + '</div>'
+    + '<button class="btn" id="mQuit" style="background:var(--error)">Quit</button>'
+    + '<button class="btn ghost" id="mStay">Keep playing</button>'
+  );
+  document.getElementById("mQuit").onclick = () => {
+    closeModal();
+    const p = progress();
+    p.lives = Math.max(0, p.lives - 1);
+    if (p.lives < LIVES_MAX) p.livesAt = p.livesAt || Date.now();
+    saveProgress2(p);
+    enterDaily();
+  };
+  document.getElementById("mStay").onclick = closeModal;
+}
+
 function showHintModal(){
   if (state.done){ toast("Puzzle already solved"); return; }
   const isLvl = state.mode === "levels";
@@ -2397,11 +2471,11 @@ function showHintModal(){
     + '<button class="btn ghost" onclick="closeModal()">Cancel</button>'
   );
   const hR = document.getElementById("hReveal");
-  if (hR) hR.onclick = revealCell;
+  if (hR) hR.onclick = () => { closeModal(); revealCell(); };
   const hF = document.getElementById("hFreeze");
-  if (hF) hF.onclick = freezeClock;
+  if (hF) hF.onclick = () => { closeModal(); freezeClock(); };
   const hA = document.getElementById("hAdd");
-  if (hA) hA.onclick = addTime;
+  if (hA) hA.onclick = () => { closeModal(); addTime(); };
 }
 
 function revealCell(){
@@ -2413,11 +2487,10 @@ function revealCell(){
     for (let i = 0; i < state.n * state.n; i++)
       if (!state.layers[L].givens[i] && (state.layers[L].grid[i] === null || state.layers[L].grid[i] === undefined))
         empties.push({ L, i });
-  if (!empties.length){ toast("Board is full"); closeModal(); return; }
+  if (!empties.length){ toast("Board is full"); return; }
   const pick = empties[Math.floor(Math.random() * empties.length)];
   state.hints.reveals++;
   state.layers[pick.L].givens[pick.i] = true;   // lock it like a given
-  closeModal();
   placeColour(pick.L, pick.i, state.layers[pick.L].solution[pick.i]);
   // Glow effect
   const el = cellEl(pick.i);
@@ -2432,7 +2505,6 @@ function freezeClock(){
   // Mechanically: stop the timer for FREEZE_SECS, then restart it.
   stopTimer();
   state.frozenUntil = Date.now() + FREEZE_SECS * 1000;
-  closeModal();
   toast("⏸ Clock frozen for " + FREEZE_SECS + "s");
   saveProgress();
   setTimeout(() => {
@@ -2447,7 +2519,6 @@ function addTime(){
   if (state.hints.adds >= HINT_LIMITS.adds){ toast("No time adds left"); return; }
   state.hints.adds++;
   state.limitMs += ADD_SECS * 1000;
-  closeModal();
   toast("⏰ +" + ADD_SECS + "s · " + (HINT_LIMITS.adds - state.hints.adds) + " left");
   saveProgress();
 }
