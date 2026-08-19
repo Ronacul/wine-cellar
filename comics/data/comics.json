@@ -22,10 +22,10 @@
     "location": "",
     "qty": 1,
     "notes": "First appearance of the Punisher (Frank Castle) and the Jackal (Miles Warren). Bronze Age mega-key. Cover by Gil Kane, interior art by Ross Andru. The Punisher has become one of Marvel's most iconic anti-heroes, spawning multiple solo series, films, and TV shows. One of the most valuable Bronze Age Marvel books.",
-    "marketValue": "~$1,025 CAD (est.)",
-    "gradedValue": "~$1,370 CAD (est.)",
-    "gradeCandidate": true,
-    "gradeCandidateReason": "Grading is highly recommended for this major Bronze Age key to certify authenticity and maximize resale value, as the graded premium easily covers the grading costs.",
+    "marketValue": "~$1250 CAD (est.)",
+    "gradedValue": "~$1350 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The high cost of professional grading compared to the relatively slim value increase for a Very Good (4.0) copy makes the return on investment minimal.",
     "lastValueCheck": "2026-08-18",
     "soldDate": null,
     "soldPrice": null,
@@ -56,10 +56,10 @@
     "location": "",
     "qty": 1,
     "notes": "Part of the 'Dark Reign' storyline, featuring Doctor Voodoo as the Sorcerer Supreme.",
-    "marketValue": "~$5 CAD (est.)",
-    "gradedValue": "~$30 CAD (est.)",
+    "marketValue": "~$8 CAD (est.)",
+    "gradedValue": "~$45 CAD",
     "gradeCandidate": false,
-    "gradeCandidateReason": "Grading this modern, non-key issue in Very Fine condition is not financially viable, as the grading cost far exceeds the book's potential market value.",
+    "gradeCandidateReason": "The current market value for this issue is too low to justify the ~$50 CAD grading cost, as the graded premium does not exceed the cost of professional slab services.",
     "lastValueCheck": "2026-08-18",
     "imagePath": "images/msxvs2bf2m7wa.jpg"
   },
@@ -86,7 +86,12 @@
     "location": "",
     "qty": 1,
     "notes": "Secret Invasion tie-in featuring Bucky Barnes as Captain America during the acclaimed Ed Brubaker run.",
-    "imagePath": "images/msy0e42q3a8y3.jpg"
+    "imagePath": "images/msy0e42q3a8y3.jpg",
+    "marketValue": "~$12 CAD (est.)",
+    "gradedValue": "~$45 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The low raw market value makes the cost of professional grading exceed the potential increase in resale value.",
+    "lastValueCheck": "2026-08-18"
   },
   {
     "id": "msy0ezzv3fk1a",
@@ -101,7 +106,7 @@
     "graded": false,
     "gradingCompany": null,
     "grade": null,
-    "keyStatus": "",
+    "keyStatus": "First appearance of Layla Miller in a solo title/spotlight; character created by Peter David.",
     "fire": 0,
     "coverArtist": "Valentine De Landro",
     "writer": "Peter David",
@@ -111,7 +116,12 @@
     "location": "",
     "qty": 1,
     "notes": "A one-shot issue focusing on Layla Miller's survival and actions in the future timeline during the aftermath of Messiah Complex.",
-    "imagePath": "images/msy0ezzv3fk1a.jpg"
+    "imagePath": "images/msy0ezzv3fk1a.jpg",
+    "marketValue": "~$10 CAD (est.)",
+    "gradedValue": "~$40 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The low raw market value makes the cost of professional grading significantly higher than the potential increase in resale value.",
+    "lastValueCheck": "2026-08-18"
   },
   {
     "id": "msy0fv8mxxzh9",
@@ -136,7 +146,12 @@
     "location": "",
     "qty": 1,
     "notes": "Features cover art by Clayton Crain and is the second issue of the popular 2008 Deadpool series written by Daniel Way.",
-    "imagePath": "images/msy0fv8mxxzh9.jpg"
+    "imagePath": "images/msy0fv8mxxzh9.jpg",
+    "marketValue": "~$45 CAD (est.)",
+    "gradedValue": "~$95 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The low spread between the raw market value and the projected graded value, combined with the $50+ cost of professional grading, results in a negative return on investment.",
+    "lastValueCheck": "2026-08-18"
   },
   {
     "id": "msy0gkdqd9pmo",
@@ -156,12 +171,17 @@
     "coverArtist": "Marko Djurdjevic",
     "writer": "Daniel Way",
     "characters": "Deadpool, Skrulls",
-    "price": "~$40 CAD (est.)",
+    "price": "~$4 CAD (est.)",
     "source": "",
     "location": "",
     "qty": 1,
     "notes": "This issue begins the highly popular Daniel Way run that defined Deadpool's fourth-wall-breaking personality for the modern era, featuring a Secret Invasion tie-in storyline.",
-    "imagePath": "images/msy0gkdqd9pmo.jpg"
+    "imagePath": "images/msy0gkdqd9pmo.jpg",
+    "marketValue": "~$65 CAD (est.)",
+    "gradedValue": "~$110 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The margin between the raw market value and a potential 9.0/9.2 slab does not provide a sufficient return on investment after factoring in grading and shipping costs.",
+    "lastValueCheck": "2026-08-18"
   },
   {
     "id": "msy0hfkrnt5mk",
@@ -176,7 +196,7 @@
     "graded": false,
     "gradingCompany": null,
     "grade": null,
-    "keyStatus": "",
+    "keyStatus": "First full appearance of Ezekiel Stane.",
     "fire": 0,
     "coverArtist": "Salvador Larroca",
     "writer": "Matt Fraction",
@@ -186,7 +206,12 @@
     "location": "",
     "qty": 1,
     "notes": "Conclusion of 'The Five Nightmares' story arc. Features Ezekiel Stane on the cover. Secret Invasion tie-in.",
-    "imagePath": "images/msy0hfkrnt5mk.jpg"
+    "imagePath": "images/msy0hfkrnt5mk.jpg",
+    "marketValue": "~$45 CAD (est.)",
+    "gradedValue": "~$85 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The current market value of a raw VF copy is close to the cost of professional grading, meaning the investment would likely result in a net loss or minimal profit.",
+    "lastValueCheck": "2026-08-18"
   },
   {
     "id": "msy0i3z8cjsc6",
@@ -211,7 +236,12 @@
     "location": "",
     "qty": 1,
     "notes": "Secret Invasion tie-in. Part 1 of the 'War Machine: Weapon of S.H.I.E.L.D.' storyline. Features iconic War Machine cover art by Adi Granov.",
-    "imagePath": "images/msy0i3z8cjsc6.jpg"
+    "imagePath": "images/msy0i3z8cjsc6.jpg",
+    "marketValue": "~$6 CAD (est.)",
+    "gradedValue": "~$30 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The current market value is significantly lower than the cost of professional grading, and the issue holds no major key status to justify the investment.",
+    "lastValueCheck": "2026-08-18"
   },
   {
     "id": "msy0j1arrn3kw",
@@ -236,7 +266,12 @@
     "location": "",
     "qty": 1,
     "notes": "Secret Invasion tie-in issue featuring part 6 of the 'Payback' story arc.",
-    "imagePath": "images/msy0j1arrn3kw.jpg"
+    "imagePath": "images/msy0j1arrn3kw.jpg",
+    "marketValue": "~$8 CAD (est.)",
+    "gradedValue": "~$45 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The current market value of this issue is significantly lower than the cost of professional grading, meaning it offers no return on investment.",
+    "lastValueCheck": "2026-08-18"
   },
   {
     "id": "msy0kb2exzc9o",
@@ -261,7 +296,12 @@
     "location": "",
     "qty": 1,
     "notes": "Secret Invasion tie-in issue featuring the rebirth of Captain Britain by Merlin.",
-    "imagePath": "images/msy0kb2exzc9o.jpg"
+    "imagePath": "images/msy0kb2exzc9o.jpg",
+    "marketValue": "~$12 CAD (est.)",
+    "gradedValue": "~$45 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The low raw market value makes the cost of professional grading significantly higher than any potential increase in book value.",
+    "lastValueCheck": "2026-08-18"
   },
   {
     "id": "msy0llfujpzxi",
@@ -286,7 +326,12 @@
     "location": "",
     "qty": 1,
     "notes": "Secret Invasion tie-in issue featuring a prominent Blade cover.",
-    "imagePath": "images/msy0llfujpzxi.jpg"
+    "imagePath": "images/msy0llfujpzxi.jpg",
+    "marketValue": "~$12 CAD (est.)",
+    "gradedValue": "~$45 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The current market value for raw copies is significantly lower than the cost of professional grading, and a 9.2 or 9.4 grade does not command a premium high enough to recoup the investment.",
+    "lastValueCheck": "2026-08-18"
   },
   {
     "id": "msy0mml00y9sa",
@@ -311,7 +356,12 @@
     "location": "",
     "qty": 1,
     "notes": "Part 3 of a 3-issue limited series tying into the Secret Invasion crossover event, featuring the Young Avengers and the Runaways.",
-    "imagePath": "images/msy0mml00y9sa.jpg"
+    "imagePath": "images/msy0mml00y9sa.jpg",
+    "marketValue": "~$6 CAD (est.)",
+    "gradedValue": "~$35 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The low raw market value makes the cost of professional grading significantly higher than the potential increase in the book's total worth.",
+    "lastValueCheck": "2026-08-18"
   },
   {
     "id": "msy0nfshx3kz6",
@@ -336,7 +386,12 @@
     "location": "",
     "qty": 1,
     "notes": "Features a cover homage to Avengers #2 (1963), tie-in to the Secret Invasion crossover event detailing the backstory of the Hank Pym Skrull impostor.",
-    "imagePath": "images/msy0nfshx3kz6.jpg"
+    "imagePath": "images/msy0nfshx3kz6.jpg",
+    "marketValue": "~$8 CAD (est.)",
+    "gradedValue": "~$45 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The current market value of this issue is significantly lower than the cost of professional grading, resulting in a negative return on investment.",
+    "lastValueCheck": "2026-08-18"
   },
   {
     "id": "msy0o6c2v79fa",
@@ -361,7 +416,12 @@
     "location": "",
     "qty": 1,
     "notes": "Tie-in to the 'Secret Invasion' crossover event, detailing Nick Fury's actions during the Skrull infiltration.",
-    "imagePath": "images/msy0o6c2v79fa.jpg"
+    "imagePath": "images/msy0o6c2v79fa.jpg",
+    "marketValue": "~$8 CAD (est.)",
+    "gradedValue": "~$40 CAD",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The low raw market value of this issue makes the cost of professional grading significantly higher than the potential increase in resale value.",
+    "lastValueCheck": "2026-08-18"
   },
   {
     "id": "msy0otzbuz84p",
@@ -386,7 +446,12 @@
     "location": "",
     "qty": 1,
     "notes": "Secret Invasion tie-in issue detailing the history and division of the Marvel Universe's secret cabal, the Illuminati.",
-    "imagePath": "images/msy0otzbuz84p.jpg"
+    "imagePath": "images/msy0otzbuz84p.jpg",
+    "marketValue": "~$8 CAD (est.)",
+    "gradedValue": "~$45 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The current market value of this issue is significantly lower than the combined cost of grading and shipping, making it a poor investment for professional encapsulation.",
+    "lastValueCheck": "2026-08-18"
   },
   {
     "id": "msy0pm2iz3jy0",
@@ -411,7 +476,12 @@
     "location": "",
     "qty": 1,
     "notes": "Secret Invasion tie-in issue featuring stunning painted cover art by Alex Ross.",
-    "imagePath": "images/msy0pm2iz3jy0.jpg"
+    "imagePath": "images/msy0pm2iz3jy0.jpg",
+    "marketValue": "~$8 CAD (est.)",
+    "gradedValue": "~$40 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The cost of professional grading significantly exceeds the potential value increase, as this issue lacks major key status or high-demand scarcity.",
+    "lastValueCheck": "2026-08-18"
   },
   {
     "id": "msyo5dv9dh237",
@@ -579,7 +649,12 @@
     "source": "",
     "location": "",
     "qty": 1,
-    "notes": "Part of the critically acclaimed J. Michael Straczynski run where Thor resurrects the Asgardians in Oklahoma."
+    "notes": "Part of the critically acclaimed J. Michael Straczynski run where Thor resurrects the Asgardians in Oklahoma.",
+    "marketValue": "~$12 CAD (est.)",
+    "gradedValue": "~$45 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The low raw market value makes the cost of professional grading significantly higher than the potential increase in the comic's resale value.",
+    "lastValueCheck": "2026-08-18"
   },
   {
     "id": "msyoebdpy0i4a",
@@ -603,7 +678,12 @@
     "source": "",
     "location": "",
     "qty": 1,
-    "notes": "Part of 'The Death of Captain America' storyline during Ed Brubaker's highly acclaimed run, featuring Bucky Barnes as Captain America battling the 1950s Captain America (William Burnside)."
+    "notes": "Part of 'The Death of Captain America' storyline during Ed Brubaker's highly acclaimed run, featuring Bucky Barnes as Captain America battling the 1950s Captain America (William Burnside).",
+    "marketValue": "~$12 CAD (est.)",
+    "gradedValue": "~$45 CAD",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The current market value of this issue is significantly lower than the combined cost of professional grading and shipping, making it a poor investment for slab certification.",
+    "lastValueCheck": "2026-08-18"
   },
   {
     "id": "msyoere5shwrj",
@@ -627,7 +707,12 @@
     "source": "",
     "location": "",
     "qty": 1,
-    "notes": "A tie-in to the Secret Invasion event, revealing the backstory of how Elektra was captured and replaced by the Skrull Pagon."
+    "notes": "A tie-in to the Secret Invasion event, revealing the backstory of how Elektra was captured and replaced by the Skrull Pagon.",
+    "marketValue": "~$8 CAD (est.)",
+    "gradedValue": "~$40 CAD",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The current market value of this issue is significantly lower than the cost of professional grading, providing no return on investment.",
+    "lastValueCheck": "2026-08-18"
   },
   {
     "id": "msyof637vi8ya",
@@ -651,7 +736,12 @@
     "source": "",
     "location": "",
     "qty": 1,
-    "notes": "Features a classic Avengers lineup on the cover, tying into the major Secret Invasion storyline."
+    "notes": "Features a classic Avengers lineup on the cover, tying into the major Secret Invasion storyline.",
+    "marketValue": "~$8 CAD (est.)",
+    "gradedValue": "~$45 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The cost of professional grading significantly exceeds the value of this modern issue, which does not hold enough rarity or demand to justify the expense.",
+    "lastValueCheck": "2026-08-18"
   },
   {
     "id": "msyofky3n7gki",
@@ -666,7 +756,7 @@
     "graded": false,
     "gradingCompany": null,
     "grade": null,
-    "keyStatus": "",
+    "keyStatus": "Features early appearances of Skaar and characters from the Savage World of Sakaar, but not a primary major key issue.",
     "fire": 0,
     "coverArtist": "Tom Raney",
     "writer": "Greg Pak",
@@ -676,7 +766,12 @@
     "location": "",
     "qty": 1,
     "notes": "One-shot guidebook detailing the geography and inhabitants of the planet Sakaar, released during the Secret Invasion event.",
-    "imagePath": "images/msyofky3n7gki.jpg"
+    "imagePath": "images/msyofky3n7gki.jpg",
+    "marketValue": "~$12 CAD (est.)",
+    "gradedValue": "~$45 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The low raw market value makes the cost of professional grading exceed the potential increase in resale value, resulting in a negative return on investment.",
+    "lastValueCheck": "2026-08-18"
   },
   {
     "id": "msyogmtubdybn",
@@ -701,7 +796,12 @@
     "location": "",
     "qty": 1,
     "notes": "Early issue of Skaar's first ongoing solo series, set on the planet Sakaar following the events of Planet Hulk.",
-    "imagePath": "images/msyogmtubdybn.jpg"
+    "imagePath": "images/msyogmtubdybn.jpg",
+    "marketValue": "~$8 CAD (est.)",
+    "gradedValue": "~$45 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The current market value of a raw VF copy is significantly lower than the combined cost of professional grading and shipping, making it a poor candidate for slab investment.",
+    "lastValueCheck": "2026-08-18"
   },
   {
     "id": "msyoha0g9eddw",
@@ -716,7 +816,7 @@
     "graded": false,
     "gradingCompany": null,
     "grade": null,
-    "keyStatus": "",
+    "keyStatus": "Features the marriage of Hercules and Namora; high-profile creative team (J. Michael Straczynski and Olivier Coipel).",
     "fire": 0,
     "coverArtist": "Marko Djurdjevic",
     "writer": "J. Michael Straczynski",
@@ -726,7 +826,12 @@
     "location": "",
     "qty": 1,
     "notes": "Anniversary issue restoring the legacy numbering of the series, featuring multiple stories and a wraparound cover.",
-    "imagePath": "images/msyoha0g9eddw.jpg"
+    "imagePath": "images/msyoha0g9eddw.jpg",
+    "marketValue": "~$12 CAD (est.)",
+    "gradedValue": "~$45 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The low raw market value makes the cost of professional grading exceed any potential increase in resale profit.",
+    "lastValueCheck": "2026-08-18"
   },
   {
     "id": "msyoiq36rxinj",
@@ -751,7 +856,12 @@
     "location": "",
     "qty": 1,
     "notes": "Part of the popular 2008-2012 Deadpool series written by Daniel Way.",
-    "imagePath": "images/msyoiq36rxinj.jpg"
+    "imagePath": "images/msyoiq36rxinj.jpg",
+    "marketValue": "~$45 CAD (est.)",
+    "gradedValue": "~$85 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The current market spread between a raw VF copy and a professionally graded 8.0/8.5 does not provide sufficient ROI to cover the costs of grading and shipping.",
+    "lastValueCheck": "2026-08-18"
   },
   {
     "id": "msyoj79gn2sk5",
@@ -766,7 +876,7 @@
     "graded": false,
     "gradingCompany": null,
     "grade": null,
-    "keyStatus": "",
+    "keyStatus": "First appearance of Agent X (Nijo) in the Deadpool series/costume",
     "fire": 0,
     "coverArtist": "Jason Pearson",
     "writer": "Daniel Way",
@@ -776,7 +886,12 @@
     "location": "",
     "qty": 1,
     "notes": "Part of the Dark Reign crossover event featuring Deadpool battling Tiger Shark under the water.",
-    "imagePath": "images/msyoj79gn2sk5.jpg"
+    "imagePath": "images/msyoj79gn2sk5.jpg",
+    "marketValue": "~$45 CAD (est.)",
+    "gradedValue": "~$85 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The low gap between raw value and the projected 9.0-9.2 grade value makes the $50 grading cost financially inefficient.",
+    "lastValueCheck": "2026-08-19"
   },
   {
     "id": "msyojoknjrjas",
@@ -801,7 +916,12 @@
     "location": "",
     "qty": 1,
     "notes": "Part 1 of the 'Magnum Opus' crossover storyline featuring the Thunderbolts during Marvel's Dark Reign event.",
-    "imagePath": "images/msyojoknjrjas.jpg"
+    "imagePath": "images/msyojoknjrjas.jpg",
+    "marketValue": "~$45 CAD (est.)",
+    "gradedValue": "~$85 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The cost of professional grading and shipping exceeds the marginal increase in value for this issue in this grade, resulting in a negative return on investment.",
+    "lastValueCheck": "2026-08-19"
   },
   {
     "id": "msyok7h45ydbq",
@@ -826,7 +946,12 @@
     "location": "",
     "qty": 1,
     "notes": "Part of the Dark Reign storyline featuring Deadpool clashing with Norman Osborn's Thunderbolts.",
-    "imagePath": "images/msyok7h45ydbq.jpg"
+    "imagePath": "images/msyok7h45ydbq.jpg",
+    "marketValue": "~$45 CAD (est.)",
+    "gradedValue": "~$75 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The current market value of a raw VF copy is close enough to the potential slabbed value that grading costs would likely exceed the return on investment.",
+    "lastValueCheck": "2026-08-19"
   },
   {
     "id": "msyreuxxdeuxd",
@@ -851,7 +976,12 @@
     "location": "",
     "qty": 1,
     "notes": "A two-issue miniseries exploring alternate universe scenarios related to the 'Ghost Boxes' storyline in the main Astonishing X-Men series.",
-    "imagePath": "images/msyreuxxdeuxd.jpg"
+    "imagePath": "images/msyreuxxdeuxd.jpg",
+    "marketValue": "~$8 CAD (est.)",
+    "gradedValue": "~$45 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The current market value of this book is significantly lower than the cost of professional grading, resulting in a negative return on investment.",
+    "lastValueCheck": "2026-08-19"
   },
   {
     "id": "msz7pgvbyas0q",
@@ -876,7 +1006,12 @@
     "location": "",
     "qty": 1,
     "notes": "Part of the 'Ghost Boxes' story arc during the Manifest Destiny era, written by Warren Ellis with distinctive art by Simone Bianchi.",
-    "imagePath": "images/msz7pgvbyas0q.jpg"
+    "imagePath": "images/msz7pgvbyas0q.jpg",
+    "marketValue": "~$8 CAD (est.)",
+    "gradedValue": "~$45 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The low raw market value makes professional grading economically inefficient, as the cost of grading significantly exceeds the potential increase in resale value.",
+    "lastValueCheck": "2026-08-19"
   },
   {
     "id": "msz7ujet0723m",
@@ -901,7 +1036,12 @@
     "location": "",
     "qty": 1,
     "notes": "This issue is part of the 'Messiah War' lead-up era featuring Hope Summers. It is a standard modern-era comic with low collector demand.",
-    "imagePath": "images/msz7ujet0723m.jpg"
+    "imagePath": "images/msz7ujet0723m.jpg",
+    "marketValue": "~$12 CAD (est.)",
+    "gradedValue": "~$45 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The low raw market value makes the cost of professional grading higher than the potential increase in resale value, resulting in a negative return on investment.",
+    "lastValueCheck": "2026-08-19"
   },
   {
     "id": "msz7vmhydbj4y",
@@ -926,7 +1066,12 @@
     "location": "",
     "qty": 1,
     "notes": "Part of the J. Michael Straczynski and Olivier Coipel critically acclaimed run; features Balder the Brave.",
-    "imagePath": "images/msz7vmhydbj4y.jpg"
+    "imagePath": "images/msz7vmhydbj4y.jpg",
+    "marketValue": "~$15 CAD (est.)",
+    "gradedValue": "~$40 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The low raw market value makes the cost of professional grading significantly higher than the potential increase in resale value.",
+    "lastValueCheck": "2026-08-19"
   },
   {
     "id": "msz7ye3b09f1t",
@@ -951,7 +1096,12 @@
     "location": "",
     "qty": 1,
     "notes": "Part of the Necrosha storyline lead-up; features Clayton Crain's distinctive painted cover style.",
-    "imagePath": "images/msz7ye3b09f1t.jpg"
+    "imagePath": "images/msz7ye3b09f1t.jpg",
+    "marketValue": "~$8 CAD (est.)",
+    "gradedValue": "~$40 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The cost of professional grading significantly exceeds the potential value increase, as this is a common modern issue with low aftermarket demand.",
+    "lastValueCheck": "2026-08-19"
   },
   {
     "id": "msz80uln2biwb",
@@ -976,7 +1126,12 @@
     "location": "",
     "qty": 1,
     "notes": "Part 1 of the 'Suicide Leper' story arc. The cover is a standard direct edition cover by Clayton Crain.",
-    "imagePath": "images/msz80uln2biwb.jpg"
+    "imagePath": "images/msz80uln2biwb.jpg",
+    "marketValue": "~$12 CAD (est.)",
+    "gradedValue": "~$45 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The current market value of a raw NM copy is significantly lower than the combined cost of professional grading and shipping, making it a poor candidate for slab investment.",
+    "lastValueCheck": "2026-08-19"
   },
   {
     "id": "msz84meauq3qs",
@@ -1001,7 +1156,12 @@
     "location": "",
     "qty": 1,
     "notes": "Part of the 'Messiah Complex' aftermath storyline. Features Emma Frost with the mutant baby, Hope.",
-    "imagePath": "images/msz84meauq3qs.jpg"
+    "imagePath": "images/msz84meauq3qs.jpg",
+    "marketValue": "~$8 CAD (est.)",
+    "gradedValue": "~$40 CAD",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The low raw market value makes the cost of professional grading significantly higher than the potential increase in the book's total market worth.",
+    "lastValueCheck": "2026-08-19"
   },
   {
     "id": "msz8a9b3tvjpj",
@@ -1026,7 +1186,12 @@
     "location": "",
     "qty": 1,
     "notes": "Part of the Messiah Complex aftermath story arc; features Ariel Olivetti cover art.",
-    "imagePath": "images/msz8a9b3tvjpj.jpg"
+    "imagePath": "images/msz8a9b3tvjpj.jpg",
+    "marketValue": "~$8 CAD (est.)",
+    "gradedValue": "~$45 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The cost of professional grading exceeds the total market value of the slabbed book, making it a poor investment for ROI.",
+    "lastValueCheck": "2026-08-19"
   },
   {
     "id": "msz8can9nsp5q",
@@ -1051,7 +1216,12 @@
     "location": "",
     "qty": 1,
     "notes": "Features Hope Summers on the cover; part of the Messiah War lead-up period.",
-    "imagePath": "images/msz8can9nsp5q.jpg"
+    "imagePath": "images/msz8can9nsp5q.jpg",
+    "marketValue": "~$8 CAD (est.)",
+    "gradedValue": "~$40 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The current market value of this issue does not support the cost of professional grading, as the slabbed value is significantly lower than the combined cost of grading fees and shipping.",
+    "lastValueCheck": "2026-08-19"
   },
   {
     "id": "msz8efch13tp3",
@@ -1076,7 +1246,12 @@
     "location": "",
     "qty": 1,
     "notes": "This is a recap/handbook issue designed to bring readers up to speed on the cosmic Marvel status quo prior to the War of Kings event; it has minimal collector value.",
-    "imagePath": "images/msz8efch13tp3.jpg"
+    "imagePath": "images/msz8efch13tp3.jpg",
+    "marketValue": "~$15 CAD (est.)",
+    "gradedValue": "~$40 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The low raw market value makes the cost of professional grading significantly higher than the potential increase in resale value, resulting in a negative return on investment.",
+    "lastValueCheck": "2026-08-19"
   },
   {
     "id": "msz8jvwp91t0h",
@@ -1101,7 +1276,12 @@
     "location": "",
     "qty": 1,
     "notes": "Direct Edition. This is a five-part miniseries that ran alongside the X-Men: Legacy series. It is not considered a high-demand key issue.",
-    "imagePath": "images/msz8jvwp91t0h.jpg"
+    "imagePath": "images/msz8jvwp91t0h.jpg",
+    "marketValue": "~$8 CAD (est.)",
+    "gradedValue": "~$45 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The current market value of this issue is significantly lower than the cost of professional grading, resulting in a negative return on investment.",
+    "lastValueCheck": "2026-08-19"
   },
   {
     "id": "msz8ko92cn32y",
@@ -1126,7 +1306,12 @@
     "location": "",
     "qty": 1,
     "notes": "Part of the Original Sin storyline leading into the Marvel event; features Mike Deodato cover art.",
-    "imagePath": "images/msz8ko92cn32y.jpg"
+    "imagePath": "images/msz8ko92cn32y.jpg",
+    "marketValue": "~$10 CAD (est.)",
+    "gradedValue": "~$45 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The low raw market value makes the cost of professional grading higher than the potential increase in the book's resale worth.",
+    "lastValueCheck": "2026-08-19"
   },
   {
     "id": "msz8ld9z8erll",
@@ -1151,7 +1336,12 @@
     "location": "",
     "qty": 1,
     "notes": "Part of a 12-issue limited series featuring a crossover between the Avengers and the Invaders. Standard edition with cover art by Alex Ross.",
-    "imagePath": "images/msz8ld9z8erll.jpg"
+    "imagePath": "images/msz8ld9z8erll.jpg",
+    "marketValue": "~$8 CAD (est.)",
+    "gradedValue": "~$45 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The low raw market value and modest potential appreciation mean professional grading costs would exceed the added value of a high-grade slab.",
+    "lastValueCheck": "2026-08-19"
   },
   {
     "id": "mszapxpapeqn6",
@@ -1166,7 +1356,7 @@
     "graded": false,
     "gradingCompany": null,
     "grade": null,
-    "keyStatus": "",
+    "keyStatus": "First full appearance of Ezekiel Stane.",
     "fire": 0,
     "coverArtist": "Salvador Larroca",
     "writer": "Matt Fraction",
@@ -1176,7 +1366,12 @@
     "location": "",
     "qty": 1,
     "notes": "Part of the 'World's Most Wanted' story arc. The book appears to be in a protective bag and board, keeping it in high-grade condition.",
-    "imagePath": "images/mszapxpapeqn6.jpg"
+    "imagePath": "images/mszapxpapeqn6.jpg",
+    "marketValue": "~$45 CAD (est.)",
+    "gradedValue": "~$85 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The low spread between the raw market value and the potential graded value, combined with grading fees, makes this issue a poor candidate for third-party slab certification.",
+    "lastValueCheck": "2026-08-19"
   },
   {
     "id": "mszaquouwcgf2",
@@ -1201,7 +1396,12 @@
     "location": "",
     "qty": 1,
     "notes": "Part of the 'The Five Nightmares' arc. The comic is in a protective sleeve and appears to be in Near Mint condition.",
-    "imagePath": "images/mszaquouwcgf2.jpg"
+    "imagePath": "images/mszaquouwcgf2.jpg",
+    "marketValue": "~$45 CAD (est.)",
+    "gradedValue": "~$120 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "While the issue is a desirable variant/first print of the Extremis-era storyline, the current raw value does not provide enough margin to justify the $50+ grading cost relative to the potential resale profit.",
+    "lastValueCheck": "2026-08-19"
   },
   {
     "id": "mszarvgwjnw4h",
@@ -1226,7 +1426,12 @@
     "location": "",
     "qty": 1,
     "notes": "This is a one-shot tie-in to the Marvel Ultimatum event. It is a 'Requiem' issue depicting the aftermath of the event for the Fantastic Four.",
-    "imagePath": "images/mszarvgwjnw4h.jpg"
+    "imagePath": "images/mszarvgwjnw4h.jpg",
+    "marketValue": "~$12 CAD (est.)",
+    "gradedValue": "~$65 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The low raw market value relative to the cost of professional grading makes this an unprofitable candidate for slab submission.",
+    "lastValueCheck": "2026-08-19"
   },
   {
     "id": "mszasjm8wndn4",
@@ -1251,7 +1456,12 @@
     "location": "",
     "qty": 1,
     "notes": "Part 1 of the 'Execute Program' storyline, featuring Spider-Man.",
-    "imagePath": "images/mszasjm8wndn4.jpg"
+    "imagePath": "images/mszasjm8wndn4.jpg",
+    "marketValue": "~$25 CAD (est.)",
+    "gradedValue": "~$65 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The low raw market value relative to the cost of grading makes a CGC submission economically unviable for this specific issue.",
+    "lastValueCheck": "2026-08-19"
   },
   {
     "id": "mszatd3n0bluz",
@@ -1276,7 +1486,12 @@
     "location": "",
     "qty": 1,
     "notes": "This is the first issue of the Daniel Way 'Deadpool' ongoing series from 2008; it remains a popular starting point for Deadpool collectors.",
-    "imagePath": "images/mszatd3n0bluz.jpg"
+    "imagePath": "images/mszatd3n0bluz.jpg",
+    "marketValue": "~$95 CAD (est.)",
+    "gradedValue": "~$210 CAD (est. CGC 9.8)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "While a 9.8 can command a premium, the raw book value relative to the cost of shipping, grading, and insurance makes the ROI too thin to justify the investment.",
+    "lastValueCheck": "2026-08-19"
   },
   {
     "id": "mszau11f166e3",
@@ -1301,7 +1516,12 @@
     "location": "",
     "qty": 1,
     "notes": "Thor Vol 3 #1, 2007. The start of the highly acclaimed J. Michael Straczynski and Olivier Coipel run.",
-    "imagePath": "images/mszau11f166e3.jpg"
+    "imagePath": "images/mszau11f166e3.jpg",
+    "marketValue": "~$45 CAD (est.)",
+    "gradedValue": "~$85 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The current market spread between raw and slabbed copies does not provide enough ROI to justify the $50 grading cost.",
+    "lastValueCheck": "2026-08-19"
   },
   {
     "id": "mszaupp11ezhn",
@@ -1326,7 +1546,12 @@
     "location": "",
     "qty": 2,
     "notes": "Part of the critically acclaimed Ed Brubaker run; features Bucky Barnes as Captain America. The cover is by the renowned artist Alex Ross.",
-    "imagePath": "images/mszaupp11ezhn.jpg"
+    "imagePath": "images/mszaupp11ezhn.jpg",
+    "marketValue": "~$15 CAD (est.)",
+    "gradedValue": "~$45 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The current market value of this issue does not justify the ~$50 CAD cost of professional grading, as the graded value would be lower than the combined cost of the book and the certification fees.",
+    "lastValueCheck": "2026-08-19"
   },
   {
     "id": "mszavna6q7ngl",
@@ -1351,7 +1576,12 @@
     "location": "",
     "qty": 1,
     "notes": "Secret Invasion tie-in featuring The Hood and his criminal syndicate.",
-    "imagePath": "images/mszavna6q7ngl.jpg"
+    "imagePath": "images/mszavna6q7ngl.jpg",
+    "marketValue": "~$8 CAD (est.)",
+    "gradedValue": "~$45 CAD",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The current market value of this issue is significantly lower than the cost of professional grading, resulting in a negative return on investment.",
+    "lastValueCheck": "2026-08-19"
   },
   {
     "id": "mszaxw5sdnf4a",
@@ -1376,7 +1606,12 @@
     "location": "",
     "qty": 1,
     "notes": "Part of the Secret Invasion crossover event. Features the Skrull impostor disguised as Clint Barton/Ronin.",
-    "imagePath": "images/mszaxw5sdnf4a.jpg"
+    "imagePath": "images/mszaxw5sdnf4a.jpg",
+    "marketValue": "~$8 CAD (est.)",
+    "gradedValue": "~$40 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The low raw market value makes the cost of professional grading significantly higher than the potential increase in the book's resale worth.",
+    "lastValueCheck": "2026-08-19"
   },
   {
     "id": "mszayuwzixadf",
@@ -1401,7 +1636,12 @@
     "location": "",
     "qty": 1,
     "notes": "Part of a 12-issue limited series crossover between the Avengers and the original Invaders.",
-    "imagePath": "images/mszayuwzixadf.jpg"
+    "imagePath": "images/mszayuwzixadf.jpg",
+    "marketValue": "~$12 CAD (est.)",
+    "gradedValue": "~$65 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The low raw market value makes the cost of professional grading prohibitive, as the potential value increase does not significantly exceed the combined costs of grading and shipping.",
+    "lastValueCheck": "2026-08-19"
   },
   {
     "id": "mszazgasnb4pg",
@@ -1426,7 +1666,12 @@
     "location": "",
     "qty": 1,
     "notes": "First issue of the Secret Invasion event. This appears to be a standard newsstand or direct edition in a protective sleeve, likely Near Mint condition.",
-    "imagePath": "images/mszazgasnb4pg.jpg"
+    "imagePath": "images/mszazgasnb4pg.jpg",
+    "marketValue": "~$12 CAD (est.)",
+    "gradedValue": "~$65 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The low raw market value makes the cost of grading higher than the potential increase in resale value for a modern, high-print-run issue.",
+    "lastValueCheck": "2026-08-19"
   },
   {
     "id": "mszb084fzn4du",
@@ -1451,7 +1696,12 @@
     "location": "",
     "qty": 1,
     "notes": "Final issue of the main Secret Invasion crossover event.",
-    "imagePath": "images/mszb084fzn4du.jpg"
+    "imagePath": "images/mszb084fzn4du.jpg",
+    "marketValue": "~$12 CAD (est.)",
+    "gradedValue": "~$65 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The low raw market value makes the cost of professional grading significantly higher than the potential increase in resale value.",
+    "lastValueCheck": "2026-08-19"
   },
   {
     "id": "mszb13o10ayej",
@@ -1476,7 +1726,12 @@
     "location": "",
     "qty": 1,
     "notes": "Part of the Secret Invasion event. Clean copy with bright colors, well-preserved edges, and no obvious flaws.",
-    "imagePath": "images/mszb13o10ayej.jpg"
+    "imagePath": "images/mszb13o10ayej.jpg",
+    "marketValue": "~$8 CAD (est.)",
+    "gradedValue": "~$45 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The current market value of this issue is significantly lower than the combined cost of professional grading and shipping, making it a poor investment for slab certification.",
+    "lastValueCheck": "2026-08-19"
   },
   {
     "id": "mszb1rttv6mus",
@@ -1491,7 +1746,7 @@
     "graded": false,
     "gradingCompany": null,
     "grade": null,
-    "keyStatus": "",
+    "keyStatus": "None",
     "fire": 0,
     "coverArtist": "Pasqual Ferry",
     "writer": "Matt Fraction",
@@ -1501,6 +1756,11 @@
     "location": "",
     "qty": 1,
     "notes": "Annual 2008 issue. This specific cover features a variant style with stickers/doodles over a grim Punisher image, characteristic of the 'Villains' or 'Funny' themes often played with in that era of Marvel.",
-    "imagePath": "images/mszb1rttv6mus.jpg"
+    "imagePath": "images/mszb1rttv6mus.jpg",
+    "marketValue": "~$10 CAD (est.)",
+    "gradedValue": "~$65 CAD (est.)",
+    "gradeCandidate": false,
+    "gradeCandidateReason": "The current market value for a raw NM copy is too low to justify the professional grading cost, as the net gain after fees would be negligible.",
+    "lastValueCheck": "2026-08-19"
   }
 ]
