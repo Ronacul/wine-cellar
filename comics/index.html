@@ -105,30 +105,34 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
   color:var(--ink-faint); padding:14px 0 8px;
 }
 .card{
-  background:var(--panel); border:1px solid var(--line); border-radius:6px;
+  display:flex; background:var(--panel); border:1px solid var(--line); border-radius:6px;
   margin-bottom:12px; overflow:hidden; cursor:pointer;
 }
-.card-top{display:flex; gap:12px; padding:12px}
 .thumb{
-  width:64px; height:96px; flex:none; border-radius:3px; object-fit:cover;
-  background:var(--panel2); border:1px solid var(--line);
+  width:80px; min-height:120px; flex:none; object-fit:cover;
+  background:var(--panel2); border-right:1px solid var(--line);
+  border-radius:6px 0 0 6px;
 }
 .thumb.empty{
   display:flex; align-items:center; justify-content:center;
   font-family:"Bangers",cursive; font-size:28px; color:var(--ink-faint);
 }
+.card-body{
+  flex:1; min-width:0; display:flex; flex-direction:column;
+  padding:10px 12px;
+}
 .card-info{flex:1; min-width:0}
 .comic-title{
-  font-family:"Bangers",cursive; font-size:19px; line-height:1.2;
+  font-family:"Bangers",cursive; font-size:18px; line-height:1.2;
   letter-spacing:.02em;
 }
-.comic-sub{font-size:12.5px; color:var(--ink-dim); margin-top:2px}
-.chips{display:flex; flex-wrap:wrap; gap:6px; margin-top:7px}
+.comic-title .issue-num{color:var(--accent); margin-left:2px}
+.comic-sub{font-size:12px; color:var(--ink-dim); margin-top:2px}
+.chips{display:flex; flex-wrap:wrap; gap:5px; margin-top:6px}
 .chip{
-  font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.04em;
-  padding:2px 7px; border:1px solid var(--line); border-radius:3px; color:var(--ink-dim);
+  font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.04em;
+  padding:2px 6px; border:1px solid var(--line); border-radius:3px; color:var(--ink-dim);
 }
-.chip.issue{color:var(--accent); border-color:var(--accent); font-weight:600}
 .chip.key{color:var(--warn); border-color:var(--warn)}
 .chip.fire{color:var(--fire);border-color:var(--fire);text-shadow:0 0 6px rgba(232,160,32,.4)}
 .chip.marvel{color:var(--marvel)}
@@ -147,13 +151,13 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
 .card.gifted{opacity:.55;filter:sepia(.2)}
 
 /* ---------- value band (the signature) ---------- */
-.vband-wrap{padding:0 12px 11px}
+.vband-wrap{margin-top:auto; padding-top:6px}
 .vband-labels{
   display:flex; justify-content:space-between;
-  font-family:"IBM Plex Mono",monospace; font-size:10px; color:var(--ink-faint);
-  margin-bottom:4px;
+  font-family:"IBM Plex Mono",monospace; font-size:9px; color:var(--ink-faint);
+  margin-bottom:3px;
 }
-.vband-status{text-transform:uppercase; letter-spacing:.08em}
+.vband-status{text-transform:uppercase; letter-spacing:.08em; font-size:8px}
 .vband-status.no-data{color:var(--ink-faint)}
 .vband-status.low{color:var(--ink-faint)}
 .vband-status.moderate{color:var(--vf)}
@@ -161,16 +165,16 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
 .vband-status.exceptional{color:var(--fire)}
 .vband-status.slabbed{color:var(--ok)}
 .vband{
-  position:relative; height:6px; border-radius:3px; background:var(--panel2);
+  position:relative; height:4px; border-radius:2px; background:var(--panel2);
   overflow:visible;
 }
 .vband-fill{
-  position:absolute; top:0; bottom:0; border-radius:3px;
+  position:absolute; top:0; bottom:0; border-radius:2px;
   background:linear-gradient(90deg, var(--vf) 0%, var(--accent) 50%, var(--fire) 100%);
   opacity:.85;
 }
 .vband-marker{
-  position:absolute; top:-3px; width:2px; height:12px; background:var(--ink);
+  position:absolute; top:-2px; width:2px; height:8px; background:var(--ink);
   border-radius:1px;
 }
 .vband-marker.cost{background:var(--red-soft);opacity:.7}
@@ -1010,11 +1014,9 @@ function cardHTML(c){
   const gone = isGone(c);
   const sold = isSold(c);
   const gifted = isGifted(c);
-  const cardClass = sold ? "card sold" : (gifted ? "card gifted" : "card");
   const condCls = conditionClass(c);
 
   let chips = [];
-  if(c.issueNumber) chips.push(`<span class="chip issue">#${esc(c.issueNumber)}</span>`);
   if(fl) chips.push(`<span class="chip fire">${fireEmoji(c)} ${esc(fireLabel(c))}</span>`);
   if(isKey(c)) chips.push(`<span class="chip key">🔑 Key</span>`);
   if(isGraded(c)) chips.push(`<span class="chip graded">🏅 ${esc((c.gradingCompany||"CGC"))} ${esc(String(c.grade||""))}</span>`);
@@ -1026,19 +1028,20 @@ function cardHTML(c){
 
   const pc = pubClass(c);
   const roiChip = valueBandChipHTML(c);
+  const issueStr = c.issueNumber ? ` <span class="issue-num">#${esc(c.issueNumber)}</span>` : "";
 
   return `<div class="card ${gone ? (sold ? "sold" : "gifted") : ""}" data-id="${esc(c.id)}">
-    <div class="card-top">
-      ${src
-        ? `<img class="thumb" src="${esc(src)}" alt="" loading="lazy">`
-        : `<div class="thumb empty">?</div>`}
+    ${src
+      ? `<img class="thumb" src="${esc(src)}" alt="" loading="lazy">`
+      : `<div class="thumb empty">?</div>`}
+    <div class="card-body">
       <div class="card-info">
-        <div class="comic-title${pc?" "+pc:""}" style="${pc?`color:${PUB_COLOURS[c.publisher]||"var(--ink)"}`:""}">${esc(c.title||"Unknown")}</div>
+        <div class="comic-title${pc?" "+pc:""}" style="${pc?`color:${PUB_COLOURS[c.publisher]||"var(--ink)"}`:""}">${esc(c.title||"Unknown")}${issueStr}</div>
         <div class="comic-sub">${esc([c.publisher, c.year, c.era].filter(Boolean).join(" · "))}${qtyOf(c)>1?` · ×${qtyOf(c)}`:""}</div>
         <div class="chips">${chips.join("")}${roiChip}</div>
       </div>
+      ${gone?"":valueBandHTML(c)}
     </div>
-    ${gone?"":valueBandHTML(c)}
   </div>`;
 }
 
@@ -1923,10 +1926,10 @@ function renderStats(){
       const src = imgSrc(pick);
       document.getElementById("random-area").innerHTML = `
         <div class="card" id="random-card" data-id="${esc(pick.id)}" style="cursor:pointer">
-          <div class="card-top">
-            ${src?`<img class="thumb" src="${esc(src)}" alt="">`:`<div class="thumb empty">?</div>`}
+          ${src?`<img class="thumb" src="${esc(src)}" alt="">`:`<div class="thumb empty">?</div>`}
+          <div class="card-body">
             <div class="card-info">
-              <div class="comic-title">${isFire(pick)?fireEmoji(pick)+" ":""}${esc(pick.title||"")}${pick.issueNumber ? " #"+esc(pick.issueNumber) : ""}</div>
+              <div class="comic-title">${isFire(pick)?fireEmoji(pick)+" ":""}${esc(pick.title||"")}${pick.issueNumber ? ` <span class="issue-num">#${esc(pick.issueNumber)}</span>` : ""}</div>
               <div class="comic-sub">${esc([pick.publisher, pick.year].filter(Boolean).join(" · "))}</div>
             </div>
           </div>
