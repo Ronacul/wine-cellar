@@ -225,6 +225,13 @@ h1{
   text-align:center; font-family:var(--mono); font-size:12px;
   color:#c9a227; margin:8px 0; letter-spacing:.04em;
 }
+/* Mechanic explainer modal */
+.explainer{text-align:center}
+.exp-icon{font-size:48px; margin-bottom:8px}
+.exp-body{
+  font-size:14px; line-height:1.55; color:var(--ink-dim);
+  text-align:left; margin:12px 0 20px; padding:0 4px;
+}
 .stars-big{
   text-align:center; font-size:34px; letter-spacing:6px; margin:2px 0 16px;
   color:var(--line-2);
@@ -276,18 +283,31 @@ h1{
    reads as one clean block of colour. */
 .board.done .fill{border-radius:2px; transition:border-radius .25s}
 
-/* Inner layer: a second, unrelated puzzle drawn inside the same squares. A
-   square inside a square — literally a smaller version of the same board, which
-   is the plainest reading of the idea. Varying the inner shape is held back as
-   a reward/difficulty lever rather than spent on the default.
-   Given and placed marks share size; corner radius carries the cue, matching
-   the outer layer. The layered ring detaches the dot from a coloured outer
-   fill beneath it.
-   Centred via inset, not translate: the pop animation drives transform and
-   would otherwise knock the mark off centre while it plays. */
+/* Donut: on Double boards the outer mark is a square with a square hole —
+   the inner mark fills that gap. CSS mask punches the cutout; the .dot is
+   sized to sit exactly inside. Without an inner mark the outer stays solid. */
+.board.dbl .cell.has-dot .fill{
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite:exclude;
+  padding:22%;
+}
+
+/* Inner layer — the "donut hole": a filled square sitting in the outer
+   mark's cutout. Sized to match (inset:22% mirrors the mask padding).
+   Corner radius carries given-vs-placed cue, matching the outer layer. */
 .dot{
-  position:absolute; inset:24%; border-radius:8px; background:var(--c);
+  position:absolute; inset:22%; border-radius:6px; background:var(--c);
   box-shadow:0 0 0 2px rgba(0,0,0,.28),0 0 0 3.5px var(--cell-given);
+}
+.board.dbl .dot{
+  border-radius:4px;
+  box-shadow:none;
 }
 .dot.given{border-radius:0}
 .board.done .dot{border-radius:0; transition:border-radius .25s}
@@ -306,10 +326,22 @@ h1{
 /* Holds the eraser column open on the inner row. Needs the compound selector to
    outrank .swatch's own background and shadow. */
 .swatch.spacer{background:none; box-shadow:none; visibility:hidden; pointer-events:none}
-/* Inner-layer swatches mirror the board: a ring, not a filled square. */
+/* Inner-layer swatches — the "donut hole": a filled square, smaller look. */
 .swatch.inner{background:var(--c); border-radius:7px; box-shadow:var(--shadow)}
-.swatch.inner::after{content:""; position:absolute; inset:26%; border-radius:3px;
-  box-shadow:0 0 0 2px rgba(255,255,255,.55)}
+.swatch.inner::after{content:""; position:absolute; inset:22%; border-radius:3px;
+  background:var(--c)}
+/* Outer-layer swatches in Double mode — the "donut": square with a square hole. */
+.swatch.donut{
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite:exclude;
+  padding:22%;
+}
 /* Selection ring uses the swatch's own colour so the eye tracks by hue, not
    by a neutral outline that gets lost against similar palette backgrounds. */
 .swatch.inner.on{box-shadow:0 0 0 3px var(--bg),0 0 0 6px var(--c); transform:scale(1.06); z-index:1}
@@ -535,6 +567,7 @@ html.dev .dev-only{display:grid}
     <span class="timer" id="timer">0:00</span>
     <button class="icon-btn hint" id="btnHint" aria-label="Hints" style="position:relative">💡</button>
     <button class="icon-btn" id="btnMark" aria-label="Bookmark">☆</button>
+    <button class="icon-btn" id="btnQuit" aria-label="End session" style="display:none">✕</button>
     <button class="icon-btn dev-only" id="btnNew" aria-label="New practice puzzle">⟳</button>
     <button class="icon-btn" id="btnSettings" aria-label="Settings">⚙</button>
   </div>
@@ -855,17 +888,21 @@ const LS_SCRAMBLE = "chromoku.scramble.v1";
 const LS_PROG  = "chromoku.progress.v1";
 const LS_FADE  = "chromoku.fade-done.v1";    // toggle: fade completed units
 const LS_ROUND = "chromoku.round-marks.v1";  // toggle: rounded corners on guesses
+const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player has seen
 
 // The re-roll and the date picker are development tools. A player who finds the
-// date picker can skip the daily entirely, and unlimited re-rolls make it
-// meaningless. Enable with ?dev=1; the choice sticks so it survives navigation.
+// Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
+// Settings → "Admin tools". Long-press detection on the gear is removed in
+// favour of a plain toggle row.
+const LS_ADMIN = "chromoku.dev";
 const DEV = (() => {
   try {
     const q = new URLSearchParams(location.search).get("dev");
-    if (q !== null){ localStorage.setItem("chromoku.dev", q === "1" ? "1" : "0"); }
-    return localStorage.getItem("chromoku.dev") === "1";
+    if (q !== null){ localStorage.setItem(LS_ADMIN, q === "1" ? "1" : "0"); }
+    return localStorage.getItem(LS_ADMIN) === "1";
   } catch { return false; }
 })();
+let adminMode = DEV;
 const LS_DAY   = "chromoku.debug-day.v1";   // debug: pin the daily puzzle to a date
 
 // Box dimensions for a given grid size. 4→2x2, 6→3x2, 9→3x3.
@@ -1541,7 +1578,13 @@ function saveProgress(){
 /* ================= timer ================= */
 
 const elapsedMs = () => state.elapsed + (state.since ? Date.now() - state.since : 0);
-function startTimer(){ if (!state.since && !state.done){ state.since = Date.now(); state.started = true; } }
+function startTimer(){
+  if (!state.since && !state.done){
+    state.since = Date.now(); state.started = true;
+    const qb = document.getElementById("btnQuit");
+    if (qb) qb.style.display = "";
+  }
+}
 function stopTimer(){
   if (state.since){ state.elapsed += Date.now() - state.since; state.since = null; }
 }
@@ -1678,6 +1721,14 @@ function loadLevel(n){
   stopTimer();
   const p = progress();
   const lv = buildLevel(n);
+
+  // Check for new mechanics — show explainer pages before the board appears.
+  const mechs = newMechanics(lv.cfg);
+  if (mechs.length){
+    showExplainers(mechs, () => loadLevel(n));
+    return;
+  }
+
   state.mode = "levels";
   state.lvl = lv;
   state.n = lv.cfg.n;
@@ -1761,6 +1812,10 @@ function render(){
   paintCompletedUnits();
   applySharp();
   renderChallengeBar();
+  // Show the ✕ quit button whenever the player is inside a puzzle —
+  // hidden on the welcome/help screen or once the puzzle is solved.
+  const qb = document.getElementById("btnQuit");
+  if (qb) qb.style.display = (state.started || state.elapsed > 0) && !state.done ? "" : "none";
 }
 
 const heartsHTML = p => Array.from({ length:LIVES_MAX }, (_, i) =>
@@ -1925,18 +1980,33 @@ function renderDiffs(){
   lt.className = "dbl" + (state.latin ? " on" : "");
   lt.textContent = state.latin ? "Latin ✓" : "Latin";
   lt.onclick = () => {
-    state.latin = !state.latin; save(LS_LATIN, state.latin);
+    const goingOn = !state.latin;
+    state.latin = goingOn; save(LS_LATIN, state.latin);
     const sizes = CURR_SIZES();
-    loadPuzzle(sizes[0].id, CURR_DIFFS(sizes[0].n)[0].id);
+    const go = () => loadPuzzle(sizes[0].id, CURR_DIFFS(sizes[0].n)[0].id);
+    if (goingOn && !seenMechanics().has("latin")){ showExplainers(["latin"], go); }
+    else go();
   };
   const t = document.getElementById("dblToggle");
   t.className = "dbl" + (state.dbl ? " on" : "");
   t.textContent = state.dbl ? "Double ✓" : "Double";
-  t.onclick = () => { state.dbl = !state.dbl; save(LS_DBL, state.dbl); loadPuzzle(state.size, state.diff); };
+  t.onclick = () => {
+    const goingOn = !state.dbl;
+    state.dbl = goingOn; save(LS_DBL, state.dbl);
+    const go = () => loadPuzzle(state.size, state.diff);
+    if (goingOn && !seenMechanics().has("double")){ showExplainers(["double"], go); }
+    else go();
+  };
   const st = document.getElementById("scrambleToggle");
   st.className = "dbl" + (state.scramble ? " on" : "");
   st.textContent = state.scramble ? "Scramble ✓" : "Scramble";
-  st.onclick = () => { state.scramble = !state.scramble; save(LS_SCRAMBLE, state.scramble); loadPuzzle(state.size, state.diff); };
+  st.onclick = () => {
+    const goingOn = !state.scramble;
+    state.scramble = goingOn; save(LS_SCRAMBLE, state.scramble);
+    const go = () => loadPuzzle(state.size, state.diff);
+    if (goingOn && !seenMechanics().has("scramble")){ showExplainers(["scramble"], go); }
+    else go();
+  };
   document.querySelectorAll("[data-diff]").forEach(b => {
     b.onclick = () => { if (b.dataset.diff !== state.diff) loadPuzzle(state.size, b.dataset.diff); };
   });
@@ -1953,9 +2023,12 @@ function renderBoard(){
 
   // Latin has no boxes, so the board is one flat grid of cells.
   if (state.latin){
-    for (let i = 0; i < n * n; i++)
+    for (let i = 0; i < n * n; i++){
+      const r = cellInner(i, -1);
       html += '<div class="cell' + (state.layers[0].givens[i] ? " given" : "")
-            + '" data-i="' + i + '">' + cellInner(i, -1) + "</div>";
+            + (r.hasDot ? " has-dot" : "")
+            + '" data-i="' + i + '">' + r.html + "</div>";
+    }
   } else
 
   for (let b = 0; b < n; b++){
@@ -1964,8 +2037,10 @@ function renderBoard(){
     for (let r = r0; r < r0 + bh; r++){
       for (let c = c0; c < c0 + bw; c++){
         const i = r * n + c;
+        const ci = cellInner(i);
         inner += '<div class="cell' + (state.layers[0].givens[i] ? " given" : "")
-               + '" data-i="' + i + '">' + cellInner(i) + "</div>";
+               + (ci.hasDot ? " has-dot" : "")
+               + '" data-i="' + i + '">' + ci.html + "</div>";
       }
     }
     html += '<div class="box" style="grid-template-columns:repeat(' + bw + ',1fr);'
@@ -1981,6 +2056,7 @@ function renderBoard(){
   board.style.gridTemplateColumns = "repeat(" + boxesPerRow + ",1fr)";
   board.style.gridTemplateRows = "repeat(" + boxRows + ",1fr)";
   board.classList.remove("done");
+  board.classList.toggle("dbl", state.layers.length > 1);
   board.innerHTML = html;
   board.querySelectorAll("[data-i]").forEach(el => {
     el.onclick = () => onCell(parseInt(el.dataset.i, 10));
@@ -1992,6 +2068,7 @@ function renderBoard(){
 // `animate` is the layer index that was just placed, or -1.
 function cellInner(i, animate){
   let out = "";
+  let hasDot = false;
   const v0 = state.layers[0].grid[i];
   if (v0 !== null && v0 !== undefined){
     const useScramble = state.scramble && activePalette !== "ink";
@@ -2002,10 +2079,11 @@ function cellInner(i, animate){
   for (let L = 1; L < state.layers.length; L++){
     const v = state.layers[L].grid[i];
     if (v === null || v === undefined) continue;
+    hasDot = true;
     out += '<div class="dot' + (state.layers[L].givens[i] ? " given" : "")
          + (animate === L ? " new" : "") + '" style="' + styleFor(L, v) + '"></div>';
   }
-  return out;
+  return { html:out, hasDot };
 }
 
 // One row of swatches per layer. Which row you pick from decides which layer
@@ -2032,8 +2110,10 @@ function renderPalette(){
       const aria = c.label + (L > 0 ? " (inner)" : "")
                  + (remaining > 0 ? ", " + remaining + " remaining" : ", done");
       const shaped = L === 0 && c.clip && c.kind !== "pattern";
+      const donut = L === 0 && state.layers.length > 1 && !shaped;
       return '<button class="swatch' + (L > 0 ? " inner" : (isPattern() ? " pat" : ""))
         + (shaped ? " shaped" : "")
+        + (donut ? " donut" : "")
         + (done ? " done" : "")
         + (sel && sel.layer === L && sel.colour === i ? " on" : "")
         + '" data-l="' + L + '" data-c="' + i + '" style="' + swatchStyleFor(L, i)
@@ -2075,7 +2155,9 @@ function cellEl(i){ return document.querySelector('[data-i="' + i + '"]'); }
 
 function paintCell(i, animate){
   const el = cellEl(i); if (!el) return;
-  el.innerHTML = cellInner(i, animate);
+  const r = cellInner(i, animate);
+  el.innerHTML = r.html;
+  el.classList.toggle("has-dot", r.hasDot);
 }
 
 function flashConflicts(set){
@@ -2558,6 +2640,87 @@ function renderChallengeBar(){
   bar.innerHTML = '⚡ Challenge: beat <span class="ghost-time">' + fmtTime(t * 1000) + '</span>';
 }
 
+/* ================= mechanic explainers ================= */
+
+// Tracks which mechanics the player has seen an explainer for. Each mechanic
+// key (e.g. "latin", "double", "scramble", "boxRotate") is stored on first
+// encounter — the explainer fires once and never again.
+const MECHANIC_EXPLAINERS = {
+  latin: {
+    title:"Latin mode",
+    icon:"🔲",
+    body:"No boxes — just rows and columns.<br>"
+       + "Each colour must appear <b>exactly once</b> in every row and column.<br>"
+       + "It's simpler in concept but trickier in practice — you lose the box constraint that normally narrows things down.",
+  },
+  double: {
+    title:"Double layering",
+    icon:"🍩",
+    body:"Two puzzles on one board.<br>"
+       + "The <b>outer squares</b> (donuts) are one Sudoku. The <b>inner squares</b> (donut holes) are a second, independent Sudoku.<br>"
+       + "Tap the outer palette row to place outers, the inner row for inners. Both layers follow the same rules.",
+  },
+  scramble: {
+    title:"Scramble mode",
+    icon:"🌀",
+    body:"Colours shift position on the palette when placed.<br>"
+       + "The same colour still means the same value — it just moves around to keep you on your toes.<br>"
+       + "Trust the board, not the palette order.",
+  },
+  boxRotate: {
+    title:"Rotated boxes",
+    icon:"⤾",
+    body:"The box shape is flipped — tall becomes wide.<br>"
+       + "A 6×6 normally has 3-wide × 2-tall boxes. With rotation it's 2-wide × 3-tall.<br>"
+       + "Same rules, different spatial reasoning.",
+  },
+};
+
+function seenMechanics(){
+  return new Set(load(LS_SEEN, []));
+}
+function markMechanicSeen(id){
+  const s = seenMechanics();
+  s.add(id);
+  save(LS_SEEN, [...s]);
+}
+
+// Returns a list of mechanic IDs the player hasn't seen yet that apply to
+// the given level config.
+function newMechanics(cfg){
+  const seen = seenMechanics();
+  const out = [];
+  if (cfg.boxless && !seen.has("latin")) out.push("latin");
+  if (cfg.layers > 1 && !seen.has("double")) out.push("double");
+  if (cfg.boxRotate && !seen.has("boxRotate")) out.push("boxRotate");
+  // Scramble is a daily-mode toggle, not a level config — but the preview
+  // config can flag it, or the player can encounter it first in daily mode.
+  return out;
+}
+
+// Show a one-screen explainer for one or more mechanics, then call `next`.
+// Multiple explainers chain left-to-right; when the last "Got it" is tapped
+// the callback fires.
+function showExplainers(ids, next){
+  if (!ids.length){ next(); return; }
+  const id = ids[0];
+  const ex = MECHANIC_EXPLAINERS[id];
+  if (!ex){ markMechanicSeen(id); showExplainers(ids.slice(1), next); return; }
+  openModal(
+    '<div class="explainer">'
+    + '<div class="exp-icon">' + ex.icon + '</div>'
+    + '<h2>' + ex.title + '</h2>'
+    + '<p class="exp-body">' + ex.body + '</p>'
+    + '<button class="btn" id="mExpOk">Got it</button>'
+    + '</div>'
+  );
+  document.getElementById("mExpOk").onclick = () => {
+    markMechanicSeen(id);
+    closeModal();
+    showExplainers(ids.slice(1), next);
+  };
+}
+
 /* ================= progression interstitial ================= */
 
 // Brief screen between levels showing the player's journey through the stage.
@@ -2755,6 +2918,24 @@ function confirmQuitLevel(){
     if (p.lives < LIVES_MAX) p.livesAt = p.livesAt || Date.now();
     saveProgress2(p);
     enterDaily();
+  };
+  document.getElementById("mStay").onclick = closeModal;
+}
+
+// Generic quit — delegates to the right flow based on mode. Daily puzzles
+// just go back to the picker; level quits cost a life (via confirmQuitLevel).
+function confirmQuit(){
+  if (state.done) { enterDaily(); return; }
+  if (state.mode === "levels") { confirmQuitLevel(); return; }
+  // Daily / practice: abandon the current puzzle and return to the picker.
+  openModal(
+    '<h2>Quit puzzle?</h2>'
+    + '<p class="lede">Your progress on this one will be saved.</p>'
+    + '<button class="btn" id="mQuit">Quit</button>'
+    + '<button class="btn ghost" id="mStay">Keep playing</button>'
+  );
+  document.getElementById("mQuit").onclick = () => {
+    closeModal(); stopTimer(); enterDaily();
   };
   document.getElementById("mStay").onclick = closeModal;
 }
@@ -3298,7 +3479,12 @@ function showSettings(){
     + '<div class="toggle-desc">Your guesses have rounded corners</div></div>'
     + '<button class="toggle-sw' + (load(LS_ROUND, true) ? " on" : "") + '" id="togRound" aria-label="Rounded mark corners"></button>'
     + '</div>'
-    + (DEV
+    + '<div class="toggle-row">'
+    + '<div><div class="toggle-lbl">Admin tools</div>'
+    + '<div class="toggle-desc">Level jump, date pin, progress reset</div></div>'
+    + '<button class="toggle-sw' + (adminMode ? " on" : "") + '" id="togAdmin" aria-label="Admin tools"></button>'
+    + '</div>'
+    + (adminMode
         ? '<div class="fld">Debug — puzzle date</div>'
           + '<div class="dbg"><input type="date" id="dbgDate" value="' + dayToISO(state.day) + '">'
           + '<button id="dbgToday">Today</button></div>'
@@ -3335,22 +3521,29 @@ function showSettings(){
     showSettings();
   };
   m.querySelector("#copyStats").onclick = copyStats;
-  if (DEV) m.querySelector("#dbgDate").onchange = e => {
+  m.querySelector("#togAdmin").onclick = () => {
+    adminMode = !adminMode;
+    try { localStorage.setItem(LS_ADMIN, adminMode ? "1" : "0"); } catch {}
+    if (adminMode) document.documentElement.classList.add("dev");
+    else document.documentElement.classList.remove("dev");
+    showSettings();
+  };
+  if (adminMode) m.querySelector("#dbgDate").onchange = e => {
     const d = isoToDay(e.target.value);
     if (!isFinite(d)) return;
     save(LS_DAY, d); state.day = d;
     loadPuzzle(state.size, state.diff); showSettings();
   };
-  if (DEV) m.querySelector("#dbgToday").onclick = () => {
+  if (adminMode) m.querySelector("#dbgToday").onclick = () => {
     try { localStorage.removeItem(LS_DAY); } catch {}
     state.day = dayNumber();
     loadPuzzle(state.size, state.diff); showSettings();
   };
-  if (DEV) m.querySelector("#dbgGo").onclick = () => {
+  if (adminMode) m.querySelector("#dbgGo").onclick = () => {
     const n = Math.max(1, Math.min(500, parseInt(m.querySelector("#dbgLevel").value, 10) || 1));
     closeModal(); loadLevel(n);
   };
-  if (DEV) m.querySelector("#dbgReset").onclick = () => {
+  if (adminMode) m.querySelector("#dbgReset").onclick = () => {
     try { localStorage.removeItem(LS_PROG); } catch {}
     toast("Progress reset");
     closeModal();
@@ -3367,9 +3560,10 @@ document.getElementById("btnStats").onclick = showStats;
 document.getElementById("btnHint").onclick  = showHintModal;
 document.getElementById("btnMark").onclick  = () => state.bookmark ? openMarkModal() : setBookmark();
 document.getElementById("btnNew").onclick = () => loadPuzzle(state.size, state.diff, true);
+document.getElementById("btnQuit").onclick = confirmQuit;
 document.getElementById("btnSettings").onclick = showSettings;
 
-if (DEV) document.documentElement.classList.add("dev");
+if (adminMode) document.documentElement.classList.add("dev");
 
 // An uncaught error used to leave a blank page with no way back. Show a panel
 // with an escape hatch instead.
@@ -3437,6 +3631,8 @@ window.CHROMOKU = { state, DIFFS, SIZES, DIFFICULTIES, CURR_SIZES, CURR_DIFFS,
                     render, winLevel, enterDaily,
                     fireConfetti, shareChallenge, showProgression,
                     poolRemaining, powerPool,
+                    showExplainers, seenMechanics, markMechanicSeen,
+                    confirmQuit,
                     get activePalette(){ return activePalette; },
                     set activePalette(v){ activePalette = v; } };
 </script>
