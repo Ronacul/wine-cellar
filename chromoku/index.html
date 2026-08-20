@@ -283,10 +283,10 @@ h1{
    reads as one clean block of colour. */
 .board.done .fill{border-radius:2px; transition:border-radius .25s}
 
-/* Donut: on Double boards the outer mark is a square with a square hole —
-   the inner mark fills that gap. CSS mask punches the cutout; the .dot is
-   sized to sit exactly inside. Without an inner mark the outer stays solid. */
-.board.dbl .cell.has-dot .fill{
+/* Donut: on Double boards every outer mark always shows its square hole —
+   the cell background peeks through. When an inner mark is placed it fills
+   the gap; otherwise the hole stays empty. */
+.board.dbl .fill{
   -webkit-mask:
     linear-gradient(#000 0 0) content-box,
     linear-gradient(#000 0 0);
@@ -298,15 +298,14 @@ h1{
   padding:22%;
 }
 
-/* Inner layer — the "donut hole": a filled square sitting in the outer
-   mark's cutout. Sized to match (inset:22% mirrors the mask padding).
-   Corner radius carries given-vs-placed cue, matching the outer layer. */
+/* Inner layer — the "donut hole": a filled square smaller than the cutout
+   so the donut frame reads clearly around it. */
 .dot{
   position:absolute; inset:22%; border-radius:6px; background:var(--c);
   box-shadow:0 0 0 2px rgba(0,0,0,.28),0 0 0 3.5px var(--cell-given);
 }
 .board.dbl .dot{
-  border-radius:4px;
+  inset:26%; border-radius:3px;
   box-shadow:none;
 }
 .dot.given{border-radius:0}
@@ -326,21 +325,34 @@ h1{
 /* Holds the eraser column open on the inner row. Needs the compound selector to
    outrank .swatch's own background and shadow. */
 .swatch.spacer{background:none; box-shadow:none; visibility:hidden; pointer-events:none}
-/* Inner-layer swatches — the "donut hole": a filled square, smaller look. */
-.swatch.inner{background:var(--c); border-radius:7px; box-shadow:var(--shadow)}
-.swatch.inner::after{content:""; position:absolute; inset:22%; border-radius:3px;
+/* Inner-layer swatches — the "donut hole": a small filled square. */
+.swatch.inner{background:transparent; border-radius:7px; box-shadow:var(--shadow)}
+.swatch.inner::after{content:""; position:absolute; inset:26%; border-radius:3px;
   background:var(--c)}
-/* Outer-layer swatches in Double mode — the "donut": square with a square hole. */
+/* Outer-layer swatches in Double mode — the "donut": square with a square hole.
+   Uses mask-size instead of padding so % doesn't resolve against the prow width.
+   Nearly square corners + thick frame so it reads as a square donut at small sizes. */
 .swatch.donut{
+  border-radius:4px;
   -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0) center/46% 46% no-repeat,
     linear-gradient(#000 0 0);
   -webkit-mask-composite:xor;
   mask:
-    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0) center/46% 46% no-repeat,
     linear-gradient(#000 0 0);
   mask-composite:exclude;
-  padding:22%;
+}
+.swatch.inner{border-radius:4px}
+/* Shrink swatches in Double mode so both rows fit on screen width.
+   10 items (9 colours + eraser) must sit in ~396px, so max ~35px each.
+   flex shorthand overrides the base width and lets items shrink to fit. */
+.palette.dbl-pal{gap:6px}
+.palette.dbl-pal .prow.wrap{flex-wrap:nowrap; max-width:none; gap:clamp(3px,1vw,5px)}
+.palette.dbl-pal .prow{gap:clamp(3px,1vw,5px); flex-wrap:nowrap}
+.palette.dbl-pal .prow.wrap .swatch,
+.palette.dbl-pal .prow .swatch{
+  width:auto; flex:0 1 clamp(28px,7.5vw,35px); min-width:24px;
 }
 /* Selection ring uses the swatch's own colour so the eye tracks by hue, not
    by a neutral outline that gets lost against similar palette backgrounds. */
@@ -2128,15 +2140,19 @@ function renderPalette(){
       : '<span class="swatch spacer" aria-hidden="true"></span>';
     // Split into equal rows rather than letting flex-wrap strand one button on
     // a line of its own — 10 buttons read as 5+5, not 8+2.
+    // In Double mode, keep all swatches in one row per layer — the dbl-pal
+    // CSS shrinks them to fit.
     const all = swatches.concat([eraser]);
-    const nRows = Math.ceil(all.length / 6);
-    const perRow = Math.ceil(all.length / nRows);
+    const isDbl = state.layers.length > 1;
+    const nRows = isDbl ? 1 : Math.ceil(all.length / 6);
+    const perRow = isDbl ? all.length : Math.ceil(all.length / nRows);
     for (let k = 0; k < all.length; k += perRow)
       rows += '<div class="prow' + (state.n > 4 ? " wrap" : "") + '">'
             + all.slice(k, k + perRow).join("") + "</div>";
   }
   const p = document.getElementById("palette");
-  p.className = "palette pal-pad" + (state.n > 4 ? " tight" : "");
+  p.className = "palette pal-pad" + (state.n > 4 ? " tight" : "")
+    + (state.layers.length > 1 ? " dbl-pal" : "");
   p.innerHTML = rows;
   p.querySelectorAll("[data-c]").forEach(b => {
     b.onclick = () => {
