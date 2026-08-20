@@ -2129,21 +2129,14 @@ function renderPalette(){
         + (L === 0 && state.n <= 4 ? '<span class="k">' + (i + 1) + "</span>" : "")
         + "</button>";
     });
-    const eraser = L === 0
-      ? '<button class="swatch erase' + (state.erase ? " on" : "")
-        + '" data-erase="1" aria-label="Erase">✕</button>'
-      : '<span class="swatch spacer" aria-hidden="true"></span>';
-    // Split into equal rows rather than letting flex-wrap strand one button on
-    // a line of its own — 10 buttons read as 5+5, not 8+2.
-    // In Double mode, keep all swatches in one row per layer — the dbl-pal
-    // CSS shrinks them to fit.
-    const all = swatches.concat([eraser]);
+    // No eraser swatch — tapping the same colour on a cell clears it.
+    // 9+ marks split into two rows for bigger, more tappable swatches.
     const isDbl = state.layers.length > 1;
-    const nRows = isDbl ? 1 : Math.ceil(all.length / 6);
-    const perRow = isDbl ? all.length : Math.ceil(all.length / nRows);
-    for (let k = 0; k < all.length; k += perRow)
+    const nRows = isDbl ? 1 : (state.n > 4 ? 2 : 1);
+    const perRow = Math.ceil(swatches.length / nRows);
+    for (let k = 0; k < swatches.length; k += perRow)
       rows += '<div class="prow' + (state.n > 4 ? " wrap" : "") + '">'
-            + all.slice(k, k + perRow).join("") + "</div>";
+            + swatches.slice(k, k + perRow).join("") + "</div>";
   }
   const p = document.getElementById("palette");
   p.className = "palette pal-pad" + (state.n > 4 ? " tight" : "")
@@ -2158,8 +2151,7 @@ function renderPalette(){
       renderPalette();
     };
   });
-  const er = p.querySelector("[data-erase]");
-  if (er) er.onclick = () => { state.erase = !state.erase; state.sel = null; renderPalette(); };
+  // Erase mode still reachable via Backspace/Delete key — no swatch needed.
 }
 
 function cellEl(i){ return document.querySelector('[data-i="' + i + '"]'); }
