@@ -3165,8 +3165,8 @@ function renderShareBadge(){
   const sub = state.mode === "levels"
     ? state.lvl.cfg.theme.name + " · " + fmtTime(elapsedMs())
     : (state.latin ? "Latin " : "") + sizeOf(state.size).label + " " + diffOf2(state.diff, state.n).label
-      + (state.dbl ? " · Double" : "") + " · " + fmtTime(elapsedMs())
-      + streakStr;
+      + (state.dbl ? " · Double" : "") + (state.scramble ? " · Scramble" : "")
+      + " · " + fmtTime(elapsedMs()) + streakStr;
   ctx.fillText(sub, W / 2, pad + 38);
 
   // Draw each cell
@@ -3191,15 +3191,39 @@ function renderShareBadge(){
       ctx.beginPath(); ctx.roundRect(x, y, cellSz, cellSz, 3); ctx.fill();
 
       // Outer fill — shapes get clipped, patterns get hatched, colours get a
-      // solid rounded rect. This keeps the badge faithful to what was on screen.
+      // solid rounded rect. Scramble overlays the same Stroop interference
+      // that was on screen so the badge is faithful to what the player saw.
       const v0 = state.layers[0].grid[i];
       if (v0 !== null && v0 !== undefined){
         const mk = MARKS[v0];
         const fx = x + 1, fy = y + 1, fs = cellSz - 2;
         const fillRad = isGiven ? 1 : (rounded ? 6 : 1);
+        const useScramble = state.scramble && activePalette !== "ink";
         if (mk && mk.kind === "pattern"){
           // Draw pattern hatches inside the cell
           drawBadgePattern(ctx, v0, fx, fy, fs, ink, cellBg, fillRad);
+        } else if (useScramble && activePalette === "shapes"){
+          // Shape is truth; colour is noise — draw real shape, fake colour
+          const fakeIdx = scrambleDecoy(i, v0, Math.min(n, HUES.length));
+          const fakeHex = HUES[fakeIdx].hex;
+          ctx.save();
+          if (mk && mk.clip){
+            drawClipPath(ctx, mk.clip, fx, fy, fs);
+          } else {
+            ctx.beginPath(); ctx.roundRect(fx, fy, fs, fs, fillRad);
+          }
+          ctx.fillStyle = fakeHex;
+          ctx.fill();
+          ctx.restore();
+        } else if (useScramble){
+          // Colour is truth; shape is noise — draw real colour, fake shape
+          const fakeIdx = scrambleDecoy(i, v0, Math.min(n, SHAPES.length));
+          const fakeClip = SHAPES[fakeIdx].clip;
+          ctx.save();
+          drawClipPath(ctx, fakeClip, fx, fy, fs);
+          ctx.fillStyle = mk ? (mk.hex || ink) : ink;
+          ctx.fill();
+          ctx.restore();
         } else if (mk && mk.clip){
           // Shape mark — draw the colour clipped to the shape
           ctx.save();
