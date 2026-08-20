@@ -220,17 +220,22 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
 .row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px}
 
 .photo-zone{
-  border:1px dashed var(--ink-faint); border-radius:6px; padding:18px;
-  text-align:center; color:var(--ink-dim); cursor:default; margin-bottom:14px;
+  border:1px dashed var(--ink-faint); border-radius:6px; padding:16px;
+  text-align:center; color:var(--ink-dim); cursor:default; margin-bottom:16px;
   background:var(--panel);
 }
-.photo-zone img{max-width:120px; max-height:180px; border-radius:4px; display:block; margin:0 auto 10px}
+.photo-zone img{max-width:100px; max-height:150px; border-radius:4px; display:block; margin:0 auto 12px}
+.photo-zone-controls{display:flex;flex-direction:column;gap:8px;align-items:stretch}
+.photo-zone-main{display:flex;gap:6px;margin-bottom:8px}
+.photo-zone-action{display:flex;gap:6px}
 .photo-btn{
-  display:block; position:relative; padding:11px; margin:8px auto 0; max-width:280px;
-  background:var(--panel2); border:1px solid var(--ink-faint); border-radius:5px;
-  color:var(--ink); font-size:14px; cursor:pointer; text-align:center; overflow:hidden;
+  flex:1; position:relative; padding:9px 8px;
+  background:var(--panel2); border:1px solid var(--ink-faint); border-radius:4px;
+  color:var(--ink); font-size:11px; cursor:pointer; text-align:center; overflow:hidden;
+  white-space:nowrap; line-height:1.3; font-family:"IBM Plex Mono",monospace;
 }
 .photo-btn.ghost{background:none; color:var(--ink-dim); border-color:var(--line)}
+.photo-btn.identify{background:var(--accent);color:#14171c;border-color:var(--accent);font-weight:600}
 .photo-btn input{
   position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; font-size:0;
 }
@@ -1389,15 +1394,21 @@ function renderForm(){
     <h2>${editingId ? "Edit book" : "New book"}</h2>
     <div class="photo-zone">
       ${existingSrc?`<img id="pv" src="${esc(existingSrc)}" alt="">`:`<img id="pv" style="display:none" alt="">`}
-      <label class="photo-btn">📷 Take photo of cover
-        <input type="file" id="cam" accept="image/*" capture="environment">
-      </label>
-      <label class="photo-btn ghost">🖼 Choose from gallery
-        <input type="file" id="gal" accept="image/*">
-      </label>
-      <button type="button" class="photo-btn" id="trim-sq" style="display:none; border-color:var(--ink-dim); color:var(--ink-dim)">✂️ Trim to cover shape</button>
-      <button type="button" class="photo-btn" id="identify" style="border-color:var(--accent); color:var(--accent)">✨ Identify from cover</button>
-      <div class="sync-status" id="id-status" style="display:none; margin-top:8px"></div>
+      <div class="photo-zone-controls">
+        <div class="photo-zone-row">
+          <label class="photo-btn">📷 Take cover
+            <input type="file" id="cam" accept="image/*" capture="environment">
+          </label>
+          <label class="photo-btn ghost">🖼 Gallery
+            <input type="file" id="gal" accept="image/*">
+          </label>
+        </div>
+        <div class="photo-zone-row">
+          <button type="button" class="photo-btn" id="trim-sq" style="display:none">✂️ Trim</button>
+          <button type="button" class="photo-btn identify" id="identify">✨ Identify</button>
+        </div>
+      </div>
+      <div class="sync-status" id="id-status" style="display:none; margin-top:8px; font-size:12px"></div>
     </div>
 
     <div class="row2">
@@ -2190,6 +2201,11 @@ function renderSync(){
     <div class="note">Push uploads new cover photos and writes <span class="mono">comics/data/comics.json</span> — overwrites the repo with what's on this device.</div>
 
     <hr class="section-rule">
+    <button class="btn btn-ghost" id="trim-all-btn" style="border-color:var(--accent);color:var(--accent)">✂️ Trim all existing photos</button>
+    <div class="note">Crops all 100+ existing cover photos to standard comic proportions (2:3). One-time batch operation — covers stored on GitHub will be updated on next Push. You can stop anytime.</div>
+    <div class="sync-status" id="trim-all-st" style="display:none"></div>
+
+    <hr class="section-rule">
     <button class="btn btn-ghost" id="recheck-all-sync" style="border-color:var(--accent);color:var(--accent)">✨ Re-check all values (AI)</button>
     <div class="note">Uses Gemini to estimate market values in CAD for all comics. ~1 book/sec. You can stop anytime.</div>
     <div class="sync-status" id="recheck-all-st" style="display:none"></div>
@@ -2253,6 +2269,138 @@ function renderSync(){
   document.getElementById("pull").onclick = async ()=>{
     document.getElementById("savecfg").click();
     try{ await pullAll(st); } catch(e){ st.textContent = "✗ " + e.message; }
+  };
+
+  /* batch trim all photos — with preview first */
+  let trimAllAbort = false;
+  let trimPreviewMode = true; /* start with preview */
+  document.getElementById("trim-all-btn").onclick = async ()=>{
+    const tst = document.getElementById("trim-all-st");
+    const btn = document.getElementById("trim-all-btn");
+
+    if(trimPreviewMode){
+      /* PREVIEW MODE: show before/after for first 3 photos with images */
+      tst.style.display = "block";
+      tst.innerHTML = "🔍 Preview: Finding first 3 photos with images…";
+
+      const samples = [];
+      for(const c of comics){
+        if(samples.length >= 3) break;
+        if(isGone(c)) continue;
+        const data = await getPhoto(c.id).catch(()=>null);
+        if(data) samples.push({c, data});
+      }
+
+      if(samples.length === 0){
+        tst.innerHTML = "⚠️ No photos found to preview.";
+        return;
+      }
+
+      let previewHTML = `<div style="margin-top:12px">`;
+      previewHTML += `<div style="font-size:12px;color:var(--ink-dim);margin-bottom:12px">Preview: Trimming ${samples.length} sample(s) to 2:3 comic cover ratio</div>`;
+
+      for(const {c, data} of samples){
+        const img = new Image();
+        await new Promise((ok)=>{
+          img.onload = async () => {
+            const RATIO = 2/3;
+            let cw, ch;
+            if(img.width / img.height > RATIO){ ch = img.height; cw = Math.round(ch*RATIO); }
+            else { cw = img.width; ch = Math.round(cw/RATIO); }
+            const sx = Math.round((img.width-cw)/2);
+            const sy = Math.round((img.height-ch)/2);
+            const cv = document.createElement("canvas");
+            cv.width = cw; cv.height = ch;
+            cv.getContext("2d").drawImage(img, sx, sy, cw, ch, 0, 0, cw, ch);
+            const trimmed = cv.toDataURL("image/jpeg", 0.72);
+
+            previewHTML += `<div style="margin-bottom:16px;padding:12px;background:var(--panel2);border-radius:4px">
+              <div style="font-size:11px;color:var(--ink-faint);margin-bottom:8px">${esc(c.title||"")} #${esc(c.issueNumber||"")}</div>
+              <div style="display:flex;gap:8px;align-items:flex-start">
+                <div style="text-align:center">
+                  <div style="font-size:10px;color:var(--ink-dim);margin-bottom:4px">Before</div>
+                  <img src="${data}" style="max-width:60px;max-height:90px;border-radius:3px">
+                </div>
+                <div style="text-align:center">
+                  <div style="font-size:10px;color:var(--accent);margin-bottom:4px">After (2:3)</div>
+                  <img src="${trimmed}" style="max-width:60px;max-height:90px;border-radius:3px">
+                </div>
+              </div>
+            </div>`;
+
+            cv.width = 0; cv.height = 0;
+            ok();
+          };
+          img.src = data;
+        });
+      }
+
+      previewHTML += `</div>`;
+      previewHTML += `<button class="btn btn-primary" id="confirm-trim-all" style="margin-top:8px">✓ Looks good — trim all ${comics.filter(c=>!isGone(c)).length} photos</button>`;
+      previewHTML += `<button class="btn btn-ghost" id="cancel-trim-all" style="margin-top:8px">Cancel</button>`;
+
+      tst.innerHTML = previewHTML;
+
+      document.getElementById("confirm-trim-all").onclick = ()=>{ trimPreviewMode = false; document.getElementById("trim-all-btn").click(); };
+      document.getElementById("cancel-trim-all").onclick = ()=>{ tst.style.display = "none"; tst.innerHTML = ""; };
+
+    } else {
+      /* BATCH MODE: trim all photos */
+      trimAllAbort = false;
+      trimPreviewMode = true; /* reset for next time */
+      tst.innerHTML = "🔄 Trimming all photos…";
+      const origText = btn.textContent;
+      btn.textContent = "⏹ Stop"; btn.disabled = true;
+      btn.onclick = ()=>{ trimAllAbort = true; };
+
+      let trimmed = 0, skipped = 0;
+      const withPhotos = comics.filter(c => !isGone(c));
+
+      for(let i = 0; i < comics.length; i++){
+        if(trimAllAbort){ tst.textContent = `⏸ Stopped at ${i}. Trimmed ${trimmed}, skipped ${skipped}.`; break; }
+        const c = comics[i];
+        if(isGone(c)){ skipped++; continue; }
+
+        const data = await getPhoto(c.id).catch(()=>null);
+        if(!data){ skipped++; continue; }
+
+        tst.textContent = `Trimming ${i+1}/${comics.length}: ${c.title||"comic"}…`;
+
+        try{
+          await new Promise((ok)=>{
+            const img = new Image();
+            img.onload = async () => {
+              const RATIO = 2/3;
+              let cw, ch;
+              if(img.width / img.height > RATIO){ ch = img.height; cw = Math.round(ch*RATIO); }
+              else { cw = img.width; ch = Math.round(cw/RATIO); }
+              const sx = Math.round((img.width-cw)/2);
+              const sy = Math.round((img.height-ch)/2);
+              const cv = document.createElement("canvas");
+              cv.width = cw; cv.height = ch;
+              cv.getContext("2d").drawImage(img, sx, sy, cw, ch, 0, 0, cw, ch);
+              const trimmed_data = cv.toDataURL("image/jpeg", 0.72);
+              await savePhoto(c.id, trimmed_data);
+              c._photoUrl = trimmed_data;
+              c.imageDirty = true;
+              saveComics();
+              cv.width = 0; cv.height = 0;
+              trimmed++;
+              ok();
+            };
+            img.onerror = ()=>{ skipped++; ok(); };
+            img.src = data;
+          });
+        }catch(e){
+          skipped++;
+        }
+      }
+
+      if(!trimAllAbort) tst.textContent = `✓ Done! Trimmed ${trimmed} photos. Push to GitHub to upload updated covers.`;
+      btn.textContent = origText;
+      btn.disabled = false;
+      btn.onclick = arguments.callee;
+    }
   };
 
   /* bulk value recheck from sync page */
