@@ -312,16 +312,15 @@ h1{
 .board.done .dot{border-radius:0; transition:border-radius .25s}
 
 /* ================= palette ================= */
-/* Row gap has to clear the key labels, which hang below the first row. */
-.palette{display:flex; flex-direction:column; gap:26px; align-items:center}
+/* Palette matches the board width so swatches scale with the puzzle. */
+.palette{display:flex; flex-direction:column; gap:26px; align-items:stretch;
+  width:100%; max-width:min(86vw,360px)}
 /* No number labels past 4 marks, so rows can sit closer. */
 .palette.tight{gap:10px}
-/* Must never wrap — a wrapped eraser collides with the key labels below. */
-.prow{display:flex; gap:clamp(7px,2.5vw,10px); align-items:center; justify-content:center; flex-wrap:nowrap}
-/* Past four marks a single row cannot hold them at a tappable size, so wrap —
-   and drop the number labels, which are what made wrapping collide before. */
-.prow.wrap{flex-wrap:wrap; gap:7px; max-width:340px}
-.prow.wrap .swatch{width:clamp(38px,9vw,44px)}
+/* Prow fills the palette width; swatches flex to divide it evenly. */
+.prow{display:flex; gap:clamp(5px,1.5vw,8px); align-items:center; flex-wrap:nowrap}
+/* Past four marks we split into separate prow divs via JS (no CSS wrap needed). */
+.prow.wrap{gap:clamp(4px,1.2vw,7px)}
 /* Holds the eraser column open on the inner row. Needs the compound selector to
    outrank .swatch's own background and shadow. */
 .swatch.spacer{background:none; box-shadow:none; visibility:hidden; pointer-events:none}
@@ -344,21 +343,16 @@ h1{
   mask-composite:exclude;
 }
 .swatch.inner{border-radius:4px}
-/* Shrink swatches in Double mode so both rows fit on screen width.
-   10 items (9 colours + eraser) must sit in ~396px, so max ~35px each.
-   flex shorthand overrides the base width and lets items shrink to fit. */
+/* Double mode — tighter gaps since two layers share the palette.
+   Swatches still flex:1 from the base rule; the gap reduction is enough. */
 .palette.dbl-pal{gap:6px}
-.palette.dbl-pal .prow.wrap{flex-wrap:nowrap; max-width:none; gap:clamp(3px,1vw,5px)}
-.palette.dbl-pal .prow{gap:clamp(3px,1vw,5px); flex-wrap:nowrap}
-.palette.dbl-pal .prow.wrap .swatch,
-.palette.dbl-pal .prow .swatch{
-  width:auto; flex:0 1 clamp(28px,7.5vw,35px); min-width:24px;
-}
+.palette.dbl-pal .prow,
+.palette.dbl-pal .prow.wrap{gap:clamp(3px,0.8vw,5px)}
 /* Selection ring uses the swatch's own colour so the eye tracks by hue, not
    by a neutral outline that gets lost against similar palette backgrounds. */
 .swatch.inner.on{box-shadow:0 0 0 3px var(--bg),0 0 0 6px var(--c); transform:scale(1.06); z-index:1}
 .swatch{
-  width:clamp(48px,12.5vw,54px); aspect-ratio:1; border-radius:14px; background:var(--c);
+  flex:1 1 0; min-width:0; aspect-ratio:1; border-radius:14px; background:var(--c);
   position:relative; transition:transform .12s, box-shadow .12s;
   box-shadow:var(--shadow); overflow:visible;
 }
@@ -560,6 +554,7 @@ html.dev .dev-only{display:grid}
 .timer.frozen{color:#3498db!important; font-weight:700}
 @media (min-width:520px){
   .board-wrap{max-width:400px}
+  .palette{max-width:400px}
   h1{font-size:21px}
 }
 </style>
