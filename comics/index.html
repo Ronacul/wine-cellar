@@ -688,6 +688,51 @@ function resizeImage(file){
     img.src = blobUrl;
   });
 }
+/* apply rotation + optional 2:3 centre-crop from an original data URL → new data URL
+   rotate is degrees clockwise: 0, 90, 180, 270 */
+function applyEditTransforms(original, transform){
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const rad = transform.rotate * Math.PI / 180;
+      const swap = transform.rotate === 90 || transform.rotate === 270;
+      const w = swap ? img.height : img.width;
+      const h = swap ? img.width  : img.height;
+
+      /* rotation step */
+      const rc = document.createElement("canvas");
+      rc.width = w; rc.height = h;
+      const rctx = rc.getContext("2d");
+      rctx.translate(w / 2, h / 2);
+      rctx.rotate(rad);
+      rctx.drawImage(img, -img.width / 2, -img.height / 2);
+
+      if(!transform.trimmed){
+        const out = rc.toDataURL("image/jpeg", 0.72);
+        rc.width = 0; rc.height = 0; img.src = "";
+        resolve(out); return;
+      }
+
+      /* trim step — centre-crop to 2:3 (standard comic proportions) */
+      const RATIO = 2 / 3;
+      let cw, ch;
+      if(w / h > RATIO){ ch = h; cw = Math.round(ch * RATIO); }
+      else              { cw = w; ch = Math.round(cw / RATIO); }
+      const sx = Math.round((w - cw) / 2);
+      const sy = Math.round((h - ch) / 2);
+      const tc = document.createElement("canvas");
+      tc.width = cw; tc.height = ch;
+      tc.getContext("2d").drawImage(rc, sx, sy, cw, ch, 0, 0, cw, ch);
+      const out = tc.toDataURL("image/jpeg", 0.72);
+      rc.width = 0; rc.height = 0;
+      tc.width = 0; tc.height = 0;
+      img.src = "";
+      resolve(out);
+    };
+    img.src = original;
+  });
+}
+
 function imgSrc(c){
   if(c._photoUrl) return c._photoUrl; /* in-memory cache from IndexedDB */
   if(c.imagePath && cfg.owner && cfg.repo)
@@ -1072,6 +1117,21 @@ function renderDetail(){
       <button id="edit" style="margin-left:auto;color:var(--accent)">Edit</button>
     </div>
     ${src ? `<img class="detail-photo" id="detail-photo" src="${esc(src)}" alt="" crossorigin="anonymous">` : `<div id="detail-photo-placeholder"></div>`}
+    <div style="text-align:center;margin:-8px 0 12px">
+      <button class="btn btn-ghost" id="edit-cover-btn" style="font-size:12px;padding:5px 14px">✂️ Edit cover</button>
+    </div>
+    <div id="detail-edit-panel" style="display:none;margin-bottom:14px;padding:12px;border:1px solid var(--line);border-radius:6px;background:var(--panel)">
+      <img id="detail-pv" style="max-width:100%;max-height:240px;display:block;margin:0 auto 10px;border-radius:4px;object-fit:contain" alt="">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:10px">
+        <button class="photo-btn" id="det-rotate">↻ Rotate</button>
+        <button class="photo-btn" id="det-trim">✂️ Trim 2:3</button>
+        <button class="photo-btn ghost" id="det-undo" style="display:none">↩ Undo</button>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:center">
+        <button class="btn btn-primary" id="det-save-photo" style="padding:8px 20px">✓ Save cover</button>
+        <button class="btn btn-ghost" id="det-cancel-photo">Cancel</button>
+      </div>
+    </div>
     <div class="detail-name" style="${pc?`color:${PUB_COLOURS[c.publisher]||"var(--ink)"}`:""}">${fl ? fireEmoji(c)+" " : ""}${esc(c.title||"Unknown")}${c.issueNumber ? ` <span style="color:var(--accent)">#${esc(c.issueNumber)}</span>` : ""}</div>
     <div class="detail-sub">${esc([c.publisher, c.year, c.era].filter(Boolean).join(" · "))}</div>
 
@@ -1279,6 +1339,87 @@ function renderDetail(){
       comics = comics.filter(x=>x.id!==c.id); saveComics(); history.back();
     }
   };
+
+  /* ---- cover photo editing from detail view ---- */
+  let detOriginal = null;
+  let detTransform = { rotate: 0, trimmed: false };
+
+  const updateDetUndoBtn = () => {
+    const ub = document.getElementById("det-undo");
+    if(ub) ub.style.display = (detTransform.rotate !== 0 || detTransform.trimmed) ? "block" : "none";
+  };
+  const syncDetTrimBtn = () => {
+    const btn = document.getElementById("det-trim");
+    if(!btn) return;
+    btn.textContent    = detTransform.trimmed ? "✂️ Trimmed" : "✂️ Trim 2:3";
+    btn.style.color       = detTransform.trimmed ? "var(--accent)" : "";
+    btn.style.borderColor = detTransform.trimmed ? "var(--accent)" : "";
+  };
+
+  document.getElementById("edit-cover-btn").onclick = async () => {
+    /* get current photo — from in-memory cache, IndexedDB, or GitHub via canvas */
+    let photoData = c._photoUrl;
+    if(!photoData) photoData = await loadPhoto(c).catch(()=>null);
+    if(!photoData && src){
+      /* photo is on GitHub — extract via canvas (already loaded in the page) */
+      const el = document.getElementById("detail-photo");
+      if(el && el.naturalWidth){ try{ photoData = imgToBase64(el); }catch(e){} }
+    }
+    if(!photoData){ alert("No cover photo found — add one via Edit."); return; }
+    detOriginal   = photoData;
+    detTransform  = { rotate: 0, trimmed: false };
+    document.getElementById("detail-pv").src = detOriginal;
+    syncDetTrimBtn(); updateDetUndoBtn();
+    document.getElementById("detail-edit-panel").style.display = "block";
+    document.getElementById("edit-cover-btn").style.display   = "none";
+  };
+
+  document.getElementById("det-rotate").onclick = async () => {
+    if(!detOriginal) return;
+    detTransform.rotate = (detTransform.rotate + 90) % 360;
+    const nd = await applyEditTransforms(detOriginal, detTransform);
+    document.getElementById("detail-pv").src = nd;
+    updateDetUndoBtn();
+  };
+
+  document.getElementById("det-trim").onclick = async () => {
+    if(!detOriginal) return;
+    detTransform.trimmed = !detTransform.trimmed;
+    syncDetTrimBtn();
+    const nd = await applyEditTransforms(detOriginal, detTransform);
+    document.getElementById("detail-pv").src = nd;
+    updateDetUndoBtn();
+  };
+
+  document.getElementById("det-undo").onclick = () => {
+    if(!detOriginal) return;
+    detTransform = { rotate: 0, trimmed: false };
+    document.getElementById("detail-pv").src = detOriginal;
+    syncDetTrimBtn(); updateDetUndoBtn();
+  };
+
+  document.getElementById("det-save-photo").onclick = async () => {
+    if(!detOriginal) return;
+    const finalData = await applyEditTransforms(detOriginal, detTransform);
+    await savePhoto(c.id, finalData);
+    c._photoUrl = finalData;
+    /* update the main detail cover image in-place */
+    const dp = document.getElementById("detail-photo");
+    if(dp){ dp.src = finalData; }
+    else {
+      const ph = document.getElementById("detail-photo-placeholder");
+      if(ph){ const img = document.createElement("img"); img.className = "detail-photo"; img.id = "detail-photo"; img.alt = ""; img.crossOrigin = "anonymous"; img.src = finalData; ph.replaceWith(img); }
+    }
+    document.getElementById("detail-edit-panel").style.display = "none";
+    document.getElementById("edit-cover-btn").style.display    = "";
+    detOriginal = null;
+  };
+
+  document.getElementById("det-cancel-photo").onclick = () => {
+    document.getElementById("detail-edit-panel").style.display = "none";
+    document.getElementById("edit-cover-btn").style.display    = "";
+    detOriginal = null;
+  };
 }
 
 /* remove sheet — sold or gifted */
@@ -1383,6 +1524,8 @@ Base on current market data, recent sales, and guide prices. Be research-grade a
 
 /* ================= add/edit form ================= */
 let pendingImage = null;
+let originalImage = null;                     /* unedited source — kept for undo during add/edit */
+let editTransform = { rotate: 0, trimmed: false }; /* current edit state for add/edit form */
 let pendingAiFields = {}; /* stash AI-only fields (marketValue, gradedValue, gradeCandidate, etc.) until save */
 function renderForm(){
   const c = editingId ? comics.find(x=>x.id===editingId) : {};
@@ -1403,8 +1546,12 @@ function renderForm(){
             <input type="file" id="gal" accept="image/*">
           </label>
         </div>
+        <div class="photo-zone-row" id="edit-btns" style="display:none">
+          <button type="button" class="photo-btn" id="rotate-cw">↻ Rotate</button>
+          <button type="button" class="photo-btn" id="trim-sq">✂️ Trim</button>
+          <button type="button" class="photo-btn ghost" id="undo-edit" style="display:none">↩ Undo</button>
+        </div>
         <div class="photo-zone-row">
-          <button type="button" class="photo-btn" id="trim-sq" style="display:none">✂️ Trim</button>
           <button type="button" class="photo-btn identify" id="identify">✨ Identify</button>
         </div>
       </div>
@@ -1550,55 +1697,74 @@ function renderForm(){
     loadPhoto(c).then(data=>{
       if(!data) return;
       pendingImage = data;
+      originalImage = data; editTransform = { rotate: 0, trimmed: false }; /* always reset for this comic */
       const pv = document.getElementById("pv");
       if(pv && !pv.src){ pv.src = data; pv.style.display = "block"; }
+      showEditBtns(); updateUndoBtn();
     });
   }
 
-  /* photo handlers */
-  const showTrimBtn = () => {
-    const tb = document.getElementById("trim-sq");
-    if(tb && pendingImage) tb.style.display = "block";
+  /* photo edit helpers */
+  const showEditBtns = () => {
+    const eb = document.getElementById("edit-btns");
+    if(eb) eb.style.display = "flex";
   };
+  const updateUndoBtn = () => {
+    const ub = document.getElementById("undo-edit");
+    if(ub) ub.style.display = (editTransform.rotate !== 0 || editTransform.trimmed) ? "block" : "none";
+  };
+  const syncTrimBtn = () => {
+    const btn = document.getElementById("trim-sq");
+    if(!btn) return;
+    btn.textContent    = editTransform.trimmed ? "✂️ Trimmed" : "✂️ Trim";
+    btn.style.color       = editTransform.trimmed ? "var(--accent)" : "";
+    btn.style.borderColor = editTransform.trimmed ? "var(--accent)" : "";
+  };
+
   const handlePhoto = async (file) => {
     if(!file) return;
     pendingImage = await resizeImage(file);
+    originalImage = pendingImage;                     /* capture original for undo */
+    editTransform = { rotate: 0, trimmed: false };
     const pv = document.getElementById("pv");
     pv.src = pendingImage; pv.style.display = "block";
-    showTrimBtn();
+    showEditBtns(); syncTrimBtn(); updateUndoBtn();
   };
   document.getElementById("cam").onchange = (e) => handlePhoto(e.target.files[0]);
   document.getElementById("gal").onchange = (e) => handlePhoto(e.target.files[0]);
-  if(pendingImage) showTrimBtn(); /* show trim for pre-loaded edit photo */
 
-  /* trim to comic cover shape — centre-crops to 2:3 aspect ratio (standard comic proportions) */
-  document.getElementById("trim-sq").onclick = () => {
-    if(!pendingImage) return;
-    const img = new Image();
-    img.onload = () => {
-      const RATIO = 2 / 3; /* width:height — standard comic cover */
-      let cw, ch;
-      if(img.width / img.height > RATIO){
-        /* image is wider than 2:3 — crop width */
-        ch = img.height; cw = Math.round(ch * RATIO);
-      } else {
-        /* image is taller than 2:3 — crop height */
-        cw = img.width; ch = Math.round(cw / RATIO);
-      }
-      const sx = Math.round((img.width - cw) / 2);
-      const sy = Math.round((img.height - ch) / 2);
-      const c = document.createElement("canvas");
-      c.width = cw; c.height = ch;
-      const ctx = c.getContext("2d");
-      ctx.drawImage(img, sx, sy, cw, ch, 0, 0, cw, ch);
-      pendingImage = c.toDataURL("image/jpeg", 0.72);
-      c.width = 0; c.height = 0; /* free canvas memory */
-      img.src = "";
-      const pv = document.getElementById("pv");
-      pv.src = pendingImage;
-      document.getElementById("trim-sq").style.display = "none"; /* hide after trim */
-    };
-    img.src = pendingImage;
+  /* show edit toolbar if a photo was already loaded (editing existing comic) */
+  if(pendingImage){
+    if(!originalImage){ originalImage = pendingImage; editTransform = { rotate: 0, trimmed: false }; }
+    showEditBtns(); syncTrimBtn(); updateUndoBtn();
+  }
+
+  /* rotate 90° clockwise */
+  document.getElementById("rotate-cw").onclick = async () => {
+    if(!originalImage) return;
+    editTransform.rotate = (editTransform.rotate + 90) % 360;
+    pendingImage = await applyEditTransforms(originalImage, editTransform);
+    document.getElementById("pv").src = pendingImage;
+    updateUndoBtn();
+  };
+
+  /* toggle 2:3 trim */
+  document.getElementById("trim-sq").onclick = async () => {
+    if(!originalImage) return;
+    editTransform.trimmed = !editTransform.trimmed;
+    syncTrimBtn();
+    pendingImage = await applyEditTransforms(originalImage, editTransform);
+    document.getElementById("pv").src = pendingImage;
+    updateUndoBtn();
+  };
+
+  /* undo all edits — restore original */
+  document.getElementById("undo-edit").onclick = () => {
+    if(!originalImage) return;
+    editTransform = { rotate: 0, trimmed: false };
+    pendingImage = originalImage;
+    document.getElementById("pv").src = pendingImage;
+    syncTrimBtn(); updateUndoBtn();
   };
 
   /* identify */
@@ -1725,7 +1891,7 @@ function renderForm(){
           existing._photoUrl = pendingImage;
           existing.imageDirty = true;
         }
-        pendingImage = null; /* free memory */
+        pendingImage = null; originalImage = null; editTransform = { rotate: 0, trimmed: false }; /* free memory */
         saveComics();
         editingId = null;
         tab = "detail"; detailId = existing.id; render();
@@ -1740,7 +1906,7 @@ function renderForm(){
           newComic._photoUrl = pendingImage;
           newComic.imageDirty = true;
         }
-        pendingImage = null; /* free memory */
+        pendingImage = null; originalImage = null; editTransform = { rotate: 0, trimmed: false }; /* free memory */
         comics.push(newComic);
         saveComics();
         detailId = newComic.id; tab = "detail";
@@ -2492,7 +2658,8 @@ function setTab(t, restoreScroll){
 }
 document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click", ()=>{
   editingId = null;
-  pendingImage = null; pendingAiFields = {}; /* free memory when leaving Add tab */
+  pendingImage = null; originalImage = null; editTransform = { rotate: 0, trimmed: false };
+  pendingAiFields = {}; /* free memory when leaving Add tab */
   setTab(b.dataset.tab);
 }));
 
