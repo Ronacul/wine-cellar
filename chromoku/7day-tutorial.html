@@ -256,13 +256,14 @@ h1{
 .board.sharp .cell:not(.given) .dot{border-radius:0}
 
 /* ================= first-move tutorial ================= */
-.cell.tutorial-glow{animation:pulse-glow 1.5s infinite}
-.swatch.tutorial-pulse{animation:pulse-swatch 1.2s infinite}
-.tutorial-arrow{
-  position:absolute; width:40px; height:40px; z-index:100;
-  background:radial-gradient(circle, rgba(255,255,255,.8) 0%, rgba(255,255,255,.3) 70%);
-  border-radius:50%; pointer-events:none;
-  animation:arrow-bounce 1s infinite;
+.cell.tutorial-glow{animation:pulse-glow 1.8s infinite}
+.swatch.tutorial-pulse{animation:pulse-swatch 1.4s infinite; position:relative}
+.tutorial-badge{
+  position:absolute; top:-8px; right:-8px;
+  background:var(--ring); color:var(--bg);
+  border-radius:50%; width:24px; height:24px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:12px; font-weight:700; z-index:10;
 }
 
 @media (min-width:520px){
@@ -312,6 +313,7 @@ const TUTORIAL_DAYS = [
     givens: 10,
     n: 4,
     boxless: false,
+    easyFirst: true,
     description: "Learn the basics: fill a 4×4 grid with 4 colours.",
     tutorial: {
       title: "Welcome to Chromoku!",
@@ -330,6 +332,7 @@ const TUTORIAL_DAYS = [
     givens: 10,
     n: 4,
     boxless: true,
+    easyFirst: true,
     description: "No boxes — just rows and columns.",
     tutorial: {
       title: "Latin Mode",
@@ -348,6 +351,7 @@ const TUTORIAL_DAYS = [
     givens: 20,
     n: 6,
     boxless: false,
+    easyFirst: true,
     description: "A bigger board with 6 colours and 3×2 boxes.",
     tutorial: {
       title: "Going Bigger",
@@ -602,6 +606,54 @@ function generatePuzzle(seed, n, givens, boxless){
   return { solution, puzzle, givens:puzzle.map(v => v !== null) };
 }
 
+/* ================= first-move cascade calculation ================= */
+
+function countFilledAfterMove(puzzle, solution, n, idx, val, boxless){
+  const test = puzzle.slice();
+  test[idx] = val;
+
+  // Simulate a simple constraint-propagation: count filled cells
+  let count = 0;
+  for (let i = 0; i < n * n; i++) {
+    if (test[i] !== null && test[i] !== undefined) count++;
+  }
+
+  // Check if this move would cascade (count cells that have only 1 legal value)
+  const { bw, bh } = boxDims(n);
+  for (let i = 0; i < n * n; i++){
+    if (test[i] !== null && test[i] !== undefined) continue;
+    let possibleCount = 0;
+    for (let v = 0; v < n; v++){
+      if (legal(test, n, i, v, boxless)){
+        possibleCount++;
+      }
+    }
+    // Count forced cells
+    if (possibleCount === 1) count += 0.5;
+  }
+  return count;
+}
+
+function findBestFirstMove(puzzle, solution, n, boxless){
+  // Find which (cell, value) pair fills the most puzzle
+  let bestCell = -1, bestVal = -1, bestScore = -1;
+
+  for (let i = 0; i < n * n; i++){
+    if (puzzle[i] !== null && puzzle[i] !== undefined) continue;
+    for (let v = 0; v < n; v++){
+      if (!legal(puzzle, n, i, v, boxless)) continue;
+      const score = countFilledAfterMove(puzzle, solution, n, i, v, boxless);
+      if (score > bestScore){
+        bestScore = score;
+        bestCell = i;
+        bestVal = v;
+      }
+    }
+  }
+
+  return { cell: bestCell, value: bestVal, score: bestScore };
+}
+
 /* ================= state ================= */
 
 const state = {
@@ -616,7 +668,8 @@ const state = {
   history: [],
   showedTutorial: false,
   showingFirstMoveGuide: false,
-  firstMoveCount: 0,
+  firstMoveTarget: null,
+  moveCount: 0,
 };
 
 const LS_TUTORIAL = "chromoku.tutorial.v1";
@@ -633,7 +686,7 @@ function loadProgress(){
 
 function saveProgress(){
   const p = loadProgress();
-  p["day" + state.day] = { done: state.done };
+  p["day" + state.day] = { done: state.done, moves: state.moveCount };
   try {
     localStorage.setItem(LS_TUTORIAL, JSON.stringify(p));
   } catch {}
@@ -641,10 +694,10 @@ function saveProgress(){
 
 function clearTutorialIfFresh(){
   const version = localStorage.getItem(LS_VERSION);
-  if (version !== "2") {
+  if (version !== "3") {
     try {
       localStorage.removeItem(LS_TUTORIAL);
-      localStorage.setItem(LS_VERSION, "2");
+      localStorage.setItem(LS_VERSION, "3");
     } catch {}
   }
 }
@@ -657,8 +710,15 @@ function hasSeenPuzzle(){
 function startFirstMoveGuide(){
   if (hasSeenPuzzle() || state.showingFirstMoveGuide) return;
   state.showingFirstMoveGuide = true;
-  state.firstMoveCount = 0;
-  animateFirstMove();
+
+  const meta = TUTORIAL_DAYS[state.day - 1];
+  if (meta && meta.easyFirst){
+    const best = findBestFirstMove(state.layers[0].grid, state.layers[0].solution, state.n, state.boxless);
+    if (best.cell >= 0 && best.value >= 0){
+      state.firstMoveTarget = best;
+      animateFirstMove();
+    }
+  }
 }
 
 function stopFirstMoveGuide(){
@@ -667,40 +727,39 @@ function stopFirstMoveGuide(){
 }
 
 function animateFirstMove(){
-  if (!state.showingFirstMoveGuide) return;
-  state.firstMoveCount++;
-  if (state.firstMoveCount > 3) { stopFirstMoveGuide(); return; }
+  if (!state.showingFirstMoveGuide || !state.firstMoveTarget) return;
 
-  // Find first empty cell
-  const grid = state.layers[0].grid;
-  let emptyCell = -1;
-  for (let i = 0; i < grid.length; i++) {
-    if (grid[i] === null || grid[i] === undefined) {
-      emptyCell = i;
-      break;
-    }
-  }
-  if (emptyCell === -1) return;
+  const cellIdx = state.firstMoveTarget.cell;
+  const val = state.firstMoveTarget.value;
 
-  const cellEl = document.querySelector('[data-i="' + emptyCell + '"]');
-  const swatches = document.querySelectorAll('[data-c]');
-  const randomSwatch = swatches[Math.floor(Math.random() * swatches.length)];
+  const cellEl = document.querySelector('[data-i="' + cellIdx + '"]');
+  const swatchEl = document.querySelector('[data-c="' + val + '"]');
 
-  if (cellEl && randomSwatch) {
+  if (cellEl && swatchEl) {
     cellEl.classList.add("tutorial-glow");
-    randomSwatch.classList.add("tutorial-pulse");
-
-    setTimeout(() => {
-      cellEl.classList.remove("tutorial-glow");
-      randomSwatch.classList.remove("tutorial-pulse");
-      setTimeout(() => animateFirstMove(), 1000);
-    }, 3000);
+    swatchEl.classList.add("tutorial-pulse");
   }
 }
 
 function removeFirstMoveAnimations(){
   document.querySelectorAll(".tutorial-glow").forEach(el => el.classList.remove("tutorial-glow"));
   document.querySelectorAll(".tutorial-pulse").forEach(el => el.classList.remove("tutorial-pulse"));
+}
+
+function checkFirstMoveComplete(cellIdx, val){
+  if (!state.showingFirstMoveGuide || !state.firstMoveTarget) return false;
+  if (cellIdx === state.firstMoveTarget.cell && val === state.firstMoveTarget.value){
+    stopFirstMoveGuide();
+    fireConfetti();
+    openModal(
+      '<h2 style="text-align:center">🎉 You got it!</h2>' +
+      '<p class="lede" style="text-align:center">One move, and look what happened. Keep placing colours to solve the puzzle!</p>' +
+      '<button class="btn" id="mGo">Continue</button>'
+    );
+    document.getElementById("mGo").onclick = closeModal;
+    return true;
+  }
+  return false;
 }
 
 /* ================= game setup ================= */
@@ -718,16 +777,36 @@ function loadDay(dayNum){
   state.erase = false;
   state.history = [];
   state.showingFirstMoveGuide = false;
-  state.firstMoveCount = 0;
+  state.firstMoveTarget = null;
+  state.moveCount = 0;
 
-  // Generate puzzle with fixed seed so it's the same every day
+  // Generate puzzle with fixed seed
   const seed = dayNum * 12345;
-  const p = generatePuzzle(seed, state.n, meta.givens, state.boxless);
-  state.layers = [{
-    grid: p.puzzle.slice(),
-    solution: p.solution.slice(),
-    givens: p.givens.slice(),
-  }];
+
+  if (state.dbl){
+    // For double puzzles, generate two independent layers
+    const p1 = generatePuzzle(seed, state.n, meta.givens, state.boxless);
+    const p2 = generatePuzzle(seed + 1, state.n, meta.givens, state.boxless);
+    state.layers = [
+      {
+        grid: p1.puzzle.slice(),
+        solution: p1.solution.slice(),
+        givens: p1.givens.slice(),
+      },
+      {
+        grid: p2.puzzle.slice(),
+        solution: p2.solution.slice(),
+        givens: p2.givens.slice(),
+      }
+    ];
+  } else {
+    const p = generatePuzzle(seed, state.n, meta.givens, state.boxless);
+    state.layers = [{
+      grid: p.puzzle.slice(),
+      solution: p.solution.slice(),
+      givens: p.givens.slice(),
+    }];
+  }
 
   render();
   paintUndo();
@@ -810,7 +889,7 @@ function isSolved(){
 
 /* ================= rendering ================= */
 
-function getMarks(n){
+function getMarks(n, isInner){
   const meta = TUTORIAL_DAYS[state.day - 1];
   if (meta && meta.day === 4){
     // Day 4 uses shapes
@@ -831,14 +910,20 @@ function renderBoard(){
 
   if (state.boxless){
     for (let i = 0; i < n * n; i++){
-      const v = state.layers[0].grid[i];
       let inner = "";
-      if (v !== null && v !== undefined){
-        const mark = getMarks(n)[v];
-        const st = mark.clip
-          ? "--c:" + mark.hex + ";clip-path:" + mark.clip + ";border-radius:3px"
-          : "--c:" + mark.hex;
-        inner = '<div class="fill" style="' + st + '"></div>';
+      for (let L = 0; L < state.layers.length; L++){
+        const v = state.layers[L].grid[i];
+        if (v !== null && v !== undefined){
+          const mark = getMarks(n, L > 0)[v];
+          const st = mark.clip
+            ? "--c:" + mark.hex + ";clip-path:" + mark.clip + ";border-radius:3px"
+            : "--c:" + mark.hex;
+          if (L === 0){
+            inner = '<div class="fill" style="' + st + '"></div>';
+          } else {
+            inner += '<div class="dot" style="' + st + '"></div>';
+          }
+        }
       }
       html += '<div class="cell' + (state.layers[0].givens[i] ? " given" : "")
             + '" data-i="' + i + '">' + inner + "</div>";
@@ -850,14 +935,20 @@ function renderBoard(){
       for (let r = r0; r < r0 + bh; r++){
         for (let c = c0; c < c0 + bw; c++){
           const i = r * n + c;
-          const v = state.layers[0].grid[i];
           let cellInner = "";
-          if (v !== null && v !== undefined){
-            const mark = getMarks(n)[v];
-            const st = mark.clip
-              ? "--c:" + mark.hex + ";clip-path:" + mark.clip + ";border-radius:3px"
-              : "--c:" + mark.hex;
-            cellInner = '<div class="fill" style="' + st + '"></div>';
+          for (let L = 0; L < state.layers.length; L++){
+            const v = state.layers[L].grid[i];
+            if (v !== null && v !== undefined){
+              const mark = getMarks(n, L > 0)[v];
+              const st = mark.clip
+                ? "--c:" + mark.hex + ";clip-path:" + mark.clip + ";border-radius:3px"
+                : "--c:" + mark.hex;
+              if (L === 0){
+                cellInner = '<div class="fill" style="' + st + '"></div>';
+              } else {
+                cellInner += '<div class="dot" style="' + st + '"></div>';
+              }
+            }
           }
           inner += '<div class="cell' + (state.layers[0].givens[i] ? " given" : "")
                  + '" data-i="' + i + '">' + cellInner + "</div>";
@@ -876,6 +967,7 @@ function renderBoard(){
   board.style.gridTemplateColumns = "repeat(" + boxesPerRow + ",1fr)";
   board.style.gridTemplateRows = "repeat(" + boxRows + ",1fr)";
   board.classList.remove("done");
+  if (state.dbl) board.classList.add("dbl"); else board.classList.remove("dbl");
   board.innerHTML = html;
   board.querySelectorAll("[data-i]").forEach(el => {
     el.onclick = () => onCell(parseInt(el.dataset.i, 10));
@@ -888,35 +980,88 @@ function renderPalette(){
   const counts = new Array(state.n).fill(0);
   for (const v of state.layers[0].grid) if (v !== null && v !== undefined) counts[v]++;
 
-  let rows = "";
-  const swatches = marks.map((c, i) => {
-    const placed = counts[i];
-    const done = placed >= state.n;
-    const remaining = Math.max(0, state.n - placed);
-    const shaped = !!c.clip && state.day !== 1;
-    return '<button class="swatch' + (done ? " done" : "")
-      + (state.sel && state.sel.colour === i ? " on" : "")
-      + (shaped ? " shaped" : "")
-      + '" data-c="' + i + '" style="' + (c.clip ? "--c:" + c.hex + ";--clip:" + c.clip : "--c:" + c.hex)
-      + '" aria-label="' + c.label + (remaining > 0 ? ", " + remaining + " remaining" : ", done") + '">'
-      + (remaining > 0 ? '<span class="cnt">' + remaining + "</span>" : "")
-      + (state.n <= 4 ? '<span class="k">' + (i + 1) + "</span>" : "")
-      + "</button>";
-  });
-  const nRows = state.n > 4 ? 2 : 1;
-  const perRow = Math.ceil(swatches.length / nRows);
-  for (let k = 0; k < swatches.length; k += perRow)
-    rows += '<div class="prow' + (state.n > 4 ? " wrap" : "") + '">'
-          + swatches.slice(k, k + perRow).join("") + "</div>";
+  let html = "";
 
-  const p = document.getElementById("palette");
-  p.className = "palette pal-pad" + (state.n > 4 ? " tight" : "");
-  p.innerHTML = rows;
-  p.querySelectorAll("[data-c]").forEach(b => {
+  if (state.dbl){
+    // Outer layer
+    let outerHtml = '<label style="font-size:11px;color:var(--ink-faint);font-weight:600;margin-bottom:4px;display:block">Outer</label>';
+    const swatches1 = marks.map((c, i) => {
+      const placed = counts[i];
+      const done = placed >= state.n;
+      const remaining = Math.max(0, state.n - placed);
+      const shaped = !!c.clip && state.day !== 1;
+      return '<button class="swatch' + (done ? " done" : "")
+        + (state.sel && state.sel.layer === 0 && state.sel.colour === i ? " on" : "")
+        + (shaped ? " shaped" : "")
+        + '" data-c="' + i + '" data-layer="0" style="' + (c.clip ? "--c:" + c.hex + ";--clip:" + c.clip : "--c:" + c.hex)
+        + '" aria-label="' + c.label + (remaining > 0 ? ", " + remaining + " remaining" : ", done") + '">'
+        + (remaining > 0 ? '<span class="cnt">' + remaining + "</span>" : "")
+        + (state.n <= 4 ? '<span class="k">' + (i + 1) + "</span>" : "")
+        + "</button>";
+    });
+    const perRow = Math.ceil(swatches1.length / 1);
+    for (let k = 0; k < swatches1.length; k += perRow)
+      outerHtml += '<div class="prow">' + swatches1.slice(k, k + perRow).join("") + "</div>";
+
+    // Inner layer
+    let innerHtml = '<label style="font-size:11px;color:var(--ink-faint);font-weight:600;margin-top:8px;margin-bottom:4px;display:block">Inner</label>';
+    const counts2 = new Array(state.n).fill(0);
+    for (const v of state.layers[1].grid) if (v !== null && v !== undefined) counts2[v]++;
+    const swatches2 = marks.map((c, i) => {
+      const placed = counts2[i];
+      const done = placed >= state.n;
+      const remaining = Math.max(0, state.n - placed);
+      const shaped = !!c.clip && state.day !== 1;
+      return '<button class="swatch' + (done ? " done" : "")
+        + (state.sel && state.sel.layer === 1 && state.sel.colour === i ? " on" : "")
+        + (shaped ? " shaped" : "")
+        + '" data-c="' + i + '" data-layer="1" style="' + (c.clip ? "--c:" + c.hex + ";--clip:" + c.clip : "--c:" + c.hex)
+        + '" aria-label="' + c.label + (remaining > 0 ? ", " + remaining + " remaining" : ", done") + '">'
+        + (remaining > 0 ? '<span class="cnt">' + remaining + "</span>" : "")
+        + (state.n <= 4 ? '<span class="k">' + (i + 1) + "</span>" : "")
+        + "</button>";
+    });
+    for (let k = 0; k < swatches2.length; k += perRow)
+      innerHtml += '<div class="prow">' + swatches2.slice(k, k + perRow).join("") + "</div>";
+
+    const p = document.getElementById("palette");
+    p.className = "palette pal-pad dbl-pal";
+    p.innerHTML = outerHtml + innerHtml;
+  } else {
+    const swatches = marks.map((c, i) => {
+      const placed = counts[i];
+      const done = placed >= state.n;
+      const remaining = Math.max(0, state.n - placed);
+      const shaped = !!c.clip && state.day !== 1;
+      return '<button class="swatch' + (done ? " done" : "")
+        + (state.sel && state.sel.colour === i ? " on" : "")
+        + (shaped ? " shaped" : "")
+        + '" data-c="' + i + '" style="' + (c.clip ? "--c:" + c.hex + ";--clip:" + c.clip : "--c:" + c.hex)
+        + '" aria-label="' + c.label + (remaining > 0 ? ", " + remaining + " remaining" : ", done") + '">'
+        + (remaining > 0 ? '<span class="cnt">' + remaining + "</span>" : "")
+        + (state.n <= 4 ? '<span class="k">' + (i + 1) + "</span>" : "")
+        + "</button>";
+    });
+    const nRows = state.n > 4 ? 2 : 1;
+    const perRow = Math.ceil(swatches.length / nRows);
+    for (let k = 0; k < swatches.length; k += perRow)
+      html += '<div class="prow' + (state.n > 4 ? " wrap" : "") + '">'
+            + swatches.slice(k, k + perRow).join("") + "</div>";
+
+    const p = document.getElementById("palette");
+    p.className = "palette pal-pad" + (state.n > 4 ? " tight" : "");
+    p.innerHTML = html;
+  }
+
+  const allSwatches = state.dbl
+    ? document.querySelectorAll('[data-c][data-layer]')
+    : document.querySelectorAll('[data-c]');
+  allSwatches.forEach(b => {
     b.onclick = () => {
+      const layer = state.dbl ? +b.dataset.layer : 0;
       const i = +b.dataset.c;
-      const same = state.sel && state.sel.colour === i;
-      state.sel = same ? null : { layer: 0, colour: i };
+      const same = state.sel && state.sel.layer === layer && state.sel.colour === i;
+      state.sel = same ? null : { layer, colour: i };
       state.erase = false;
       renderPalette();
     };
@@ -956,14 +1101,20 @@ function render(){
 function paintCell(i){
   const el = document.querySelector('[data-i="' + i + '"]');
   if (!el) return;
-  const v = state.layers[0].grid[i];
   let inner = "";
-  if (v !== null && v !== undefined){
-    const mark = getMarks(state.n)[v];
-    const st = mark.clip
-      ? "--c:" + mark.hex + ";clip-path:" + mark.clip + ";border-radius:3px"
-      : "--c:" + mark.hex;
-    inner = '<div class="fill" style="' + st + '"></div>';
+  for (let L = 0; L < state.layers.length; L++){
+    const v = state.layers[L].grid[i];
+    if (v !== null && v !== undefined){
+      const mark = getMarks(state.n, L > 0)[v];
+      const st = mark.clip
+        ? "--c:" + mark.hex + ";clip-path:" + mark.clip + ";border-radius:3px"
+        : "--c:" + mark.hex;
+      if (L === 0){
+        inner = '<div class="fill" style="' + st + '"></div>';
+      } else {
+        inner += '<div class="dot" style="' + st + '"></div>';
+      }
+    }
   }
   el.innerHTML = inner;
 }
@@ -994,17 +1145,27 @@ function paintUndo(){
 
 /* ================= interaction ================= */
 
-function placeColour(i, val){
-  const prev = state.layers[0].grid[i];
-  if (prev !== val) state.history.push({ i, prev });
-  state.layers[0].grid[i] = val;
+function placeColour(L, i, val){
+  const prev = state.layers[L].grid[i];
+  if (prev !== val) {
+    state.history.push({ L, i, prev });
+    state.moveCount++;
+  }
+  state.layers[L].grid[i] = val;
   paintCell(i);
   renderPalette();
   stopFirstMoveGuide();
 
   if (val !== null){
-    const bad = conflictsAt(0, i);
+    const bad = conflictsAt(L, i);
     if (bad.size) flashConflicts(bad);
+  }
+
+  // Check if this was the first-move target for easy puzzles
+  if (L === 0 && state.showingFirstMoveGuide && state.firstMoveTarget){
+    if (checkFirstMoveComplete(i, val)){
+      return;
+    }
   }
 
   if (isSolved()) win();
@@ -1014,25 +1175,29 @@ function onCell(i){
   if (state.done) return;
 
   if (state.erase){
-    const prev = state.layers[0].grid[i];
-    if (!state.layers[0].givens[i] && prev !== null){
-      state.history.push({ i, prev });
-      state.layers[0].grid[i] = null;
-      paintCell(i);
-      renderPalette();
+    for (let L = 0; L < state.layers.length; L++){
+      const prev = state.layers[L].grid[i];
+      if (!state.layers[L].givens[i] && prev !== null){
+        state.history.push({ L, i, prev });
+        state.layers[L].grid[i] = null;
+        state.moveCount++;
+      }
     }
+    paintCell(i);
+    renderPalette();
     return;
   }
 
   if (state.sel === null){ toast("Pick a colour first"); return; }
-  if (state.layers[0].givens[i]) return;
-  placeColour(i, state.layers[0].grid[i] === state.sel.colour ? null : state.sel.colour);
+  const L = state.sel.layer;
+  if (state.layers[L].givens[i]) return;
+  placeColour(L, i, state.layers[L].grid[i] === state.sel.colour ? null : state.sel.colour);
 }
 
 function undo(){
   if (state.done || !state.history.length) return;
   const move = state.history.pop();
-  state.layers[0].grid[move.i] = move.prev;
+  state.layers[move.L].grid[move.i] = move.prev;
   paintCell(move.i);
   renderPalette();
   paintUndo();
@@ -1042,12 +1207,23 @@ function resetDay(){
   const meta = TUTORIAL_DAYS[state.day - 1];
   if (meta){
     const seed = state.day * 12345;
-    const p = generatePuzzle(seed, state.n, meta.givens, state.boxless);
-    state.layers[0].grid = p.puzzle.slice();
+    if (state.dbl){
+      const p1 = generatePuzzle(seed, state.n, meta.givens, state.boxless);
+      const p2 = generatePuzzle(seed + 1, state.n, meta.givens, state.boxless);
+      state.layers[0].grid = p1.puzzle.slice();
+      state.layers[1].grid = p2.puzzle.slice();
+    } else {
+      const p = generatePuzzle(seed, state.n, meta.givens, state.boxless);
+      state.layers[0].grid = p.puzzle.slice();
+    }
     state.done = false;
     state.sel = null;
     state.history = [];
+    state.moveCount = 0;
+    state.showingFirstMoveGuide = false;
+    state.firstMoveTarget = null;
     render();
+    startFirstMoveGuide();
   }
 }
 
@@ -1066,6 +1242,7 @@ function win(){
     const currentMeta = TUTORIAL_DAYS[state.day - 1];
     openModal(
       '<h2>' + currentMeta.title + ' complete!</h2>' +
+      '<p class="lede">Solved in ' + state.moveCount + ' move' + (state.moveCount === 1 ? '' : 's') + '</p>' +
       '<p class="lede">' +
         (nextDay <= 7
           ? 'Ready for <b>' + nextTitle + '</b>?'
