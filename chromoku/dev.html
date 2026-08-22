@@ -278,6 +278,14 @@ h1{
   <summary style="cursor:pointer;font-weight:600;font-size:12px;color:var(--ink-dim);user-select:none">⚙️ DEV ADMIN</summary>
   <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
     <button id="btnResetTutorial" class="btn" style="background:var(--error)">Reset Tutorial (First Install)</button>
+    <div style="display:flex;gap:6px;font-size:12px">
+      <select id="tutorialVariant" style="flex:1;padding:8px;border-radius:6px;border:1px solid var(--line);font-family:var(--sans);background:var(--panel);color:var(--ink)">
+        <option value="main">Main Tutorial (Days 1-7)</option>
+        <option value="latin-double" disabled>Latin Double (coming)</option>
+        <option value="half-latin" disabled>Half Latin Double (coming)</option>
+        <option value="symbols" disabled>Symbols & Combos (coming)</option>
+      </select>
+    </div>
     <div style="display:flex;gap:6px">
       <input type="number" id="levelJumpInput" placeholder="Jump to day" min="1" max="7" style="flex:1;padding:8px;border-radius:6px;border:1px solid var(--line);font-family:var(--mono);font-size:12px">
       <button id="btnLevelJump" class="btn" style="flex:0">Jump</button>
@@ -323,6 +331,14 @@ h1{
 "use strict";
 
 /* ================= Tutorial metadata ================= */
+
+// Future tutorial variants (for admin level selection)
+const TUTORIAL_VARIANTS = {
+  main: { name: "Main Tutorial (7 days)", levels: ["1", "2", "3", "4", "5", "6", "7"] },
+  "latin-double": { name: "Latin Double (planned)", levels: [] },
+  "half-latin": { name: "Half Latin Double (planned)", levels: [] },
+  "symbols": { name: "Symbols & Combos (planned)", levels: [] },
+};
 
 const TUTORIAL_DAYS = [
   {
@@ -426,7 +442,7 @@ const TUTORIAL_DAYS = [
     day: 6,
     title: "9×9 Sudoku",
     icon: "⬜",
-    givens: 38,
+    givens: 50,
     n: 9,
     boxless: false,
     easyFirst: true,
@@ -1424,6 +1440,14 @@ document.getElementById("btnResetTutorial").onclick = () => {
   localStorage.removeItem("chromoku.tutorial.v1");
   localStorage.removeItem("chromoku.tutorial.version");
   location.reload();
+};
+
+document.getElementById("tutorialVariant").onchange = (e) => {
+  const variant = e.target.value;
+  const levels = TUTORIAL_VARIANTS[variant].levels;
+  const dayInput = document.getElementById("levelJumpInput");
+  dayInput.max = levels.length;
+  dayInput.placeholder = "Jump to day 1-" + levels.length;
 };
 
 document.getElementById("btnLevelJump").onclick = () => {
