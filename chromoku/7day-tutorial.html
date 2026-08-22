@@ -2,45 +2,94 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#f7f7f8">
     <title>Chromoku — 7-Day Tutorial</title>
     <style>
+        :root {
+            --bg: #f7f7f8;
+            --panel: #fff;
+            --panel2: #eeeef2;
+            --ink: #17172b;
+            --ink-dim: #63637a;
+            --ink-faint: #9c9caf;
+            --line: rgba(0,0,0,.10);
+            --line-2: rgba(0,0,0,.18);
+            --cell: #fff;
+            --board: rgba(0,0,0,.14);
+            --shadow: 0 1px 2px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.06);
+            --teal: #17a2b8;
+            --orange: #fd7e14;
+            --ok: #7da87b;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) {
+                --bg: #14141f;
+                --panel: #1e1e2e;
+                --panel2: #282838;
+                --ink: #ececf4;
+                --ink-dim: #9a9ab2;
+                --ink-faint: #63637a;
+                --line: rgba(255,255,255,.11);
+                --line-2: rgba(255,255,255,.20);
+                --cell: #252537;
+                --board: rgba(255,255,255,.16);
+                --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.25);
+            }
+        }
+
         * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            color: #fff;
+            background: var(--bg);
+            color: var(--ink);
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -webkit-tap-highlight-color: transparent;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 16px;
-            padding-bottom: 120px;
+            padding: 8px 12px 12px;
         }
 
         header {
+            width: 100%;
+            max-width: 460px;
             text-align: center;
-            margin-bottom: 24px;
-            margin-top: 16px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--line);
+            margin-bottom: 14px;
         }
 
         h1 {
-            font-size: 28px;
-            margin-bottom: 8px;
-            background: linear-gradient(45deg, #00d4ff, #0099ff);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            font-size: 19px;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+        }
+
+        .sub {
+            font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 10px;
+            color: var(--ink-faint);
+            text-align: center;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            margin-top: 2px;
         }
 
         .day-info {
+            width: 100%;
+            max-width: 460px;
             display: flex;
-            gap: 16px;
+            gap: 8px;
             justify-content: center;
             align-items: center;
             margin-bottom: 16px;
@@ -48,236 +97,277 @@
         }
 
         .day-badge {
-            background: rgba(0, 212, 255, 0.2);
-            border: 2px solid #00d4ff;
+            background: var(--panel2);
+            padding: 6px 14px;
             border-radius: 8px;
-            padding: 8px 16px;
-            font-weight: bold;
-            font-size: 18px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--ink-dim);
+        }
+
+        .day-badge .num {
+            color: var(--ink);
+            font-weight: 800;
         }
 
         .mechanic-label {
-            background: rgba(255, 153, 0, 0.2);
-            border: 2px solid #ff9900;
+            background: var(--panel2);
+            padding: 6px 14px;
             border-radius: 8px;
-            padding: 8px 16px;
-            font-size: 14px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--ink-dim);
         }
 
         .game-container {
-            background: rgba(255, 255, 255, 0.05);
-            border: 2px solid rgba(0, 212, 255, 0.3);
-            border-radius: 16px;
-            padding: 24px;
-            max-width: 600px;
             width: 100%;
-            backdrop-filter: blur(10px);
-            margin-bottom: 24px;
-        }
-
-        .game-board {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 8px;
-            margin-bottom: 20px;
-            aspect-ratio: 1;
-        }
-
-        .cell {
-            aspect-ratio: 1;
-            border-radius: 12px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-weight: bold;
-            font-size: 24px;
+            max-width: 460px;
             display: flex;
+            flex-direction: column;
             align-items: center;
-            justify-content: center;
-            user-select: none;
+            gap: 20px;
         }
-
-        .cell:hover {
-            transform: scale(1.05);
-            border-color: rgba(255, 255, 255, 0.8);
-        }
-
-        .cell.selected {
-            border-color: #ffff00;
-            box-shadow: 0 0 12px rgba(255, 255, 0, 0.5);
-            transform: scale(1.08);
-        }
-
-        /* Color variants */
-        .cell.red { background: linear-gradient(135deg, #ff6b6b, #c92a2a); }
-        .cell.blue { background: linear-gradient(135deg, #4ecdc4, #1097a6); }
-        .cell.yellow { background: linear-gradient(135deg, #ffd93d, #ffb700); }
-        .cell.green { background: linear-gradient(135deg, #95e1d3, #38a169); }
-        .cell.purple { background: linear-gradient(135deg, #c77dff, #7209b7); }
 
         .stats {
             display: flex;
-            justify-content: space-around;
-            margin-bottom: 20px;
-            font-size: 14px;
-            gap: 16px;
+            gap: 10px;
+            justify-content: center;
             flex-wrap: wrap;
+            width: 100%;
         }
 
         .stat {
             text-align: center;
-            background: rgba(0, 212, 255, 0.1);
-            padding: 8px 12px;
+            background: var(--panel2);
+            padding: 8px 14px;
             border-radius: 8px;
-            flex: 1;
-            min-width: 80px;
+            flex: 0 1 auto;
         }
 
         .stat-label {
-            font-size: 12px;
-            color: #aaa;
+            font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 9px;
+            color: var(--ink-faint);
             text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 2px;
         }
 
         .stat-value {
-            font-size: 20px;
-            font-weight: bold;
-            color: #00d4ff;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--ink);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .board-wrap {
+            width: 100%;
+            max-width: min(86vw, 360px);
+        }
+
+        .board {
+            display: grid;
+            gap: 12px;
+            aspect-ratio: 1;
+            padding: 12px;
+            background: var(--board);
+            border-radius: 18px;
+        }
+
+        .board.size-5 {
+            grid-template-columns: repeat(5, 1fr);
+        }
+
+        .board.size-7 {
+            grid-template-columns: repeat(7, 1fr);
+        }
+
+        .cell {
+            position: relative;
+            background: var(--cell);
+            border-radius: 8px;
+            aspect-ratio: 1;
+            cursor: pointer;
+            transition: background 0.12s, box-shadow 0.12s;
+            box-shadow: var(--shadow);
+        }
+
+        .cell:hover {
+            background: var(--panel2);
+        }
+
+        .cell.selected {
+            box-shadow: 0 0 0 3px var(--bg), 0 0 0 6px var(--teal);
+        }
+
+        .fill {
+            position: absolute;
+            inset: 0;
+            border-radius: 12px;
+            background: var(--c);
+            transition: background 0.12s;
+        }
+
+        .cell.given .fill {
+            border-radius: 2px;
+        }
+
+        /* Colour swatches */
+        .palette {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .swatch {
+            flex: 0 0 auto;
+            width: 50px;
+            height: 50px;
+            border-radius: 14px;
+            background: var(--c);
+            cursor: pointer;
+            transition: transform 0.12s, box-shadow 0.12s;
+            box-shadow: var(--shadow);
+            border: none;
+            padding: 0;
+        }
+
+        .swatch:active {
+            transform: scale(0.93);
+        }
+
+        .swatch.on {
+            box-shadow: 0 0 0 3px var(--bg), 0 0 0 6px var(--c);
+            transform: scale(1.06);
         }
 
         .controls {
             display: flex;
-            gap: 12px;
+            gap: 8px;
             justify-content: center;
             flex-wrap: wrap;
-            margin-bottom: 16px;
+            width: 100%;
         }
 
         button {
-            background: linear-gradient(135deg, #00d4ff, #0099ff);
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 10px 16px;
+            border-radius: 10px;
+            background: var(--ink);
+            color: var(--bg);
             border: none;
-            color: #000;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-weight: bold;
             cursor: pointer;
-            transition: all 0.2s ease;
-            font-size: 14px;
+            transition: opacity 0.15s;
         }
 
         button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(0, 212, 255, 0.4);
-        }
-
-        button:active {
-            transform: translateY(0);
+            opacity: 0.85;
         }
 
         button.secondary {
-            background: rgba(0, 212, 255, 0.2);
-            color: #00d4ff;
-            border: 2px solid #00d4ff;
+            background: var(--panel2);
+            color: var(--ink-dim);
         }
 
         button.secondary:hover {
-            background: rgba(0, 212, 255, 0.3);
-        }
-
-        button.help {
-            background: rgba(255, 153, 0, 0.3);
-            color: #ff9900;
-            border: 2px solid #ff9900;
-        }
-
-        button.help:hover {
-            background: rgba(255, 153, 0, 0.4);
+            background: var(--panel);
+            color: var(--ink);
         }
 
         .day-selector {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
-            gap: 8px;
-            margin-top: 16px;
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            flex-wrap: wrap;
             width: 100%;
         }
 
         .day-btn {
-            padding: 8px 12px;
+            font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
             font-size: 12px;
-            width: 100%;
-            background: rgba(0, 212, 255, 0.1);
-            color: #00d4ff;
-            border: 1px solid #00d4ff;
+            font-weight: 600;
+            padding: 8px 12px;
+            background: var(--panel2);
+            color: var(--ink-dim);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .day-btn:hover:not(:disabled) {
+            background: var(--panel);
+            color: var(--ink);
         }
 
         .day-btn.active {
-            background: linear-gradient(135deg, #00d4ff, #0099ff);
-            color: #000;
+            background: var(--ink);
+            color: var(--bg);
         }
 
         .day-btn.completed {
-            background: rgba(0, 200, 100, 0.2);
-            border-color: #00c864;
-            color: #00c864;
+            background: var(--ok);
+            color: white;
         }
 
-        /* Banner Ad (Mock) */
-        .banner-ad {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: linear-gradient(to right, #333, #222);
-            border-top: 2px solid rgba(0, 212, 255, 0.3);
-            padding: 12px;
+        .day-btn:disabled {
+            opacity: 0.35;
+            cursor: default;
+        }
+
+        .message {
             text-align: center;
-            font-size: 12px;
-            color: #aaa;
-            z-index: 100;
+            font-size: 14px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            background: var(--panel2);
+            color: var(--ink);
+            display: none;
+            width: 100%;
         }
 
-        .banner-ad-content {
-            max-width: 728px;
-            margin: 0 auto;
-            background: rgba(0, 0, 0, 0.3);
-            padding: 8px;
-            border-radius: 4px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+        .message.show {
+            display: block;
+        }
+
+        .message.success {
+            background: var(--ok);
+            color: white;
         }
 
         /* Modal */
-        .modal {
-            display: none;
+        .overlay {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.8);
-            z-index: 1000;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            z-index: 50;
+            display: none;
             align-items: center;
             justify-content: center;
-            padding: 16px;
+            padding: 20px;
         }
 
-        .modal.active {
+        .overlay.show {
             display: flex;
         }
 
-        .modal-content {
-            background: #1a1a2e;
-            border: 2px solid #00d4ff;
-            border-radius: 16px;
-            padding: 32px;
-            max-width: 400px;
-            text-align: center;
+        .modal {
+            background: var(--panel);
+            border-radius: 18px;
+            padding: 24px 22px;
+            width: 100%;
+            max-width: 360px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
             animation: slideIn 0.3s ease;
         }
 
         @keyframes slideIn {
             from {
-                transform: translateY(-50px);
+                transform: translateY(-30px);
                 opacity: 0;
             }
             to {
@@ -287,90 +377,54 @@
         }
 
         .modal h2 {
-            color: #00d4ff;
-            margin-bottom: 16px;
-            font-size: 24px;
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            margin-bottom: 4px;
         }
 
-        .modal p {
-            color: #ccc;
-            margin-bottom: 24px;
-            line-height: 1.6;
+        .modal-text {
+            font-size: 13px;
+            color: var(--ink-dim);
+            line-height: 1.55;
+            margin-bottom: 16px;
         }
 
         .modal button {
             width: 100%;
-        }
-
-        .tutorial-text {
-            background: rgba(0, 212, 255, 0.1);
-            border-left: 4px solid #00d4ff;
-            padding: 12px;
-            margin-top: 12px;
-            border-radius: 4px;
-            font-size: 12px;
-            text-align: left;
-            line-height: 1.5;
-        }
-
-        .message {
-            background: rgba(0, 212, 255, 0.1);
-            border: 2px solid #00d4ff;
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 12px;
-            text-align: center;
-            font-size: 14px;
-        }
-
-        .message.success {
-            border-color: #00c864;
-            background: rgba(0, 200, 100, 0.1);
-            color: #00c864;
+            margin-top: 8px;
         }
 
         @media (max-width: 600px) {
-            .game-container {
-                padding: 16px;
-            }
-
             h1 {
-                font-size: 24px;
+                font-size: 18px;
             }
 
-            .cell {
-                font-size: 20px;
-            }
-
-            .day-info {
-                flex-direction: column;
-                gap: 8px;
-            }
-
-            .day-badge, .mechanic-label {
-                width: 100%;
+            .stat {
+                flex: 1;
+                min-width: 80px;
             }
 
             button {
-                padding: 10px 16px;
                 font-size: 12px;
+                padding: 9px 14px;
             }
         }
     </style>
 </head>
 <body>
     <header>
-        <h1>🎨 Chromoku</h1>
-        <p style="color: #aaa; font-size: 14px;">7-Day Tutorial • Tap to swap cells</p>
+        <h1>Chromoku</h1>
+        <p class="sub">7-Day Tutorial</p>
     </header>
 
     <div class="day-info">
-        <div class="day-badge">Day <span id="currentDay">1</span> of 7</div>
-        <div class="mechanic-label" id="mechanicLabel">Learn Color Matching</div>
+        <div class="day-badge">Day <span class="num" id="currentDay">1</span> of 7</div>
+        <div class="mechanic-label" id="mechanicLabel">Learn Basics</div>
     </div>
 
     <div class="game-container">
-        <div id="message" class="message" style="display: none;"></div>
+        <div id="message" class="message"></div>
 
         <div class="stats">
             <div class="stat">
@@ -378,20 +432,19 @@
                 <div class="stat-value"><span id="moves">0</span>/<span id="maxMoves">10</span></div>
             </div>
             <div class="stat">
-                <div class="stat-label">Target</div>
-                <div class="stat-value" id="targetColor">Red</div>
-            </div>
-            <div class="stat">
-                <div class="stat-label">Match %</div>
+                <div class="stat-label">Filled</div>
                 <div class="stat-value"><span id="matchPercent">0</span>%</div>
             </div>
         </div>
 
-        <div class="game-board" id="gameBoard"></div>
+        <div class="board-wrap">
+            <div class="board size-5" id="gameBoard"></div>
+        </div>
+
+        <div class="palette" id="palette"></div>
 
         <div class="controls">
-            <button id="newGameBtn" onclick="newGame()">New Puzzle</button>
-            <button class="secondary" id="hintBtn" onclick="showHintModal()">Need Help?</button>
+            <button onclick="newGame()">New Puzzle</button>
             <button class="secondary" onclick="showTutorial()">How to Play</button>
         </div>
 
@@ -399,122 +452,106 @@
     </div>
 
     <!-- Tutorial Modal -->
-    <div class="modal" id="tutorialModal">
-        <div class="modal-content">
+    <div class="overlay" id="tutorialOverlay">
+        <div class="modal">
             <h2 id="tutorialTitle">Day 1: Basics</h2>
-            <p id="tutorialText">Tap adjacent cells to swap them.</p>
-            <div class="tutorial-text" id="tutorialHint"></div>
-            <button onclick="closeTutorial()">Got It!</button>
-        </div>
-    </div>
-
-    <!-- Hint Modal (Rewarded Video Mock) -->
-    <div class="modal" id="hintModal">
-        <div class="modal-content">
-            <h2>💡 Get a Hint</h2>
-            <p>Watch a 15-second ad to reveal one solution cell.</p>
-            <div style="background: rgba(0, 0, 0, 0.5); padding: 20px; margin: 16px 0; border-radius: 8px;">
-                <p style="font-size: 12px; color: #aaa; margin-bottom: 12px;">🎬 Rewarded Video Ad</p>
-                <div id="adTimer" style="font-size: 24px; font-weight: bold;">15</div>
-            </div>
-            <button onclick="watchAd()" style="background: linear-gradient(135deg, #ff9900, #ff6600);">Watch Ad (15s)</button>
-            <button class="secondary" onclick="closeHintModal()" style="margin-top: 12px;">Skip</button>
-        </div>
-    </div>
-
-    <!-- Banner Ad (Mock) -->
-    <div class="banner-ad">
-        <div class="banner-ad-content">
-            [Mock Google AdSense Banner — 728×90] • chromoku.dev
+            <div class="modal-text" id="tutorialText">Tap a colour swatch, then tap cells to fill them.</div>
+            <div class="modal-text" style="font-size: 12px; color: var(--ink-faint);" id="tutorialHint"></div>
+            <button onclick="closeTutorial()">Got it</button>
         </div>
     </div>
 
     <script>
-        // Game state
         const DAYS = [
             {
                 day: 1,
-                title: "Learn Basics",
-                mechanic: "Color Matching",
+                title: "Basics",
+                mechanic: "Learn Basics",
                 size: 5,
                 colors: 2,
                 maxMoves: 10,
-                hint: "Tap adjacent cells to swap them. Make all cells the same color.",
-                tutorialText: "Welcome to Chromoku! Your goal is to make all cells the same color by tapping and swapping adjacent cells. You have 10 moves to solve it."
+                hint: "Tap a colour, then tap cells to fill them. Make all cells the same colour.",
+                tutorialText: "Welcome to Chromoku! Tap a colour swatch at the bottom, then tap cells to fill them. Your goal is to make all cells the same colour within your move limit."
             },
             {
                 day: 2,
-                title: "Add Combos",
-                mechanic: "Multi-Color",
+                title: "Three Colours",
+                mechanic: "Strategic Thinking",
                 size: 5,
                 colors: 3,
                 maxMoves: 15,
-                hint: "With 3 colors, you need to plan ahead. Think strategically.",
-                tutorialText: "Now there are 3 colors! This makes it harder. Plan your moves carefully to get all cells to one color."
+                hint: "With three colours, plan your moves. Which colour order gets you there fastest?",
+                tutorialText: "Now there are three colours! This requires more strategy. Think ahead: which sequence of colours will reach the goal?"
             },
             {
                 day: 3,
-                title: "Chain Reactions",
-                mechanic: "Cascades",
+                title: "Patterns",
+                mechanic: "Pattern Recognition",
                 size: 5,
                 colors: 3,
                 maxMoves: 20,
-                hint: "Watch for cascades! Matched cells collapse and cause chain reactions.",
-                tutorialText: "When you match 3+ cells, they collapse and cells above fall down. This can create chain reactions. Use this to your advantage!"
+                hint: "Look for colour patterns. Which cells cluster together?",
+                tutorialText: "Patterns matter. Some colour layouts are trickier than others. Look for clusters and adjacencies."
             },
             {
                 day: 4,
-                title: "Time Pressure",
-                mechanic: "Speed Challenge",
+                title: "Complexity",
+                mechanic: "Harder Puzzles",
                 size: 5,
                 colors: 4,
                 maxMoves: 25,
-                hint: "Work faster! Each puzzle solved quickly earns bonus points.",
-                tutorialText: "Day 4 introduces timed challenges. Solve puzzles under pressure and earn bonuses for speed.",
+                hint: "Four colours make this trickier. Think several moves ahead.",
+                tutorialText: "Things get harder. Four colours means more combinations to consider.",
                 disabled: true
             },
             {
                 day: 5,
-                title: "Multipliers",
-                mechanic: "Scoring",
-                size: 5,
+                title: "Large Grids",
+                mechanic: "Bigger Boards",
+                size: 7,
                 colors: 4,
                 maxMoves: 30,
-                hint: "Strategic moves score more points. Look for combo opportunities.",
-                tutorialText: "Now scoring matters! Each move has a point value. Use combos to multiply your score.",
+                hint: "Larger grids change the strategy. Corners vs edges matter more.",
+                tutorialText: "This puzzle is bigger (7×7). Larger boards need different thinking.",
                 disabled: true
             },
             {
                 day: 6,
-                title: "Spatial Patterns",
-                mechanic: "Pattern Matching",
-                size: 5,
-                colors: 4,
-                maxMoves: 35,
-                hint: "Some cells must match specific patterns, not just colors.",
-                tutorialText: "Advanced: Certain cells must form specific shapes or patterns. Match the pattern shown at the top.",
+                title: "Many Colours",
+                mechanic: "Mastering Variety",
+                size: 7,
+                colors: 5,
+                maxMoves: 40,
+                hint: "Five colours on a 7×7 grid. Advanced strategy required.",
+                tutorialText: "Five colours and a large grid. This is where expert play shines.",
                 disabled: true
             },
             {
                 day: 7,
-                title: "Master Test",
-                mechanic: "All Skills",
-                size: 5,
-                colors: 4,
-                maxMoves: 40,
-                hint: "Combine everything you've learned. Speed, strategy, and pattern recognition.",
-                tutorialText: "Final day! Use all skills learned this week: matching, cascades, speed, scoring, and patterns. Ready to unlock Classic Levels?",
+                title: "Mastery",
+                mechanic: "Master Challenge",
+                size: 7,
+                colors: 5,
+                maxMoves: 45,
+                hint: "The ultimate challenge. Use everything you've learned.",
+                tutorialText: "Your final test. Combine everything: strategy, pattern recognition, and speed.",
                 disabled: true
             }
         ];
 
         let currentDayIndex = 0;
         let gameBoard = [];
-        let selectedCell = null;
+        let selectedColor = null;
         let moves = 0;
         let puzzleSolved = false;
 
-        const colorMap = ['red', 'blue', 'yellow', 'green', 'purple'];
+        const colorMap = {
+            0: { name: "Teal", hex: "#17a2b8", var: "--teal" },
+            1: { name: "Orange", hex: "#fd7e14", var: "--orange" },
+            2: { name: "Green", hex: "#28a745", var: "--ok" },
+            3: { name: "Purple", hex: "#6f42c1", var: "--purple" },
+            4: { name: "Red", hex: "#dc3545", var: "--red" }
+        };
 
         function getCurrentDay() {
             return DAYS[currentDayIndex];
@@ -523,20 +560,19 @@
         function initGame() {
             const day = getCurrentDay();
             moves = 0;
-            selectedCell = null;
+            selectedColor = null;
             puzzleSolved = false;
 
-            // Generate random board
             gameBoard = [];
             for (let i = 0; i < day.size * day.size; i++) {
-                gameBoard.push(colorMap[Math.floor(Math.random() * day.colors)]);
+                gameBoard.push(Math.floor(Math.random() * day.colors));
             }
 
             renderBoard();
+            renderPalette();
             updateStats();
             updateDaySelector();
 
-            // Show tutorial on first day or when skipping
             if (currentDayIndex === 0) {
                 setTimeout(showTutorial, 500);
             }
@@ -546,90 +582,79 @@
             const day = getCurrentDay();
             const boardEl = document.getElementById('gameBoard');
             boardEl.innerHTML = '';
-            boardEl.style.gridTemplateColumns = `repeat(${day.size}, 1fr)`;
+            boardEl.className = `board size-${day.size}`;
 
-            gameBoard.forEach((color, idx) => {
+            gameBoard.forEach((colorIdx, idx) => {
                 const cell = document.createElement('div');
-                cell.className = `cell ${color}`;
-                cell.innerHTML = idx; // Debug: show index
-                cell.onclick = () => selectCell(idx);
+                cell.className = 'cell';
+                const fill = document.createElement('div');
+                fill.className = 'fill';
+                fill.style.setProperty('--c', colorMap[colorIdx].hex);
+                cell.appendChild(fill);
+                cell.onclick = () => fillCell(idx);
                 boardEl.appendChild(cell);
             });
         }
 
-        function selectCell(idx) {
-            if (puzzleSolved || getCurrentDay().disabled) return;
+        function renderPalette() {
+            const day = getCurrentDay();
+            const paletteEl = document.getElementById('palette');
+            paletteEl.innerHTML = '';
 
-            if (selectedCell === null) {
-                selectedCell = idx;
-                renderBoard();
-                highlightCell(idx);
-            } else if (selectedCell === idx) {
-                selectedCell = null;
-                renderBoard();
-            } else if (isAdjacent(selectedCell, idx)) {
-                swapCells(selectedCell, idx);
-                selectedCell = null;
-                moves++;
-                renderBoard();
-                updateStats();
-                checkWin();
-            } else {
-                selectedCell = idx;
-                renderBoard();
-                highlightCell(idx);
+            for (let i = 0; i < day.colors; i++) {
+                const swatch = document.createElement('button');
+                swatch.className = 'swatch';
+                swatch.style.setProperty('--c', colorMap[i].hex);
+                if (selectedColor === i) swatch.classList.add('on');
+                swatch.onclick = () => selectColor(i);
+                paletteEl.appendChild(swatch);
             }
         }
 
-        function isAdjacent(a, b) {
-            const day = getCurrentDay();
-            const size = day.size;
-            const aRow = Math.floor(a / size), aCol = a % size;
-            const bRow = Math.floor(b / size), bCol = b % size;
-            const dist = Math.abs(aRow - bRow) + Math.abs(aCol - bCol);
-            return dist === 1;
+        function selectColor(idx) {
+            if (puzzleSolved || getCurrentDay().disabled) return;
+            selectedColor = selectedColor === idx ? null : idx;
+            renderPalette();
         }
 
-        function swapCells(a, b) {
-            [gameBoard[a], gameBoard[b]] = [gameBoard[b], gameBoard[a]];
-        }
+        function fillCell(idx) {
+            if (selectedColor === null || puzzleSolved || getCurrentDay().disabled) return;
+            if (gameBoard[idx] === selectedColor) return;
 
-        function highlightCell(idx) {
-            const cells = document.querySelectorAll('.cell');
-            cells[idx].classList.add('selected');
+            gameBoard[idx] = selectedColor;
+            moves++;
+            renderBoard();
+            updateStats();
+            checkWin();
         }
 
         function updateStats() {
             const day = getCurrentDay();
-            const colors = [...new Set(gameBoard)];
-            const targetColor = colors[0];
-            const matchCount = gameBoard.filter(c => c === targetColor).length;
-            const matchPercent = Math.round((matchCount / gameBoard.length) * 100);
+            const filledCount = gameBoard.filter(c => c === gameBoard[0]).length;
+            const fillPercent = Math.round((filledCount / gameBoard.length) * 100);
 
             document.getElementById('moves').textContent = moves;
             document.getElementById('maxMoves').textContent = day.maxMoves;
-            document.getElementById('targetColor').textContent = targetColor.charAt(0).toUpperCase() + targetColor.slice(1);
-            document.getElementById('matchPercent').textContent = matchPercent;
+            document.getElementById('matchPercent').textContent = fillPercent;
         }
 
         function checkWin() {
             const day = getCurrentDay();
-            const colors = [...new Set(gameBoard)];
+            const allSame = gameBoard.every(c => c === gameBoard[0]);
 
-            if (colors.length === 1 && moves <= day.maxMoves) {
+            if (allSame && moves <= day.maxMoves) {
                 puzzleSolved = true;
-                showMessage(`🎉 Day ${day.day} Complete! Moves: ${moves}`, 'success');
+                showMessage(`🎉 Day ${day.day} Complete! (${moves} moves)`, 'success');
             } else if (moves >= day.maxMoves) {
-                showMessage(`❌ Out of moves! Try again.`, 'fail');
+                showMessage(`Out of moves. Try again?`, 'fail');
             }
         }
 
-        function showMessage(text, type = 'info') {
+        function showMessage(text, type = '') {
             const msgEl = document.getElementById('message');
             msgEl.textContent = text;
-            msgEl.className = `message ${type}`;
-            msgEl.style.display = 'block';
-            setTimeout(() => msgEl.style.display = 'none', 3000);
+            msgEl.className = `message show ${type}`;
+            setTimeout(() => msgEl.classList.remove('show'), 3000);
         }
 
         function newGame() {
@@ -641,43 +666,12 @@
             const day = getCurrentDay();
             document.getElementById('tutorialTitle').textContent = `Day ${day.day}: ${day.title}`;
             document.getElementById('tutorialText').textContent = day.tutorialText;
-            document.getElementById('tutorialHint').textContent = `Mechanic: ${day.mechanic}`;
-            document.getElementById('tutorialModal').classList.add('active');
+            document.getElementById('tutorialHint').textContent = day.mechanic;
+            document.getElementById('tutorialOverlay').classList.add('show');
         }
 
         function closeTutorial() {
-            document.getElementById('tutorialModal').classList.remove('active');
-        }
-
-        function showHintModal() {
-            if (getCurrentDay().disabled) {
-                showMessage('This day is locked. Complete earlier days first!');
-                return;
-            }
-            document.getElementById('hintModal').classList.add('active');
-            startAdTimer();
-        }
-
-        function closeHintModal() {
-            document.getElementById('hintModal').classList.remove('active');
-        }
-
-        function startAdTimer() {
-            let time = 15;
-            document.getElementById('adTimer').textContent = time;
-            const interval = setInterval(() => {
-                time--;
-                document.getElementById('adTimer').textContent = time;
-                if (time <= 0) {
-                    clearInterval(interval);
-                    document.querySelector('#hintModal button').innerHTML = 'Ad Complete!';
-                }
-            }, 1000);
-        }
-
-        function watchAd() {
-            showMessage('💡 Hint: Look for the most common color!');
-            closeHintModal();
+            document.getElementById('tutorialOverlay').classList.remove('show');
         }
 
         function updateDaySelector() {
@@ -687,11 +681,12 @@
             DAYS.forEach((day, idx) => {
                 const btn = document.createElement('button');
                 btn.className = 'day-btn';
+                btn.textContent = `Day ${day.day}`;
+
                 if (idx < currentDayIndex) btn.classList.add('completed');
                 if (idx === currentDayIndex) btn.classList.add('active');
                 if (day.disabled) btn.disabled = true;
 
-                btn.textContent = `Day ${day.day}`;
                 btn.onclick = () => {
                     if (!day.disabled) {
                         currentDayIndex = idx;
@@ -705,7 +700,6 @@
             });
         }
 
-        // Initialize
         window.addEventListener('load', initGame);
     </script>
 </body>
