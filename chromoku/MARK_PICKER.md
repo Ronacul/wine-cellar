@@ -95,6 +95,26 @@ Add a tab button, handle the tab in `renderPicker()`, add a case to `applyMark()
 
 ---
 
+## Picker improvements (parking lot)
+
+### File export
+Currently the export only renders text inside the page — if the tab is closed, the selection is lost. Next time the picker is updated, add a **"Download .json"** button that saves the selection as a file:
+
+```js
+const blob = new Blob([JSON.stringify(exportData, null, 2)], {type:'application/json'});
+const a = document.createElement('a');
+a.href = URL.createObjectURL(blob);
+a.download = 'chromoku-marks.json';
+a.click();
+```
+
+This would make the picked list durable and portable — paste the file to Claude rather than copying text from a dark box.
+
+### Clipboard copy
+Add a "Copy to clipboard" button next to Export so the code snippet is one click away.
+
+---
+
 ## Picker maintenance
 
 The picker lives in the Claude Code scratchpad and is published as an Artifact. To update it:
