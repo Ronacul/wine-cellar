@@ -310,7 +310,7 @@ const TUTORIAL_DAYS = [
     day: 1,
     title: "4×4 Sudoku",
     icon: "🟨",
-    givens: 10,
+    givens: 12,
     n: 4,
     boxless: false,
     easyFirst: true,
@@ -329,7 +329,7 @@ const TUTORIAL_DAYS = [
     day: 2,
     title: "4×4 Latin",
     icon: "🟧",
-    givens: 10,
+    givens: 12,
     n: 4,
     boxless: true,
     easyFirst: true,
@@ -348,7 +348,7 @@ const TUTORIAL_DAYS = [
     day: 3,
     title: "6×6 Sudoku",
     icon: "🟩",
-    givens: 20,
+    givens: 24,
     n: 6,
     boxless: false,
     easyFirst: true,
@@ -367,9 +367,10 @@ const TUTORIAL_DAYS = [
     day: 4,
     title: "6×6 Symbols",
     icon: "🟪",
-    givens: 20,
+    givens: 22,
     n: 6,
     boxless: false,
+    easyFirst: true,
     description: "Same puzzle, different marks — try shapes instead of colours.",
     tutorial: {
       title: "Shape Marks",
@@ -385,10 +386,11 @@ const TUTORIAL_DAYS = [
     day: 5,
     title: "4×4 Double",
     icon: "🍩",
-    givens: 10,
+    givens: 12,
     n: 4,
     boxless: false,
     double: true,
+    easyFirst: true,
     description: "Two puzzles on one board — outer and inner layers.",
     tutorial: {
       title: "Double Layering",
@@ -405,9 +407,10 @@ const TUTORIAL_DAYS = [
     day: 6,
     title: "9×9 Sudoku",
     icon: "⬜",
-    givens: 35,
+    givens: 38,
     n: 9,
     boxless: false,
+    easyFirst: true,
     description: "The classic puzzle — 9×9 with 9 colours and 3×3 boxes.",
     tutorial: {
       title: "The Classic",
@@ -424,9 +427,10 @@ const TUTORIAL_DAYS = [
     day: 7,
     title: "10×10 Latin",
     icon: "🟥",
-    givens: 45,
+    givens: 50,
     n: 10,
     boxless: true,
+    easyFirst: true,
     description: "The mastery puzzle — 10×10 with no boxes. Uniqueness only in rows and columns.",
     tutorial: {
       title: "Mastery",
@@ -984,7 +988,7 @@ function renderPalette(){
 
   if (state.dbl){
     // Outer layer
-    let outerHtml = '<label style="font-size:11px;color:var(--ink-faint);font-weight:600;margin-bottom:4px;display:block">Outer</label>';
+    let outerHtml = '<label style="font-size:11px;color:var(--ink-faint);font-weight:600;margin-bottom:4px;display:block">🍩 Big Squares (Outer)</label>';
     const swatches1 = marks.map((c, i) => {
       const placed = counts[i];
       const done = placed >= state.n;
@@ -1004,7 +1008,7 @@ function renderPalette(){
       outerHtml += '<div class="prow">' + swatches1.slice(k, k + perRow).join("") + "</div>";
 
     // Inner layer
-    let innerHtml = '<label style="font-size:11px;color:var(--ink-faint);font-weight:600;margin-top:8px;margin-bottom:4px;display:block">Inner</label>';
+    let innerHtml = '<label style="font-size:11px;color:var(--ink-faint);font-weight:600;margin-top:8px;margin-bottom:4px;display:block">🎯 Small Dots (Inner)</label>';
     const counts2 = new Array(state.n).fill(0);
     for (const v of state.layers[1].grid) if (v !== null && v !== undefined) counts2[v]++;
     const swatches2 = marks.map((c, i) => {
