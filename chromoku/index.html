@@ -369,6 +369,12 @@ h1{
   clip-path:var(--clip); border-radius:3px}
 .swatch.shaped.on{box-shadow:0 0 0 3px var(--bg),0 0 0 6px var(--c)}
 .swatch.shaped.done::before{opacity:.35}
+/* Tutorial hint flash */
+.cell.hint-flash { animation: hint-flash 0.6s ease-out; }
+@keyframes hint-flash {
+  0% { box-shadow: inset 0 0 0 3px #ffeb3b, 0 0 8px #ffeb3b; }
+  100% { box-shadow: inset 0 0 0 3px transparent, 0 0 0px transparent; }
+}
 /* Scramble mode: Stroop-style interference — colours get random shape
    clip-paths, shapes get random colours. Applied via inline styles in
    scrambleStyle() so no extra class is needed on the .fill div. */
@@ -376,6 +382,7 @@ h1{
   position:absolute; bottom:-17px; left:0; right:0; text-align:center;
   font-family:var(--mono); font-size:9px; color:var(--ink-faint);
 }
+.swatch.inner .k { display:none; }
 /* Remaining-count badge: how many of this mark still need to land on the
    board. Sits over the top-right of the swatch, ink on a light plaque so it
    reads over any hue / shape / pattern. Hidden at zero (the .done fade
@@ -396,8 +403,16 @@ h1{
 }
 /* settings */
 .seg{display:flex; gap:4px; background:var(--panel2); padding:3px; border-radius:10px; margin-bottom:16px}
-.seg button{flex:1; font-size:12px; font-weight:600; padding:8px 4px; border-radius:7px; color:var(--ink-dim)}
+.seg button{flex:1; font-size:12px; font-weight:600; padding:8px 4px; border-radius:7px; color:var(--ink-dim); min-width:0; overflow:hidden}
 .seg button.on{background:var(--panel); color:var(--ink); box-shadow:var(--shadow)}
+@media(max-width:480px){
+  .seg{display:flex; flex-wrap:wrap; gap:6px}
+  .seg button{flex:0 1 calc(50% - 3px); font-size:11px; padding:6px 4px}
+  .pal-prev{display:none}
+}
+@media(max-width:320px){
+  .seg button{flex:0 1 100%; text-align:left}
+}
 .dbg{display:flex; gap:6px; margin-bottom:14px}
 /* Development tools, hidden unless ?dev=1 */
 .dev-only{display:none}
@@ -562,9 +577,10 @@ html.dev .dev-only{display:grid}
 <div class="app">
 <header>
   <div class="hdr-l">
-    <button class="icon-btn" id="btnHelp" aria-label="How to play">?</button>
-    <button class="icon-btn" id="btnUndo" aria-label="Undo" disabled>↶</button>
-    <button class="icon-btn" id="btnStats" aria-label="Statistics">▤</button>
+    <button class="icon-btn" id="btnHelp" title="How to play" aria-label="How to play">?</button>
+    <button class="icon-btn" id="btnAbout" title="About Chromoku" aria-label="About Chromoku">ℹ</button>
+    <button class="icon-btn" id="btnUndo" title="Undo last move" aria-label="Undo" disabled>↶</button>
+    <button class="icon-btn" id="btnStats" title="Your statistics" aria-label="Statistics">▤</button>
   </div>
   <div>
     <h1>Chromoku</h1>
@@ -572,11 +588,12 @@ html.dev .dev-only{display:grid}
   </div>
   <div class="hdr-r">
     <span class="timer" id="timer">0:00</span>
-    <button class="icon-btn hint" id="btnHint" aria-label="Hints" style="position:relative">💡</button>
-    <button class="icon-btn" id="btnMark" aria-label="Bookmark">☆</button>
-    <button class="icon-btn" id="btnQuit" aria-label="End session" style="display:none">✕</button>
-    <button class="icon-btn dev-only" id="btnNew" aria-label="New practice puzzle">⟳</button>
-    <button class="icon-btn" id="btnSettings" aria-label="Settings">⚙</button>
+    <button class="icon-btn hint" id="btnHint" title="Get hints" aria-label="Hints" style="position:relative">💡<span id="addsRemaining" style="position:absolute;top:-4px;right:-6px;background:#ff6800;color:white;border-radius:50%;width:18px;height:18px;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid var(--panel)">2</span></button>
+    <button class="icon-btn" id="btnReset" title="Reset puzzle" aria-label="Reset puzzle">↻</button>
+    <button class="icon-btn" id="btnMark" title="Save bookmark" aria-label="Bookmark">☆</button>
+    <button class="icon-btn" id="btnQuit" title="End session" aria-label="End session" style="display:none">✕</button>
+    <button class="icon-btn dev-only" id="btnNew" title="New puzzle" aria-label="New practice puzzle">⟳</button>
+    <button class="icon-btn" id="btnSettings" title="Settings" aria-label="Settings">⚙</button>
   </div>
 </header>
 
@@ -667,30 +684,73 @@ const SHAPES = [
   { label:"Half",      glyph:"◗", clip:"polygon(50% 2%,98% 2%,98% 98%,50% 98%)" },
 ];
 
-// Strokes and gaps tuned to sit inside a 12px tile — the eye needs about two
-// tile periods per cell to identify the motif, so thinner lines and bigger
-// gaps read more clearly on small cells than the older 9px tile did.
+// 16 patterns ranked by the mark picker (picker.html). Each varies TILE size/
+// position when the default 12px 12px doesn't suit — bgS and bgP are optional
+// overrides consumed by markStyle / swatchStyle.  #17172b → var(--ink) so they
+// respect dark mode.  Rank order matters: first 4 appear in 4×4, first 9 in 9×9.
 const WEAVES = [
+  // Rank 1 — 4×4+
+  { label:"Diag-back", glyph:"▧",
+    bg:"repeating-linear-gradient(-45deg,var(--ink) 0 3px,transparent 3px 9px)" },
+  // Rank 2 — 4×4+
   { label:"Diagonals", glyph:"▨",
-    bg:"repeating-linear-gradient(45deg,var(--ink) 0 1.5px,transparent 1.5px 10px)" },
-  { label:"Bars", glyph:"▤",
-    bg:"repeating-linear-gradient(180deg,var(--ink) 0 1.5px,transparent 1.5px 10px)" },
-  { label:"Hatch", glyph:"▦",
-    bg:"repeating-linear-gradient(0deg,var(--ink) 0 1.2px,transparent 1.2px 12px),"
-     + "repeating-linear-gradient(90deg,var(--ink) 0 1.2px,transparent 1.2px 12px)" },
-  { label:"Dots", glyph:"⠿",
-    bg:"radial-gradient(var(--ink) 1.8px,transparent 2.2px)" },
-  { label:"Back-diagonals", glyph:"▧",
-    bg:"repeating-linear-gradient(-45deg,var(--ink) 0 1.5px,transparent 1.5px 10px)" },
-  { label:"Columns", glyph:"▥",
-    bg:"repeating-linear-gradient(90deg,var(--ink) 0 1.5px,transparent 1.5px 10px)" },
-  { label:"Weave", glyph:"▩",
-    bg:"repeating-linear-gradient(45deg,var(--ink) 0 1.2px,transparent 1.2px 8px),"
-     + "repeating-linear-gradient(-45deg,var(--ink) 0 1.2px,transparent 1.2px 8px)" },
-  { label:"Rings", glyph:"◍",
-    bg:"radial-gradient(circle,transparent 1.2px,var(--ink) 1.4px,var(--ink) 2.2px,transparent 2.4px)" },
-  { label:"Wide bars", glyph:"▬",
-    bg:"repeating-linear-gradient(180deg,var(--ink) 0 3px,transparent 3px 12px)" },
+    bg:"repeating-linear-gradient(45deg,var(--ink) 0 3px,transparent 3px 9px)" },
+  // Rank 3 — 4×4+
+  { label:"Bars Half", glyph:"▤",
+    bg:"repeating-linear-gradient(0deg,var(--ink) 0 6px,transparent 6px 12px)" },
+  // Rank 4 — 4×4+
+  { label:"Columns Half", glyph:"▥",
+    bg:"repeating-linear-gradient(90deg,var(--ink) 0 6px,transparent 6px 12px)" },
+  // Rank 5 — 6×6+
+  { label:"Dots Large", glyph:"⠿",
+    bg:"radial-gradient(var(--ink) 3px,transparent 3.5px)" },
+  // Rank 6 — 6×6+
+  { label:"Rings Wide", glyph:"◍",
+    bg:"radial-gradient(circle,transparent 2.5px,var(--ink) 2.8px,var(--ink) 3.8px,transparent 4.1px)",
+    bgS:"16px 16px" },
+  // Rank 7 — 9×9+
+  { label:"Checker", glyph:"▦",
+    bg:"linear-gradient(45deg,var(--ink) 25%,transparent 25%),"
+     + "linear-gradient(-45deg,var(--ink) 25%,transparent 25%),"
+     + "linear-gradient(45deg,transparent 75%,var(--ink) 75%),"
+     + "linear-gradient(-45deg,transparent 75%,var(--ink) 75%)",
+    bgP:"0 0,0 6px,6px -6px,-6px 0px" },
+  // Rank 8 — 9×9+
+  { label:"Zigzag H", glyph:"⚡",
+    bg:"linear-gradient(135deg,var(--ink) 25%,transparent 25%),"
+     + "linear-gradient(225deg,var(--ink) 25%,transparent 25%),"
+     + "linear-gradient(315deg,var(--ink) 25%,transparent 25%),"
+     + "linear-gradient(45deg,var(--ink) 25%,transparent 25%)",
+    bgS:"16px 8px", bgP:"-8px 0,-8px 0,0 0,0 0" },
+  // Rank 9 — 9×9+
+  { label:"Diag-grid", glyph:"▩",
+    bg:"repeating-linear-gradient(45deg,var(--ink) 0 1.2px,transparent 1.2px 7.8px),"
+     + "repeating-linear-gradient(-45deg,var(--ink) 0 1.2px,transparent 1.2px 7.8px)" },
+  // Rank 10 — 10×10+
+  { label:"H+V Bold", glyph:"▦",
+    bg:"repeating-linear-gradient(0deg,var(--ink) 0 4px,transparent 4px 8px),"
+     + "repeating-linear-gradient(90deg,var(--ink) 0 4px,transparent 4px 8px)" },
+  // Rank 11 — 16×16
+  { label:"H+V Fine", glyph:"▦",
+    bg:"repeating-linear-gradient(0deg,var(--ink) 0 1.2px,transparent 1.2px 10.8px),"
+     + "repeating-linear-gradient(90deg,var(--ink) 0 1.2px,transparent 1.2px 10.8px)" },
+  // Rank 12 — 16×16
+  { label:"Diags Bold", glyph:"▨",
+    bg:"repeating-linear-gradient(45deg,var(--ink) 0 5px,transparent 5px 7px)" },
+  // Rank 13 — 16×16
+  { label:"Diag-back Bold", glyph:"▧",
+    bg:"repeating-linear-gradient(-45deg,var(--ink) 0 5px,transparent 5px 7px)" },
+  // Rank 14 — 16×16
+  { label:"Bars Bold", glyph:"▬",
+    bg:"repeating-linear-gradient(0deg,var(--ink) 0 5px,transparent 5px 7px)" },
+  // Rank 15 — 16×16
+  { label:"Columns Bold", glyph:"▥",
+    bg:"repeating-linear-gradient(90deg,var(--ink) 0 5px,transparent 5px 7px)" },
+  // Rank 16 — 16×16
+  { label:"Dots Offset", glyph:"⠄",
+    bg:"radial-gradient(var(--ink) 1.5px,transparent 2px),"
+     + "radial-gradient(var(--ink) 1.5px,transparent 2px)",
+    bgS:"8px 8px", bgP:"0 0,4px 4px" },
 ];
 
 // Every set varies along exactly ONE dimension — all colours, all shapes, or
@@ -712,7 +772,7 @@ const MARKSETS = {
   ink: { name:"Patterns", build(n){
     if (n > WEAVES.length) return null;
     return WEAVES.slice(0, n).map(w => ({
-      kind:"pattern", bg:w.bg, label:w.label, emoji:[w.glyph, w.glyph],
+      kind:"pattern", bg:w.bg, bgS:w.bgS, bgP:w.bgP, label:w.label, emoji:[w.glyph, w.glyph],
     }));
   }},
 };
@@ -758,7 +818,8 @@ function markStyle(m){
   const clip = m.clip ? ";clip-path:" + m.clip + ";border-radius:3px" : "";
   if (m.kind !== "pattern") return "--c:" + m.hex + clip;
   return "background-color:var(--panel2);background-image:" + m.bg
-       + ";background-size:" + TILE + clip;
+       + ";background-size:" + (m.bgS || TILE)
+       + (m.bgP ? ";background-position:" + m.bgP : "") + clip;
 }
 // Inline style for a palette swatch. Shapes use a --clip custom property
 // consumed by the .shaped::before pseudo so the .cnt badge isn't clipped.
@@ -766,7 +827,8 @@ function swatchStyle(m){
   if (m.clip && m.kind !== "pattern") return "--c:" + m.hex + ";--clip:" + m.clip;
   if (m.kind !== "pattern") return "--c:" + m.hex;
   return "background-color:var(--panel2);background-image:" + m.bg
-       + ";background-size:" + TILE;
+       + ";background-size:" + (m.bgS || TILE)
+       + (m.bgP ? ";background-position:" + m.bgP : "");
 }
 
 // The inner layer always uses colour: its marks are a third the width of a
@@ -1324,6 +1386,41 @@ const LEVELS_PER_STAGE = 10, STAGES_PER_WORLD = 10, PEEK_STEP = 5;
 
 const LEVELS_PER_WORLD = LEVELS_PER_STAGE * STAGES_PER_WORLD;
 
+/* ================= TUTORIAL SYSTEM ================= */
+// 7-level guided onboarding, highly seeded, with interactive hints
+const TUTORIAL_CONFIGS = [
+  // Level 0: Intro — tap colour, tap square
+  { n:4, boxless:false, layers:1, givens:12, tutorial:true, noTimer:true,
+    title:"Tap a colour, tap a square" },
+  // Level 1: Rows — fill a complete row
+  { n:4, boxless:false, layers:1, givens:11, tutorial:true, noTimer:true,
+    title:"Every row uses all four" },
+  // Level 2: Columns — add column constraint
+  { n:4, boxless:false, layers:1, givens:11, tutorial:true, noTimer:true,
+    title:"Every column, too" },
+  // Level 3: Boxes — add 2×2 box constraint
+  { n:4, boxless:false, layers:1, givens:10, tutorial:true, noTimer:true,
+    title:"Every 2×2 box" },
+  // Level 4: Shapes — introduce non-colour marks
+  { n:4, boxless:false, layers:1, givens:12, tutorial:true, noTimer:true,
+    title:"Colours are just one option", markSet:"shapes" },
+  // Level 5: Double outer — solve outer layer first
+  { n:4, boxless:false, layers:2, givens:12, tutorial:true, noTimer:true,
+    title:"Donut: the outer layer" },
+  // Level 6: Double both — solve both layers
+  { n:4, boxless:false, layers:2, givens:12, tutorial:true, noTimer:true,
+    title:"Hole: the inner layer" }
+];
+
+const LS_TUTORIAL = "chromoku.tutorial.v1";
+const LS_SEEN_TUTORIAL = "chromoku.seen-tutorial.v1";
+
+function isTutorialLevel(level){ return level >= 0 && level <= 6; }
+function getTutorialProgress(){ return load(LS_TUTORIAL, -1); }
+function setTutorialProgress(level){ save(LS_TUTORIAL, level); }
+function markTutorialSeen(){ save(LS_SEEN_TUTORIAL, true); }
+function hasSeenTutorial(){ return load(LS_SEEN_TUTORIAL, false); }
+
 // Each world opens with a real unlock, not only a repaint. Configs are ordered
 // easiest-first; a stage walks up this pool.
 // Deliberately absent: 16x16 below ~140 givens and 12x12 Latin. Both sit past a
@@ -1401,6 +1498,14 @@ const stepOf  = level => ((level - 1) % LEVELS_PER_STAGE) + 1;
 // A level's configuration is a pure function of its number, so level N is the
 // same puzzle for everyone and no table has to be maintained.
 function levelConfig(level){
+  // Tutorial levels (0-6) use special configs
+  if (isTutorialLevel(level)){
+    const cfg = TUTORIAL_CONFIGS[level];
+    return { ...cfg, givens:cfg.givens, level, world:0, stage:0, step:0, peek:false,
+             boss:false, theme:{ name:"Tutorial", tint:"#f5a623" },
+             peekOf:null, markSet:cfg.markSet || null };
+  }
+
   const w = worldOf(level), stage = stageOf(level), step = stepOf(level);
   const world = WORLDS[w - 1];
   const pool = world.pool;
@@ -1919,12 +2024,27 @@ function renderSub(){
   const sObj = sizeOf(state.size);
   const dObj = diffOf2(state.diff, state.n);
   const sub = document.getElementById("sub");
-  const base = state.mode === "levels"
-    ? "Stage " + state.lvl.cfg.stage + " · step " + state.lvl.cfg.step
-    : (state.practice ? "Practice" : "#" + state.day) + " · "
+
+  let base;
+  if (state.mode === "levels"){
+    const cfg = state.lvl.cfg;
+    const gridLabel = cfg.n + "×" + cfg.n;
+    const ruleLabel = cfg.boxless ? "Latin" : "Sudoku";
+    const markLabel = cfg.markSet
+      ? MARKSETS[cfg.markSet].name
+      : (cfg.level > 50 ? "All marks" : "Colors & Shapes");
+    const layerLabel = cfg.layers > 1 ? " · Double" : "";
+
+    base = "Stage " + cfg.stage + " · step " + cfg.step
+         + " · " + gridLabel + " · " + ruleLabel
+         + " · " + markLabel + layerLabel;
+  } else {
+    base = (state.practice ? "Practice" : "#" + state.day) + " · "
       + (state.latin ? "Latin " : "") + sObj.label + " " + dObj.label
       + (state.dbl ? " · Double" : "")
       + (state.scramble ? " · Scramble" : "");
+  }
+
   // Streak chip — visible at a glance, not buried in the win modal
   const st = load(LS_STATS, blankStats());
   if (st.streak > 1 && state.mode !== "levels"){
@@ -2143,7 +2263,10 @@ function renderPalette(){
     + (state.layers.length > 1 ? " dbl-pal" : "");
   p.innerHTML = rows;
   p.querySelectorAll("[data-c]").forEach(b => {
+    const isDone = b.classList.contains("done");
+    b.disabled = isDone;
     b.onclick = () => {
+      if (isDone) { toast("All " + b.getAttribute("aria-label").split(",")[0].toLowerCase() + " placed"); return; }
       const L = +b.dataset.l, i = +b.dataset.c;
       const same = sel && sel.layer === L && sel.colour === i;
       state.sel = same ? null : { layer:L, colour:i };
@@ -2209,6 +2332,80 @@ function placeColour(L, i, val){
   saveProgress();
 
   if (isSolved()) win();
+}
+
+/* ================= RESET & ADD TIME ================= */
+function confirmReset(){
+  pauseTimer();
+  openModal(
+    '<h2>Reset puzzle?</h2>'
+    + '<p class="lede">Start over from the beginning?</p>'
+    + '<button class="btn" id="mReset">Reset</button>'
+    + '<button class="btn ghost" id="mKeep">Keep playing</button>'
+  );
+  document.getElementById("mReset").onclick = () => { closeModal(); resetPuzzle(); };
+  document.getElementById("mKeep").onclick = () => { closeModal(); resumeTimer(); };
+}
+
+function resetPuzzle(){
+  // Clear all player marks, keep givens
+  state.layers.forEach(L => {
+    for (let i = 0; i < L.grid.length; i++){
+      if (!L.givens[i]) L.grid[i] = null;
+    }
+  });
+  state.history = [];
+  state.mistakes = 0;
+  state.bookmark = null;
+  renderBoard();
+  renderPalette();
+  paintCompletedUnits();
+  paintMark();
+  paintUndo();
+  saveProgress();
+  resumeTimer();
+  toast("Puzzle reset");
+}
+
+function pauseTimer(){
+  if (!state.timerInterval) return;
+  clearInterval(state.timerInterval);
+  state.timerInterval = null;
+  const timerEl = document.getElementById("timer");
+  if (timerEl) timerEl.classList.add("frozen");
+}
+
+function resumeTimer(){
+  if (state.timerInterval || state.done) return;
+  state.timerInterval = setInterval(tickTimer, 250);
+  const timerEl = document.getElementById("timer");
+  if (timerEl) timerEl.classList.remove("frozen");
+}
+
+function showAddTimeModal(){
+  if (!state.lvl || !state.lvl.cfg) return;
+  pauseTimer();
+  let secs = 15;
+  const modalEl = openModal(
+    '<h2>⏰ Adding time...</h2>'
+    + '<div id="addCountdown" style="font-size:64px; font-weight:700; text-align:center; margin:40px 0; color:var(--ink)">' + secs + '</div>'
+  );
+
+  const countdown = setInterval(() => {
+    secs--;
+    const el = document.getElementById("addCountdown");
+    if (el) el.textContent = secs;
+    if (secs <= 0){
+      clearInterval(countdown);
+      state.hints.adds++;
+      state.limitMs += 15 * 1000;
+      updateAddsBadge();
+      saveProgress();
+      closeModal();
+      resumeTimer();
+      toast("⏰ +15s bonus!");
+    }
+  }, 1000);
 }
 
 function onCell(i){
@@ -2480,6 +2677,8 @@ function failLevel(){
   setTimeout(() => board.classList.remove("shake"), 500);
 
   const out = p.lives <= 0;
+  const addTimeAvailable = state.hints.adds < HINT_LIMITS.adds;
+
   openModal(
     "<h2>Out of time</h2>"
     + '<p class="lede">Level ' + state.lvl.cfg.level + " · par was "
@@ -2488,12 +2687,42 @@ function failLevel(){
     + (out
         ? '<p class="lede">No lives left. One returns in <b id="outLivesIn">'
           + fmtTime(nextLifeMs(p)) + "</b>.</p>"
-          + '<button class="btn" id="mBack">Back to daily</button>'
+          + (addTimeAvailable
+              ? '<button class="btn" id="mAddTime">⏰ Add ' + ADD_SECS + 's</button>'
+                + '<button class="btn ghost" id="mWatchAd">📺 Watch ad for +30s</button>'
+              : "")
+          + '<button class="btn ghost" id="mBack">Back to daily</button>'
         : '<button class="btn" id="mRetry">Try again</button>'
+          + (addTimeAvailable
+              ? '<button class="btn ghost" id="mAddTime">⏰ Add ' + ADD_SECS + 's</button>'
+              : "")
           + '<button class="btn ghost" id="mBack">Back to daily</button>')
   );
+
   const r = document.getElementById("mRetry");
   if (r) r.onclick = () => { closeModal(); loadLevel(state.lvl.cfg.level); };
+
+  const addBtn = document.getElementById("mAddTime");
+  if (addBtn) {
+    addBtn.onclick = () => {
+      if (state.hints.adds >= HINT_LIMITS.adds) { toast("No adds left"); return; }
+      closeModal();
+      showAddTimeModal();
+    };
+  }
+
+  const adBtn = document.getElementById("mWatchAd");
+  if (adBtn) {
+    adBtn.onclick = () => {
+      // TODO: Integrate with ad network (Google AdMob, etc)
+      closeModal();
+      state.frozenUntil = 0;
+      startTimer();
+      saveProgress();
+      toast("⏰ +30s from ad");
+    };
+  }
+
   document.getElementById("mBack").onclick = () => { closeModal(); enterDaily(); };
 }
 
@@ -2760,6 +2989,72 @@ function showProgression(nextLevel){
   );
   document.getElementById("mGo").onclick = () => { closeModal(); loadLevel(nextLevel); };
   document.getElementById("mBack2").onclick = () => { closeModal(); enterDaily(); };
+
+  // Add "View level data" button
+  const m = document.getElementById("modal");
+  const dataBtn = document.createElement("button");
+  dataBtn.className = "btn ghost";
+  dataBtn.textContent = "📊 Level data";
+  dataBtn.onclick = () => { closeModal(); showLevelTable(cfg.world); };
+  m.appendChild(dataBtn);
+}
+
+function showLevelTable(world){
+  const worlds = [1,2,3,4,5];
+  const w = world || 1;
+
+  let html = '<h2>Level Data</h2><p class="lede">All mechanics, givens, times per level</p>';
+  html += '<div style="display:flex; gap:4px; margin-bottom:12px; flex-wrap:wrap">';
+  for (const wo of worlds){
+    const isActive = wo === w;
+    html += '<button class="diff' + (isActive ? ' on' : '') + '" data-world="' + wo + '">'
+          + WORLDS[wo-1].name + '</button>';
+  }
+  html += '</div>';
+
+  // Build table for selected world
+  html += '<div style="overflow-x:auto; max-height:60vh; border:1px solid var(--line-2); border-radius:8px">';
+  html += '<table style="width:100%; font-size:11px; border-collapse:collapse">'
+        + '<thead style="position:sticky; top:0; background:var(--panel2)">'
+        + '<tr><th style="padding:6px; text-align:left; border-bottom:1px solid var(--line-2)">Lvl</th>'
+        + '<th style="padding:6px; text-align:left; border-bottom:1px solid var(--line-2)">Grid</th>'
+        + '<th style="padding:6px; text-align:left; border-bottom:1px solid var(--line-2)">Rules</th>'
+        + '<th style="padding:6px; text-align:left; border-bottom:1px solid var(--line-2)">Marks</th>'
+        + '<th style="padding:6px; text-align:left; border-bottom:1px solid var(--line-2)">Givens</th>'
+        + '<th style="padding:6px; text-align:left; border-bottom:1px solid var(--line-2)">Par</th>'
+        + '<th style="padding:6px; text-align:left; border-bottom:1px solid var(--line-2)">Limit</th>'
+        + '</tr></thead><tbody>';
+
+  const baseLevel = (w - 1) * LEVELS_PER_WORLD + 1;
+  const maxLevel = baseLevel + LEVELS_PER_WORLD - 1;
+
+  for (let L = baseLevel; L <= maxLevel; L++){
+    const cfg = levelConfig(L);
+    const gridLabel = cfg.n + "×" + cfg.n;
+    const ruleLabel = cfg.boxless ? "Latin" : "Sudoku";
+    const markLabel = cfg.markSet ? MARKSETS[cfg.markSet].name : "Rotates";
+    const layerLabel = cfg.layers > 1 ? "·D" : "";
+    const par = parSeconds(cfg, 2);  // Use tier 2 for par estimate
+    const limit = Math.round(par * generosity(L, cfg.peek));
+
+    html += '<tr><td style="padding:6px; border-bottom:1px solid var(--line);">' + L + '</td>'
+          + '<td style="padding:6px; border-bottom:1px solid var(--line);">' + gridLabel + '</td>'
+          + '<td style="padding:6px; border-bottom:1px solid var(--line);">' + ruleLabel + '</td>'
+          + '<td style="padding:6px; border-bottom:1px solid var(--line);">' + markLabel + layerLabel + '</td>'
+          + '<td style="padding:6px; border-bottom:1px solid var(--line);">' + cfg.givens + '</td>'
+          + '<td style="padding:6px; border-bottom:1px solid var(--line);">' + fmtTime(par * 1000) + '</td>'
+          + '<td style="padding:6px; border-bottom:1px solid var(--line);">' + fmtTime(limit * 1000) + '</td></tr>';
+  }
+
+  html += '</tbody></table></div>';
+  html += '<button class="btn ghost" style="margin-top:12px" onclick="closeModal()">Done</button>';
+
+  openModal(html);
+
+  // World buttons
+  document.querySelectorAll('[data-world]').forEach(b => {
+    b.onclick = () => showLevelTable(parseInt(b.dataset.world));
+  });
 }
 
 /* ================= daily leaderboard (local) ================= */
@@ -3033,8 +3328,18 @@ function addTime(){
   state.hints.adds++;
   usePoolCharge();
   state.limitMs += ADD_SECS * 1000;
+  updateAddsBadge();
   toast("⏰ +" + ADD_SECS + "s · " + (HINT_LIMITS.adds - state.hints.adds) + " left");
   saveProgress();
+}
+
+// Update the adds badge in header showing remaining adds
+function updateAddsBadge(){
+  const badge = document.getElementById("addsRemaining");
+  if (!badge || !state.hints) return;
+  const remaining = Math.max(0, HINT_LIMITS.adds - state.hints.adds);
+  badge.textContent = remaining;
+  badge.style.opacity = remaining === 0 ? "0.4" : "1";
 }
 
 /* ================= share badge (canvas) ================= */
@@ -3063,31 +3368,37 @@ function drawClipPath(ctx, clip, x, y, sz){
   ctx.roundRect(x, y, sz, sz, 3);
 }
 
-// Draw hatch/pattern marks on the badge canvas. Each WEAVE index maps to a
-// distinct stroke pattern so the badge matches the in-game look.
+// Draw pattern marks on the badge canvas. Indices match the WEAVES rank order.
 function drawBadgePattern(ctx, idx, x, y, sz, ink, cellBg, rad){
-  // Ground fill
   ctx.fillStyle = cellBg;
   ctx.beginPath(); ctx.roundRect(x, y, sz, sz, rad); ctx.fill();
-  // Clip to cell bounds
   ctx.save();
   ctx.beginPath(); ctx.roundRect(x, y, sz, sz, rad); ctx.clip();
-  ctx.strokeStyle = ink; ctx.lineWidth = 1.2;
-  const gap = sz <= 24 ? 5 : 7;
+  ctx.strokeStyle = ink; ctx.fillStyle = ink;
+  const g = sz <= 24 ? 5 : 7;   // tile gap for stroke patterns
   const patterns = [
-    /* 0 Diagonals */     () => { for(let d=-sz;d<sz*2;d+=gap){ ctx.moveTo(x+d,y); ctx.lineTo(x+d-sz,y+sz); }},
-    /* 1 Bars */          () => { for(let d=0;d<sz;d+=gap){ ctx.moveTo(x,y+d); ctx.lineTo(x+sz,y+d); }},
-    /* 2 Hatch */         () => { for(let d=0;d<sz;d+=gap){ ctx.moveTo(x,y+d); ctx.lineTo(x+sz,y+d); ctx.moveTo(x+d,y); ctx.lineTo(x+d,y+sz); }},
-    /* 3 Dots */          () => { ctx.lineWidth=0; for(let dy=gap/2;dy<sz;dy+=gap) for(let dx=gap/2;dx<sz;dx+=gap){ ctx.moveTo(x+dx+1.5,y+dy); ctx.arc(x+dx,y+dy,1.5,0,Math.PI*2); } },
-    /* 4 Back-diagonals */() => { for(let d=-sz;d<sz*2;d+=gap){ ctx.moveTo(x+d,y); ctx.lineTo(x+d+sz,y+sz); }},
-    /* 5 Columns */       () => { for(let d=0;d<sz;d+=gap){ ctx.moveTo(x+d,y); ctx.lineTo(x+d,y+sz); }},
-    /* 6 Weave */         () => { for(let d=-sz;d<sz*2;d+=gap){ ctx.moveTo(x+d,y); ctx.lineTo(x+d-sz,y+sz); ctx.moveTo(x+d,y); ctx.lineTo(x+d+sz,y+sz); }},
-    /* 7 Rings */         () => { ctx.lineWidth=1; for(let dy=gap;dy<sz;dy+=gap) for(let dx=gap;dx<sz;dx+=gap){ ctx.moveTo(x+dx+2.5,y+dy); ctx.arc(x+dx,y+dy,2.5,0,Math.PI*2); }},
-    /* 8 Wide bars */     () => { ctx.lineWidth=2.5; for(let d=0;d<sz;d+=gap*1.5){ ctx.moveTo(x,y+d); ctx.lineTo(x+sz,y+d); }},
+    /*  0 Diag-back Med    */ () => { ctx.lineWidth=1.5; for(let d=-sz;d<sz*2;d+=g){ ctx.moveTo(x+d,y); ctx.lineTo(x+d+sz,y+sz); }},
+    /*  1 Diagonals Med    */ () => { ctx.lineWidth=1.5; for(let d=-sz;d<sz*2;d+=g){ ctx.moveTo(x+d,y); ctx.lineTo(x+d-sz,y+sz); }},
+    /*  2 Bars Half        */ () => { ctx.lineWidth=g*0.6; for(let d=g*0.3;d<sz;d+=g){ ctx.moveTo(x,y+d); ctx.lineTo(x+sz,y+d); }},
+    /*  3 Columns Half     */ () => { ctx.lineWidth=g*0.6; for(let d=g*0.3;d<sz;d+=g){ ctx.moveTo(x+d,y); ctx.lineTo(x+d,y+sz); }},
+    /*  4 Dots Large       */ () => { const r=sz<=24?1.8:2.5; for(let dy=g/2;dy<sz;dy+=g) for(let dx=g/2;dx<sz;dx+=g){ ctx.beginPath(); ctx.arc(x+dx,y+dy,r,0,Math.PI*2); ctx.fill(); }},
+    /*  5 Rings Wide       */ () => { const r=sz<=24?2:3; ctx.lineWidth=1; for(let dy=g;dy<sz;dy+=g) for(let dx=g;dx<sz;dx+=g){ ctx.beginPath(); ctx.arc(x+dx,y+dy,r,0,Math.PI*2); ctx.stroke(); }},
+    /*  6 Checker Med      */ () => { const h=g/2; for(let dy=0;dy<sz;dy+=g) for(let dx=0;dx<sz;dx+=g){ if(((dx/g+dy/g)%2)===0){ ctx.fillRect(x+dx,y+dy,h,h); ctx.fillRect(x+dx+h,y+dy+h,h,h); }}},
+    /*  7 Zigzag H         */ () => { ctx.lineWidth=1.5; const zh=sz<=24?4:6; for(let dy=zh/2;dy<sz;dy+=zh){ let dir=1; for(let dx=0;dx<sz;dx+=zh/2){ const ny=dy+zh/2*dir; ctx.moveTo(x+dx,y+dy); ctx.lineTo(x+dx+zh/2,y+ny); dir=-dir; }}},
+    /*  8 Diag-grid Fine   */ () => { ctx.lineWidth=0.8; for(let d=-sz;d<sz*2;d+=g){ ctx.moveTo(x+d,y); ctx.lineTo(x+d-sz,y+sz); ctx.moveTo(x+d,y); ctx.lineTo(x+d+sz,y+sz); }},
+    /*  9 H+V Bold         */ () => { ctx.lineWidth=2.5; for(let d=g/2;d<sz;d+=g){ ctx.moveTo(x,y+d); ctx.lineTo(x+sz,y+d); ctx.moveTo(x+d,y); ctx.lineTo(x+d,y+sz); }},
+    /* 10 H+V Fine         */ () => { ctx.lineWidth=0.8; for(let d=0;d<sz;d+=g){ ctx.moveTo(x,y+d); ctx.lineTo(x+sz,y+d); ctx.moveTo(x+d,y); ctx.lineTo(x+d,y+sz); }},
+    /* 11 Diags Bold       */ () => { ctx.lineWidth=3;   for(let d=-sz;d<sz*2;d+=g){ ctx.moveTo(x+d,y); ctx.lineTo(x+d-sz,y+sz); }},
+    /* 12 Diag-back Bold   */ () => { ctx.lineWidth=3;   for(let d=-sz;d<sz*2;d+=g){ ctx.moveTo(x+d,y); ctx.lineTo(x+d+sz,y+sz); }},
+    /* 13 Bars Bold        */ () => { ctx.lineWidth=3;   for(let d=g/2;d<sz;d+=g){ ctx.moveTo(x,y+d); ctx.lineTo(x+sz,y+d); }},
+    /* 14 Columns Bold     */ () => { ctx.lineWidth=3;   for(let d=g/2;d<sz;d+=g){ ctx.moveTo(x+d,y); ctx.lineTo(x+d,y+sz); }},
+    /* 15 Dots Offset      */ () => { const r=sz<=24?1:1.5; const h=g/2; for(let dy=r;dy<sz;dy+=g) for(let dx=r;dx<sz;dx+=g){ ctx.beginPath(); ctx.arc(x+dx,y+dy,r,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(x+dx+h,y+dy+h,r,0,Math.PI*2); ctx.fill(); }},
   ];
+  const draw = patterns[idx] || patterns[0];
+  const fillOnly = idx === 4 || idx === 6 || idx === 15;
   ctx.beginPath();
-  (patterns[idx] || patterns[0])();
-  if (idx === 3 || idx === 7) ctx.fill(); else ctx.stroke();
+  draw();
+  if (!fillOnly) ctx.stroke();
   ctx.restore();
 }
 
@@ -3295,7 +3606,8 @@ function showHelp(){
     const base = 'display:inline-block;width:15px;height:15px;border-radius:4px;vertical-align:-3px;';
     if (x.kind === "pattern")
       return '<span style="' + base + 'background-color:var(--panel2);background-image:'
-        + x.bg + ';background-size:' + TILE + '"></span>';
+        + x.bg + ';background-size:' + (x.bgS||TILE)
+        + (x.bgP ? ';background-position:' + x.bgP : '') + '"></span>';
     return '<span style="' + base + 'background:' + x.hex
       + (x.clip ? ";clip-path:" + x.clip : "") + '"></span>';
   }).join(" ");
@@ -3316,9 +3628,89 @@ function showHelp(){
     + "</ul>"
     + '<p class="lede">' + swatches + "<br><br>One new puzzle every day, at three difficulties. "
     + "Repeats shake at you, but never block you.</p>"
+    + '<div style="display:grid; gap:8px; margin-top:12px">'
+    + '<div style="font-size:12px; color:var(--ink-dim); font-weight:600">Mechanics tutorials</div>'
+    + '<button class="btn ghost" id="tutLatin" style="justify-self:start; font-size:11px">Latin</button>'
+    + '<button class="btn ghost" id="tutDouble" style="justify-self:start; font-size:11px">Double</button>'
+    + '<button class="btn ghost" id="tutScramble" style="justify-self:start; font-size:11px">Scramble</button>'
+    + '</div>'
     + '<button class="btn" onclick="closeModal()">Play</button>'
   );
+
+  // Tutorial buttons
+  document.getElementById("tutLatin").onclick = () => { closeModal(); showExplainers(["latin"], () => showHelp()); };
+  document.getElementById("tutDouble").onclick = () => { closeModal(); showExplainers(["double"], () => showHelp()); };
+  document.getElementById("tutScramble").onclick = () => { closeModal(); showExplainers(["scramble"], () => showHelp()); };
+
+  // Add "Replay tutorial" button
+  const m = document.getElementById("modal");
+  const tutBtn = document.createElement("button");
+  tutBtn.className = "btn ghost";
+  tutBtn.textContent = "📚 Replay tutorial";
+  tutBtn.onclick = () => { closeModal(); state.mode = "levels"; loadLevel(0); };
+  m.appendChild(tutBtn);
+
   save(LS_HELP, true);
+}
+
+/* ================= TUTORIAL HINTS ================= */
+function showTutorialHint(){
+  if (!state.lvl || !state.lvl.cfg.tutorial) return;
+
+  // Find first empty cell
+  let emptyCell = null;
+  for (let i = 0; i < state.layers[0].grid.length; i++){
+    if (state.layers[0].grid[i] === null && !state.layers[0].givens[i]){
+      emptyCell = i;
+      break;
+    }
+  }
+
+  if (emptyCell === null) return;  // Puzzle complete
+
+  // Flash the empty cell
+  const cell = document.querySelector(`[data-i="${emptyCell}"]`);
+  if (cell){
+    cell.classList.add("hint-flash");
+    setTimeout(() => cell.classList.remove("hint-flash"), 600);
+  }
+
+  toast("💡 Try placing a mark in an empty square!");
+}
+
+/* ================= ABOUT PAGE ================= */
+function showAbout(){
+  const logo = `<svg width="160" height="160" viewBox="0 0 360 360" xmlns="http://www.w3.org/2000/svg" style="margin:20px auto; display:block; border-radius:12px; background:white; padding:10px;">
+    <style>
+      .cell { stroke: white; stroke-width: 2; }
+      .inner { stroke: white; stroke-width: 1.5; }
+    </style>`;
+
+  const HUES = ["#c10020","#007d34","#00538a","#f4c800","#ff6800","#803e75","#a6bdd7","#232c16","#593315","#ffb300","#cea262","#817066","#f6768e","#ff7a5c","#53377a","#ff8e00"];
+
+  const pattern = [[0,1,2,3,4,5,6,7,8],[9,10,11,12,13,14,15,0,1],[2,3,4,5,6,7,8,9,10],[11,12,13,14,15,0,1,2,3],[4,5,6,7,8,9,10,11,12],[13,14,15,0,1,2,3,4,5],[6,7,8,9,10,11,12,13,14],[15,0,1,2,3,4,5,6,7],[8,9,10,11,12,13,14,15,0]];
+  const innerPattern = [[8,9,10,11,12,13,14,15,0],[1,2,3,4,5,6,7,8,9],[10,11,12,13,14,15,0,1,2],[3,4,5,6,7,8,9,10,11],[12,13,14,15,0,1,2,3,4],[5,6,7,8,9,10,11,12,13],[14,15,0,1,2,3,4,5,6],[7,8,9,10,11,12,13,14,15],[0,1,2,3,4,5,6,7,8]];
+
+  let svg = '';
+  for (let row = 0; row < 9; row++) {
+    for (let col = 0; col < 9; col++) {
+      const x = col * 40, y = row * 40;
+      const outerIdx = pattern[row][col], innerIdx = innerPattern[row][col];
+      svg += `<rect class="cell" x="${x + 4}" y="${y + 4}" width="32" height="32" fill="${HUES[outerIdx]}" />`;
+      const offset = 9;
+      svg += `<rect class="inner" x="${x + offset}" y="${y + offset}" width="22" height="22" fill="${HUES[innerIdx]}" />`;
+    }
+  }
+  svg += '</svg>';
+
+  openModal(
+    '<h2>Chromoku</h2>'
+    + logo
+    + '<p class="lede"><b>A colour-logic puzzle.</b> Fill every row, column and box so no mark repeats. That\'s the whole game.</p>'
+    + '<p style="font-size:13px; color:var(--ink-dim); margin:16px 0; line-height:1.6">The logo above is a digital recreation of a quilt pattern made by the developer\'s mother. The nested squares represent Chromoku\'s Double mechanic — two puzzles, one unified solution. A tribute to the art of patterns and the joy of puzzles.</p>'
+    + '<p style="font-size:12px; color:var(--ink-faint); margin-top:20px"><b>Coming:</b> Nov 8 daily puzzle featuring this exact pattern — a homage to quilting and motherhood.</p>'
+    + '<button class="btn ghost" onclick="closeModal()">Done</button>'
+  );
 }
 
 function showStats(){
@@ -3480,9 +3872,11 @@ function showSettings(){
   const palOpts = usable.map(([id, s]) => {
     const prev = s.build(Math.min(4, state.n)).map(mk =>
       '<i style="' + (mk.kind === "pattern"
-        // Same tile size as the board — a smaller one clips the gradient period.
+        // Match exact tile size — some patterns use non-default bgS/bgP.
         ? "background-color:var(--panel2);background-image:" + mk.bg
-          + ";background-size:" + TILE + ";box-shadow:inset 0 0 0 1px var(--line-2)"
+          + ";background-size:" + (mk.bgS||TILE)
+          + (mk.bgP ? ";background-position:" + mk.bgP : "")
+          + ";box-shadow:inset 0 0 0 1px var(--line-2)"
         : "background:" + mk.hex)
       + (mk.clip ? ";clip-path:" + mk.clip : "") + '"></i>').join("");
     return '<button class="' + (id === activePalette ? "on" : "") + '" data-pal="' + id + '">'
@@ -3582,13 +3976,30 @@ function showSettings(){
 /* ================= init ================= */
 
 document.getElementById("btnHelp").onclick  = showHelp;
+document.getElementById("btnAbout").onclick = showAbout;
 document.getElementById("btnUndo").onclick  = undo;
 document.getElementById("btnStats").onclick = showStats;
 document.getElementById("btnHint").onclick  = showHintModal;
+document.getElementById("btnReset").onclick = confirmReset;
 document.getElementById("btnMark").onclick  = () => state.bookmark ? openMarkModal() : setBookmark();
 document.getElementById("btnNew").onclick = () => loadPuzzle(state.size, state.diff, true);
 document.getElementById("btnQuit").onclick = confirmQuit;
 document.getElementById("btnSettings").onclick = showSettings;
+
+// Initialize adds badge and update it
+updateAddsBadge();
+
+// Launch tutorial on first play
+// NOTE: Disabled mixing tutorial level with daily puzzle initialization.
+// Tutorial is still available via "Replay tutorial" button in help modal.
+// Showing the tutorial via loadLevel() before loading the daily puzzle
+// was causing state mode conflicts and blank board on first load.
+// Players see the help modal instead, which explains the rules and offers
+// tutorial access.
+//if (!hasSeenTutorial() && !state.lvl){
+//  loadLevel(0);
+//  markTutorialSeen();
+//}
 
 if (adminMode) document.documentElement.classList.add("dev");
 
@@ -3641,8 +4052,10 @@ state.day = dayNumber();
   }
 })();
 
-const defSize = CURR_SIZES()[0].id;
-loadPuzzle(load(LS_SIZE, defSize), load(LS_LAST, "easy"));
+// Initialize daily mode or update to daily if tutorial was loaded
+// Note: must call enterDaily() to ensure state.mode is reset to "daily"
+// after the tutorial level may have set it to "levels"
+enterDaily();
 if (!load(LS_HELP, false)) showHelp();
 
 // Exposed for verification in the console.

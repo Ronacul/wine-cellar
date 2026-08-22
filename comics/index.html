@@ -705,13 +705,18 @@ function openCropEditor(src, onApply){
     </div>
     <canvas id="cvcrop" style="flex:1;width:100%;display:block;touch-action:none;cursor:grab"></canvas>
     <div style="padding:10px 12px 12px;border-top:1px solid var(--line);flex-shrink:0">
-      <div style="display:flex;gap:5px;justify-content:center;margin-bottom:9px">
+      <div style="display:flex;gap:5px;justify-content:center;margin-bottom:6px">
         <button class="photo-btn" id="crot-ccw90" style="flex:0 0 auto;padding:7px 10px">↺ 90°</button>
         <button class="photo-btn" id="crot-m5"    style="flex:0 0 auto;padding:7px 10px">−5°</button>
         <button class="photo-btn" id="crot-m1"    style="flex:0 0 auto;padding:7px 10px">−1°</button>
         <button class="photo-btn" id="crot-p1"    style="flex:0 0 auto;padding:7px 10px">+1°</button>
         <button class="photo-btn" id="crot-p5"    style="flex:0 0 auto;padding:7px 10px">+5°</button>
         <button class="photo-btn" id="crot-cw90"  style="flex:0 0 auto;padding:7px 10px">90° ↻</button>
+      </div>
+      <div style="display:flex;gap:5px;justify-content:center;margin-bottom:9px">
+        <button class="photo-btn ghost" id="czoom-out" style="flex:0 0 auto;padding:7px 14px">🔍−</button>
+        <span id="czoom-label" style="font-size:11px;color:var(--ink-dim);font-family:'IBM Plex Mono',monospace;display:flex;align-items:center;min-width:44px;justify-content:center">100%</span>
+        <button class="photo-btn ghost" id="czoom-in"  style="flex:0 0 auto;padding:7px 14px">🔍+</button>
       </div>
       <div style="display:flex;gap:8px">
         <button class="btn btn-primary" id="crop-apply" style="flex:1;margin:0;padding:11px">✓ Apply</button>
@@ -728,9 +733,15 @@ function openCropEditor(src, onApply){
   let rotation = 0;    /* degrees */
   let offsetX  = 0;    /* pan — CSS px relative to canvas centre */
   let offsetY  = 0;
-  let scale    = 1;    /* image scale so it fills the crop frame */
+  let scale    = 1;    /* base scale so image fills crop frame */
+  let zoom     = 1.0;  /* user zoom multiplier */
   let cropW, cropH;    /* crop frame in CSS px */
   let canvasW, canvasH;
+
+  const updateZoomLabel = () => {
+    const el = modal.querySelector("#czoom-label");
+    if(el) el.textContent = Math.round(zoom * 100) + "%";
+  };
 
   function initCanvas(){
     const r = canvas.getBoundingClientRect();
@@ -743,7 +754,8 @@ function openCropEditor(src, onApply){
     cropW = cropH * 2 / 3;
     /* scale image so it covers the crop frame exactly */
     scale = Math.max(cropW / img.width, cropH / img.height);
-    offsetX = 0; offsetY = 0; rotation = 0;
+    offsetX = 0; offsetY = 0; rotation = 0; zoom = 1.0;
+    updateZoomLabel();
     draw();
   }
 
@@ -751,9 +763,10 @@ function openCropEditor(src, onApply){
     ctx.clearRect(0, 0, canvasW, canvasH);
     /* image */
     ctx.save();
+    const sc = scale * zoom;
     ctx.translate(canvasW / 2 + offsetX, canvasH / 2 + offsetY);
     ctx.rotate(rotation * Math.PI / 180);
-    ctx.drawImage(img, -img.width * scale / 2, -img.height * scale / 2, img.width * scale, img.height * scale);
+    ctx.drawImage(img, -img.width * sc / 2, -img.height * sc / 2, img.width * sc, img.height * sc);
     ctx.restore();
     /* dim overlay outside crop */
     const x0 = (canvasW - cropW) / 2, y0 = (canvasH - cropH) / 2;
@@ -800,8 +813,12 @@ function openCropEditor(src, onApply){
   modal.querySelector("#crot-p1").onclick    = () => rotBy(1);
   modal.querySelector("#crot-p5").onclick    = () => rotBy(5);
 
+  /* zoom buttons — 1 % steps, clamped 50 %–300 % */
+  modal.querySelector("#czoom-in").onclick  = () => { zoom = Math.min(3.0, zoom + 0.01); updateZoomLabel(); draw(); };
+  modal.querySelector("#czoom-out").onclick = () => { zoom = Math.max(0.5, zoom - 0.01); updateZoomLabel(); draw(); };
+
   modal.querySelector("#crop-reset").onclick = () => {
-    rotation = 0; offsetX = 0; offsetY = 0; draw();
+    rotation = 0; offsetX = 0; offsetY = 0; zoom = 1.0; updateZoomLabel(); draw();
   };
   modal.querySelector("#crop-cancel").onclick = () => modal.remove();
 
@@ -812,15 +829,16 @@ function openCropEditor(src, onApply){
     const out = document.createElement("canvas");
     out.width = OUTPUT_W; out.height = OUTPUT_H;
     const outCtx = out.getContext("2d");
+    const sc = scale * zoom;
     outCtx.translate(OUTPUT_W / 2, OUTPUT_H / 2);
     outCtx.rotate(rotation * Math.PI / 180);
     /* image centre in output space = offsetX*outScale, offsetY*outScale
        (offset from crop-frame centre, which maps to output centre) */
     outCtx.drawImage(img,
-      offsetX * outScale - img.width  * scale * outScale / 2,
-      offsetY * outScale - img.height * scale * outScale / 2,
-      img.width  * scale * outScale,
-      img.height * scale * outScale
+      offsetX * outScale - img.width  * sc * outScale / 2,
+      offsetY * outScale - img.height * sc * outScale / 2,
+      img.width  * sc * outScale,
+      img.height * sc * outScale
     );
     const result = out.toDataURL("image/jpeg", 0.82);
     out.width = 0; out.height = 0; img.src = "";
