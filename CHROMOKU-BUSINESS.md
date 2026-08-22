@@ -295,6 +295,152 @@ Scenario B (moderate growth):
 
 ---
 
+## Ad Strategy & Monetization Model (Final)
+
+### Philosophy: Viral-First, Monetize Secondarily
+
+**Core principle:** Retention + virality > short-term CPM. Aggressive ads kill sharing.
+
+### Daily Mode: Light-Touch (Viral-Optimized)
+
+**Goal:** Pure experience, maximum word-of-mouth, build 7-day habit.
+
+**Desktop:**
+```
+├─ Banner: Bottom, subtle (~2% of screen)
+├─ Interstitial: None (too intrusive for habit-building)
+├─ Rewarded Video: Yes, ONLY if stuck (3+ failed attempts)
+│  └─ Popup: "Need help? Watch 15s for hint" (user chooses)
+└─ User sees <1 forced ad per session (if solves quickly)
+```
+
+**Mobile:**
+```
+├─ Banner: Bottom, subtle (~8% of screen)
+├─ Interstitial: None (full screen kills engagement)
+├─ Rewarded Video: Yes, only on failure (user-opted)
+└─ User sees 0–1 ads per day (depending on difficulty)
+```
+
+**Revenue per user:**
+- Impressions: ~1 banner + 0.2 rewarded = 1.2/day
+- CPM (blended): ~$1.20
+- **Daily revenue: $0.05–0.08 per user per day**
+
+**Why this works:**
+- Daily feels **pure** (like Wordle, which has no ads)
+- No forced ads = users don't resent the game
+- Users **share** (positive experience, not frustration)
+- Retention is high (habit-forming, not ad-burdened)
+
+### Levels Mode: Standard Monetization (Revenue-Optimized)
+
+**Goal:** Sustain engagement, maximize ads + IAP from power users who expect monetization.
+
+**Desktop:**
+```
+├─ Banner: Right sidebar (doesn't interfere with gameplay)
+├─ Interstitial: Full-screen after every 3rd level (spaced, not aggressive)
+├─ Rewarded Video: For power-ups (hints, undo, time extension)
+├─ IAP: Boosters, lives, remove-ads ($0.99–2.99)
+└─ User expects ads (known monetization model)
+```
+
+**Mobile:**
+```
+├─ Banner: Bottom (always visible)
+├─ Interstitial: Full-screen after every 3rd level
+├─ Rewarded Video: For power-ups (user-opted)
+├─ IAP: Same as desktop (consistent pricing)
+└─ Full monetization density (users accept it for free levels)
+```
+
+**Revenue per user:**
+- Impressions: ~1.2 banner + 0.4 interstitial + 0.2 rewarded = 1.8/day
+- CPM (blended): ~$2.50
+- **Levels revenue: $0.30–0.45 per user per day**
+- **IAP revenue: +$0.10–0.15 per user per day** (10% convert at $1.50 avg)
+
+**Why this works:**
+- Levels players **expect** ads (they know free trial ends with paywall)
+- Spacing interstitials every 3rd level = doesn't feel aggressive
+- IAP + ads = multiple revenue streams
+- Desktop sidebar banner = much less intrusive on large screen
+
+### Difficulty-Driven Monetization (Key Insight)
+
+**As levels get harder (20 → 50 → 100 → 200+), puzzles take longer.**
+
+```
+Level 5 (Easy):
+├─ Solve time: 2–3 min
+├─ Hints needed: 0% of users
+├─ Ad opportunities: 1 banner (low)
+└─ Revenue: Minimal
+
+Level 50 (Medium):
+├─ Solve time: 5–8 min
+├─ Hints needed: 10–20% of users
+├─ Ad opportunities: 1 banner + 1 interstitial + 0.1 rewarded
+└─ Revenue: Medium
+
+Level 150 (Hard):
+├─ Solve time: 10–15 min
+├─ Hints needed: 40–50% of users
+├─ Ad opportunities: 1 banner + 1 interstitial + 0.3 rewarded
+└─ Revenue: High
+
+Level 250+ (Extreme):
+├─ Solve time: 15–30 min
+├─ Hints needed: 70%+ of users (stuck users watch ads)
+├─ Ad opportunities: 1 banner + 1 interstitial + 0.5 rewarded + IAP boosters
+└─ Revenue: Very high (natural monetization hook)
+```
+
+**This is a feature, not a bug.** As players progress:
+1. They invest more time (higher sunk cost = more likely to buy hints)
+2. Puzzles are harder (more help-seeking)
+3. They're more engaged (willing to watch ads or pay)
+4. Monetization feels **earned**, not forced
+
+**Refinement strategy:** Launch with conservative ad placement. Monitor which levels see highest hint-seeking. Over time, adjust:
+- Increase rewarded video offers at levels 100+ (users expect help)
+- Lower ad frequency at levels 1–30 (new players shouldn't see ads)
+- Test booster pricing (what price converts best at level 150+?)
+
+### CPM & Revenue Comparison
+
+**For 1,000 new users per day, assumed split after day 8:**
+
+```
+Daily Mode (700 users at 60% DAU):
+├─ Impressions/day: 420 banners + 126 rewarded = 546
+├─ CPM: $1.20
+├─ Daily revenue: $0.65
+├─ Monthly (30 days): $19.50
+
+Levels Mode (300 users at 40% engagement):
+├─ Impressions/day: 360 banners + 180 interstitials + 72 rewarded = 612
+├─ CPM: $2.50
+├─ Ad revenue: $1.53
+├─ IAP revenue (10% convert × $1.50): +$0.45
+├─ Daily revenue: $1.98
+├─ Monthly (30 days): $59.40
+
+Total per 1k user cohort:
+├─ Monthly: $19.50 + $59.40 = $78.90
+├─ Per user per month: $0.079
+└─ Per user per day: $0.0026
+```
+
+**Scale:** If you reach 10k DAU sustainably:
+```
+└─ Daily revenue: ~$790/month
+└─ With IAP: ~$2,600/month
+```
+
+---
+
 ## Marketing & User Acquisition
 
 ### Launch Channels (Low Cost, High Effort)

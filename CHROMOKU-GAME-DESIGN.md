@@ -610,6 +610,155 @@ Milestone Events:
 
 ---
 
+## Ad & Monetization Integration
+
+### Daily Mode: Light-Touch (No Forced Ads)
+
+**Philosophy:** Daily should feel **pure** (like Wordle). Virality depends on users sharing, not being frustrated.
+
+```
+Banner ads:
+├─ Location: Bottom of screen (subtle, always visible)
+├─ Placement: Only on home/daily puzzle screens
+├─ Frequency: Passive (not counted in ad load)
+└─ Impact: ~$0.01/user/day in ad revenue
+
+Rewarded video ads (optional, user-opted):
+├─ Trigger: After 3+ failed attempts on a puzzle
+├─ Popup: "Need help? Watch 15s for hint" (user chooses)
+├─ Reward: Reveals one solution cell, gives undo move, or adds time
+├─ Frequency: 0–1 per day (depends on difficulty)
+└─ Impact: ~$0.04–0.07/user/day in ad revenue
+
+Total daily revenue:
+├─ Per user: $0.05–0.08/day
+├─ At 700 daily players: ~$35–56/month
+└─ High retention (users not ad-burdened)
+```
+
+### Levels Mode: Standard Monetization (Ads + IAP)
+
+**Philosophy:** Levels players **expect** ads (trial ends with paywall). Monetization is transparent.
+
+```
+Banner ads:
+├─ Location: Bottom (mobile) or right sidebar (desktop)
+├─ Placement: Always visible, home/level select screens
+├─ Frequency: Passive (1 per page load)
+└─ Impact: ~$0.08/user/day in ad revenue
+
+Interstitial ads (between levels):
+├─ Trigger: After completing level (every 3rd level, not aggressive)
+├─ Format: Full-screen, 10–30 sec
+├─ Frequency: ~0.3 per session (spaced out)
+├─ Impact: ~$0.12/user/day in ad revenue
+
+Rewarded video ads (for power-ups):
+├─ Trigger: User clicks "Hint", "Undo", "Extra Time" buttons
+├─ Format: Optional (user chooses to watch)
+├─ Reward: Instant power-up (hint, undo, time extension)
+├─ Frequency: ~0.2 per session (user-driven)
+└─ Impact: ~$0.04/user/day in ad revenue
+
+In-App Purchases (IAP):
+├─ Remove Ads ($2.99): Removes interstitials, keeps banner
+├─ Boosters ($0.99–1.99): Time extension, hint packs, undo packs
+├─ Lives refill ($1.99): Instantly refill 5 lives (if lives system added later)
+├─ Conversion rate: 10–15% of levels players
+└─ Impact: ~$0.10–0.15/user/day in IAP revenue
+
+Total levels revenue:
+├─ Per user per day: $0.30–0.45 (ads) + $0.10–0.15 (IAP) = $0.40–0.60
+├─ At 300 levels players: ~$120–180/month
+└─ Monetization-transparent (users expect it)
+```
+
+### Difficulty-Driven Monetization (Key Design Insight)
+
+**Harder puzzles naturally create more monetization opportunities:**
+
+```
+Progression by level:
+
+Levels 1–10 (Easy, 2–3 min each):
+├─ Hints needed: <5% of players
+├─ Ad touchpoints: 1 banner
+├─ Revenue: Minimal ($0.01/user/day)
+└─ Goal: Hook players with success
+
+Levels 11–30 (Medium, 5–8 min each):
+├─ Hints needed: 10–20% of players
+├─ Ad touchpoints: 1 banner + 1 interstitial + 0.1 rewarded
+├─ Revenue: Low ($0.10/user/day)
+└─ Goal: Build skill, introduce monetization
+
+Levels 50–100 (Hard, 10–15 min each):
+├─ Hints needed: 30–40% of players
+├─ Ad touchpoints: 1 banner + 1 interstitial + 0.2 rewarded + IAP offer
+├─ Revenue: Medium ($0.25/user/day)
+└─ Goal: Challenge players, monetize help-seekers
+
+Levels 150–200 (Very Hard, 15–20 min each):
+├─ Hints needed: 50–60% of players (stuck = reaching for help)
+├─ Ad touchpoints: 1 banner + 1 interstitial + 0.3 rewarded + IAP boosters
+├─ Revenue: High ($0.40/user/day)
+└─ Goal: Progression feels earned, monetization feels earned
+
+Levels 250+ (Extreme, 20–30 min each):
+├─ Hints needed: 70%+ of players (nearly all get stuck)
+├─ Ad touchpoints: 1 banner + 1 interstitial + 0.5 rewarded + IAP bundles
+├─ Revenue: Very high ($0.50+/user/day)
+├─ IAP conversion: 20%+ (players invested, willing to pay)
+└─ Goal: Hardcore players are your most valuable audience
+```
+
+**Why this works:**
+1. Players **invest time** as they progress → sunk cost → more willing to help themselves
+2. Difficulty **increases naturally** → hints become necessary → monetization feels earned
+3. No early-game ads → users build habit before seeing monetization
+4. Late-game ads → only shown to players who've proven commitment
+
+### Power-Up Mechanics (Ad-Enabled)
+
+```
+Three power-ups, each with ad watch option:
+
+1. Hint (reveals one solution cell):
+   ├─ Free: 1 per day (reset daily)
+   ├─ Ad watch: 15s video = 1 instant hint (unlimited)
+   └─ IAP: Hint pack (10 hints for $1.99)
+
+2. Undo (revert last 1–3 moves):
+   ├─ Free: 1 per level (reset per level)
+   ├─ Ad watch: 15s video = 1 instant undo (unlimited)
+   └─ IAP: Undo pack (10 undos for $0.99)
+
+3. Time Extension (add 2 min to timer):
+   ├─ Free: Refill once per day
+   ├─ Ad watch: 15s video = 2 min instant (unlimited)
+   └─ IAP: Time pack (5 extensions for $0.99)
+
+Policy:
+├─ Players see free option first (limits = daily/per-level)
+├─ If free used up, show "Watch ad for instant" button
+├─ If frustrated by ads, offer "Remove ads permanently" ($2.99)
+└─ Players who pay are never shown ads again (respect their choice)
+```
+
+### Analytics to Refine
+
+From Day 1, track:
+```
+├─ Which levels see highest hint-watching?
+├─ At what level do players start paying for IAP?
+├─ Do desktop/mobile have different ad tolerance?
+├─ What time of day sees most rewarded video completion?
+├─ How does difficulty affect ad CTR?
+└─ Adjust ad frequency + IAP pricing monthly based on data
+```
+
+---
+
 ## Next Steps
 
 1. **Design the first 52 weeks of puzzles** (26 Quick × 2 + 26 Extended × 2)
