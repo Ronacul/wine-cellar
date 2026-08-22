@@ -224,7 +224,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
   text-align:center; color:var(--ink-dim); cursor:default; margin-bottom:16px;
   background:var(--panel);
 }
-.photo-zone img{max-width:100px; max-height:150px; border-radius:4px; display:block; margin:0 auto 12px}
+.photo-zone img{max-width:100%; max-height:260px; border-radius:6px; display:block; margin:0 auto 10px; object-fit:contain}
 .photo-zone-controls{display:flex;flex-direction:column;gap:8px;align-items:stretch}
 .photo-zone-main{display:flex;gap:6px;margin-bottom:8px}
 .photo-zone-action{display:flex;gap:6px}
@@ -688,49 +688,148 @@ function resizeImage(file){
     img.src = blobUrl;
   });
 }
-/* apply rotation + optional 2:3 centre-crop from an original data URL → new data URL
-   rotate is degrees clockwise: 0, 90, 180, 270 */
-function applyEditTransforms(original, transform){
-  return new Promise(resolve => {
-    const img = new Image();
-    img.onload = () => {
-      const rad = transform.rotate * Math.PI / 180;
-      const swap = transform.rotate === 90 || transform.rotate === 270;
-      const w = swap ? img.height : img.width;
-      const h = swap ? img.width  : img.height;
+/* Full-screen crop editor modal.
+   src      — source data URL to edit (can be any orientation)
+   onApply  — called with the cropped JPEG data URL when the user taps Apply
+   The 2:3 crop frame is fixed at the canvas centre; the user drags to pan
+   and uses nudge buttons (±1°, ±5°, ±90°) to rotate. */
+function openCropEditor(src, onApply){
+  const dpr = window.devicePixelRatio || 1;
 
-      /* rotation step */
-      const rc = document.createElement("canvas");
-      rc.width = w; rc.height = h;
-      const rctx = rc.getContext("2d");
-      rctx.translate(w / 2, h / 2);
-      rctx.rotate(rad);
-      rctx.drawImage(img, -img.width / 2, -img.height / 2);
+  const modal = document.createElement("div");
+  modal.style.cssText = "position:fixed;inset:0;z-index:300;background:var(--bg);display:flex;flex-direction:column;overflow:hidden";
+  modal.innerHTML = `
+    <div style="padding:10px 14px 8px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-shrink:0">
+      <span style="font-family:'Bangers',cursive;font-size:22px;letter-spacing:.03em;color:var(--accent)">Crop Cover</span>
+      <span style="font-size:11px;color:var(--ink-dim)">drag to pan · nudge to rotate</span>
+    </div>
+    <canvas id="cvcrop" style="flex:1;width:100%;display:block;touch-action:none;cursor:grab"></canvas>
+    <div style="padding:10px 12px 12px;border-top:1px solid var(--line);flex-shrink:0">
+      <div style="display:flex;gap:5px;justify-content:center;margin-bottom:9px">
+        <button class="photo-btn" id="crot-ccw90" style="flex:0 0 auto;padding:7px 10px">↺ 90°</button>
+        <button class="photo-btn" id="crot-m5"    style="flex:0 0 auto;padding:7px 10px">−5°</button>
+        <button class="photo-btn" id="crot-m1"    style="flex:0 0 auto;padding:7px 10px">−1°</button>
+        <button class="photo-btn" id="crot-p1"    style="flex:0 0 auto;padding:7px 10px">+1°</button>
+        <button class="photo-btn" id="crot-p5"    style="flex:0 0 auto;padding:7px 10px">+5°</button>
+        <button class="photo-btn" id="crot-cw90"  style="flex:0 0 auto;padding:7px 10px">90° ↻</button>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" id="crop-apply" style="flex:1;margin:0;padding:11px">✓ Apply</button>
+        <button class="btn btn-ghost"   id="crop-reset" style="flex:0 0 auto;margin:0;padding:11px 14px">↩ Reset</button>
+        <button class="btn btn-ghost"   id="crop-cancel" style="flex:0 0 auto;margin:0;padding:11px 14px">✕</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
 
-      if(!transform.trimmed){
-        const out = rc.toDataURL("image/jpeg", 0.72);
-        rc.width = 0; rc.height = 0; img.src = "";
-        resolve(out); return;
-      }
+  const canvas = modal.querySelector("#cvcrop");
+  const ctx    = canvas.getContext("2d");
+  const img    = new Image();
 
-      /* trim step — centre-crop to 2:3 (standard comic proportions) */
-      const RATIO = 2 / 3;
-      let cw, ch;
-      if(w / h > RATIO){ ch = h; cw = Math.round(ch * RATIO); }
-      else              { cw = w; ch = Math.round(cw / RATIO); }
-      const sx = Math.round((w - cw) / 2);
-      const sy = Math.round((h - ch) / 2);
-      const tc = document.createElement("canvas");
-      tc.width = cw; tc.height = ch;
-      tc.getContext("2d").drawImage(rc, sx, sy, cw, ch, 0, 0, cw, ch);
-      const out = tc.toDataURL("image/jpeg", 0.72);
-      rc.width = 0; rc.height = 0;
-      tc.width = 0; tc.height = 0;
-      img.src = "";
-      resolve(out);
-    };
-    img.src = original;
+  let rotation = 0;    /* degrees */
+  let offsetX  = 0;    /* pan — CSS px relative to canvas centre */
+  let offsetY  = 0;
+  let scale    = 1;    /* image scale so it fills the crop frame */
+  let cropW, cropH;    /* crop frame in CSS px */
+  let canvasW, canvasH;
+
+  function initCanvas(){
+    const r = canvas.getBoundingClientRect();
+    canvasW = r.width;  canvasH = r.height;
+    canvas.width  = Math.round(canvasW * dpr);
+    canvas.height = Math.round(canvasH * dpr);
+    ctx.scale(dpr, dpr);
+    /* 2:3 crop frame — centred, 85 % of canvas height */
+    cropH = canvasH * 0.85;
+    cropW = cropH * 2 / 3;
+    /* scale image so it covers the crop frame exactly */
+    scale = Math.max(cropW / img.width, cropH / img.height);
+    offsetX = 0; offsetY = 0; rotation = 0;
+    draw();
+  }
+
+  function draw(){
+    ctx.clearRect(0, 0, canvasW, canvasH);
+    /* image */
+    ctx.save();
+    ctx.translate(canvasW / 2 + offsetX, canvasH / 2 + offsetY);
+    ctx.rotate(rotation * Math.PI / 180);
+    ctx.drawImage(img, -img.width * scale / 2, -img.height * scale / 2, img.width * scale, img.height * scale);
+    ctx.restore();
+    /* dim overlay outside crop */
+    const x0 = (canvasW - cropW) / 2, y0 = (canvasH - cropH) / 2;
+    ctx.fillStyle = "rgba(0,0,0,0.52)";
+    ctx.fillRect(0,       0,       canvasW, y0);
+    ctx.fillRect(0,       y0+cropH, canvasW, canvasH - y0 - cropH);
+    ctx.fillRect(0,       y0,       x0,     cropH);
+    ctx.fillRect(x0+cropW, y0,      canvasW - x0 - cropW, cropH);
+    /* crop border */
+    ctx.strokeStyle = "rgba(255,255,255,0.9)";
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(x0, y0, cropW, cropH);
+    /* rule-of-thirds (subtle) */
+    ctx.strokeStyle = "rgba(255,255,255,0.2)";
+    ctx.lineWidth = 0.75;
+    for(let i = 1; i <= 2; i++){
+      ctx.beginPath(); ctx.moveTo(x0 + cropW*i/3, y0); ctx.lineTo(x0 + cropW*i/3, y0+cropH); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x0, y0 + cropH*i/3); ctx.lineTo(x0+cropW, y0 + cropH*i/3); ctx.stroke();
+    }
+  }
+
+  /* drag to pan */
+  let dragging = false, lastX = 0, lastY = 0;
+  canvas.addEventListener("pointerdown", e => {
+    dragging = true; lastX = e.clientX; lastY = e.clientY;
+    canvas.setPointerCapture(e.pointerId);
+    canvas.style.cursor = "grabbing";
   });
+  canvas.addEventListener("pointermove", e => {
+    if(!dragging) return;
+    offsetX += e.clientX - lastX; offsetY += e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    draw();
+  });
+  canvas.addEventListener("pointerup",     () => { dragging = false; canvas.style.cursor = "grab"; });
+  canvas.addEventListener("pointercancel", () => { dragging = false; canvas.style.cursor = "grab"; });
+
+  /* rotation buttons */
+  function rotBy(deg){ rotation = (rotation + deg) % 360; draw(); }
+  modal.querySelector("#crot-ccw90").onclick = () => rotBy(-90);
+  modal.querySelector("#crot-cw90").onclick  = () => rotBy(90);
+  modal.querySelector("#crot-m5").onclick    = () => rotBy(-5);
+  modal.querySelector("#crot-m1").onclick    = () => rotBy(-1);
+  modal.querySelector("#crot-p1").onclick    = () => rotBy(1);
+  modal.querySelector("#crot-p5").onclick    = () => rotBy(5);
+
+  modal.querySelector("#crop-reset").onclick = () => {
+    rotation = 0; offsetX = 0; offsetY = 0; draw();
+  };
+  modal.querySelector("#crop-cancel").onclick = () => modal.remove();
+
+  /* apply — render crop frame to output canvas */
+  modal.querySelector("#crop-apply").onclick = () => {
+    const OUTPUT_W = 400, OUTPUT_H = 600;
+    const outScale = OUTPUT_W / cropW; /* canvas px → output px */
+    const out = document.createElement("canvas");
+    out.width = OUTPUT_W; out.height = OUTPUT_H;
+    const outCtx = out.getContext("2d");
+    outCtx.translate(OUTPUT_W / 2, OUTPUT_H / 2);
+    outCtx.rotate(rotation * Math.PI / 180);
+    /* image centre in output space = offsetX*outScale, offsetY*outScale
+       (offset from crop-frame centre, which maps to output centre) */
+    outCtx.drawImage(img,
+      offsetX * outScale - img.width  * scale * outScale / 2,
+      offsetY * outScale - img.height * scale * outScale / 2,
+      img.width  * scale * outScale,
+      img.height * scale * outScale
+    );
+    const result = out.toDataURL("image/jpeg", 0.82);
+    out.width = 0; out.height = 0; img.src = "";
+    modal.remove();
+    onApply(result);
+  };
+
+  img.onload = () => requestAnimationFrame(initCanvas);
+  img.src = src;
 }
 
 function imgSrc(c){
@@ -1118,19 +1217,7 @@ function renderDetail(){
     </div>
     ${src ? `<img class="detail-photo" id="detail-photo" src="${esc(src)}" alt="" crossorigin="anonymous">` : `<div id="detail-photo-placeholder"></div>`}
     <div style="text-align:center;margin:-8px 0 12px">
-      <button class="btn btn-ghost" id="edit-cover-btn" style="font-size:12px;padding:5px 14px">✂️ Edit cover</button>
-    </div>
-    <div id="detail-edit-panel" style="display:none;margin-bottom:14px;padding:12px;border:1px solid var(--line);border-radius:6px;background:var(--panel)">
-      <img id="detail-pv" style="max-width:100%;max-height:240px;display:block;margin:0 auto 10px;border-radius:4px;object-fit:contain" alt="">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:10px">
-        <button class="photo-btn" id="det-rotate">↻ Rotate</button>
-        <button class="photo-btn" id="det-trim">✂️ Trim 2:3</button>
-        <button class="photo-btn ghost" id="det-undo" style="display:none">↩ Undo</button>
-      </div>
-      <div style="display:flex;gap:8px;justify-content:center">
-        <button class="btn btn-primary" id="det-save-photo" style="padding:8px 20px">✓ Save cover</button>
-        <button class="btn btn-ghost" id="det-cancel-photo">Cancel</button>
-      </div>
+      <button class="btn btn-ghost" id="edit-cover-btn" style="font-size:12px;padding:5px 14px">✂️ Crop cover</button>
     </div>
     <div class="detail-name" style="${pc?`color:${PUB_COLOURS[c.publisher]||"var(--ink)"}`:""}">${fl ? fireEmoji(c)+" " : ""}${esc(c.title||"Unknown")}${c.issueNumber ? ` <span style="color:var(--accent)">#${esc(c.issueNumber)}</span>` : ""}</div>
     <div class="detail-sub">${esc([c.publisher, c.year, c.era].filter(Boolean).join(" · "))}</div>
@@ -1340,85 +1427,31 @@ function renderDetail(){
     }
   };
 
-  /* ---- cover photo editing from detail view ---- */
-  let detOriginal = null;
-  let detTransform = { rotate: 0, trimmed: false };
-
-  const updateDetUndoBtn = () => {
-    const ub = document.getElementById("det-undo");
-    if(ub) ub.style.display = (detTransform.rotate !== 0 || detTransform.trimmed) ? "block" : "none";
-  };
-  const syncDetTrimBtn = () => {
-    const btn = document.getElementById("det-trim");
-    if(!btn) return;
-    btn.textContent    = detTransform.trimmed ? "✂️ Trimmed" : "✂️ Trim 2:3";
-    btn.style.color       = detTransform.trimmed ? "var(--accent)" : "";
-    btn.style.borderColor = detTransform.trimmed ? "var(--accent)" : "";
-  };
-
+  /* ---- crop cover from detail view — opens full-screen modal ---- */
   document.getElementById("edit-cover-btn").onclick = async () => {
-    /* get current photo — from in-memory cache, IndexedDB, or GitHub via canvas */
+    /* get current photo — in-memory cache, IndexedDB, or GitHub via canvas */
     let photoData = c._photoUrl;
     if(!photoData) photoData = await loadPhoto(c).catch(()=>null);
     if(!photoData && src){
-      /* photo is on GitHub — extract via canvas (already loaded in the page) */
       const el = document.getElementById("detail-photo");
       if(el && el.naturalWidth){ try{ photoData = imgToBase64(el); }catch(e){} }
     }
-    if(!photoData){ alert("No cover photo found — add one via Edit."); return; }
-    detOriginal   = photoData;
-    detTransform  = { rotate: 0, trimmed: false };
-    document.getElementById("detail-pv").src = detOriginal;
-    syncDetTrimBtn(); updateDetUndoBtn();
-    document.getElementById("detail-edit-panel").style.display = "block";
-    document.getElementById("edit-cover-btn").style.display   = "none";
-  };
-
-  document.getElementById("det-rotate").onclick = async () => {
-    if(!detOriginal) return;
-    detTransform.rotate = (detTransform.rotate + 90) % 360;
-    const nd = await applyEditTransforms(detOriginal, detTransform);
-    document.getElementById("detail-pv").src = nd;
-    updateDetUndoBtn();
-  };
-
-  document.getElementById("det-trim").onclick = async () => {
-    if(!detOriginal) return;
-    detTransform.trimmed = !detTransform.trimmed;
-    syncDetTrimBtn();
-    const nd = await applyEditTransforms(detOriginal, detTransform);
-    document.getElementById("detail-pv").src = nd;
-    updateDetUndoBtn();
-  };
-
-  document.getElementById("det-undo").onclick = () => {
-    if(!detOriginal) return;
-    detTransform = { rotate: 0, trimmed: false };
-    document.getElementById("detail-pv").src = detOriginal;
-    syncDetTrimBtn(); updateDetUndoBtn();
-  };
-
-  document.getElementById("det-save-photo").onclick = async () => {
-    if(!detOriginal) return;
-    const finalData = await applyEditTransforms(detOriginal, detTransform);
-    await savePhoto(c.id, finalData);
-    c._photoUrl = finalData;
-    /* update the main detail cover image in-place */
-    const dp = document.getElementById("detail-photo");
-    if(dp){ dp.src = finalData; }
-    else {
-      const ph = document.getElementById("detail-photo-placeholder");
-      if(ph){ const img = document.createElement("img"); img.className = "detail-photo"; img.id = "detail-photo"; img.alt = ""; img.crossOrigin = "anonymous"; img.src = finalData; ph.replaceWith(img); }
-    }
-    document.getElementById("detail-edit-panel").style.display = "none";
-    document.getElementById("edit-cover-btn").style.display    = "";
-    detOriginal = null;
-  };
-
-  document.getElementById("det-cancel-photo").onclick = () => {
-    document.getElementById("detail-edit-panel").style.display = "none";
-    document.getElementById("edit-cover-btn").style.display    = "";
-    detOriginal = null;
+    if(!photoData){ alert("No cover photo — add one via Edit first."); return; }
+    openCropEditor(photoData, async (result) => {
+      await savePhoto(c.id, result);
+      c._photoUrl = result;
+      const dp = document.getElementById("detail-photo");
+      if(dp){ dp.src = result; }
+      else {
+        const ph = document.getElementById("detail-photo-placeholder");
+        if(ph){
+          const img2 = document.createElement("img");
+          img2.className = "detail-photo"; img2.id = "detail-photo";
+          img2.alt = ""; img2.crossOrigin = "anonymous"; img2.src = result;
+          ph.replaceWith(img2);
+        }
+      }
+    });
   };
 }
 
@@ -1524,8 +1557,7 @@ Base on current market data, recent sales, and guide prices. Be research-grade a
 
 /* ================= add/edit form ================= */
 let pendingImage = null;
-let originalImage = null;                     /* unedited source — kept for undo during add/edit */
-let editTransform = { rotate: 0, trimmed: false }; /* current edit state for add/edit form */
+let originalImage = null; /* pre-crop snapshot — kept for one-level undo during add/edit */
 let pendingAiFields = {}; /* stash AI-only fields (marketValue, gradedValue, gradeCandidate, etc.) until save */
 function renderForm(){
   const c = editingId ? comics.find(x=>x.id===editingId) : {};
@@ -1547,8 +1579,7 @@ function renderForm(){
           </label>
         </div>
         <div class="photo-zone-row" id="edit-btns" style="display:none">
-          <button type="button" class="photo-btn" id="rotate-cw">↻ Rotate</button>
-          <button type="button" class="photo-btn" id="trim-sq">✂️ Trim</button>
+          <button type="button" class="photo-btn" id="crop-open-btn">✂️ Crop &amp; Rotate</button>
           <button type="button" class="photo-btn ghost" id="undo-edit" style="display:none">↩ Undo</button>
         </div>
         <div class="photo-zone-row">
@@ -1697,74 +1728,55 @@ function renderForm(){
     loadPhoto(c).then(data=>{
       if(!data) return;
       pendingImage = data;
-      originalImage = data; editTransform = { rotate: 0, trimmed: false }; /* always reset for this comic */
+      originalImage = null; /* stored photo is the baseline; no prior undo state */
       const pv = document.getElementById("pv");
       if(pv && !pv.src){ pv.src = data; pv.style.display = "block"; }
       showEditBtns(); updateUndoBtn();
     });
   }
 
-  /* photo edit helpers */
+  /* photo helpers */
   const showEditBtns = () => {
     const eb = document.getElementById("edit-btns");
     if(eb) eb.style.display = "flex";
   };
   const updateUndoBtn = () => {
     const ub = document.getElementById("undo-edit");
-    if(ub) ub.style.display = (editTransform.rotate !== 0 || editTransform.trimmed) ? "block" : "none";
-  };
-  const syncTrimBtn = () => {
-    const btn = document.getElementById("trim-sq");
-    if(!btn) return;
-    btn.textContent    = editTransform.trimmed ? "✂️ Trimmed" : "✂️ Trim";
-    btn.style.color       = editTransform.trimmed ? "var(--accent)" : "";
-    btn.style.borderColor = editTransform.trimmed ? "var(--accent)" : "";
+    if(ub) ub.style.display = originalImage ? "block" : "none";
   };
 
   const handlePhoto = async (file) => {
     if(!file) return;
     pendingImage = await resizeImage(file);
-    originalImage = pendingImage;                     /* capture original for undo */
-    editTransform = { rotate: 0, trimmed: false };
+    originalImage = null; /* fresh photo — nothing to undo yet */
     const pv = document.getElementById("pv");
     pv.src = pendingImage; pv.style.display = "block";
-    showEditBtns(); syncTrimBtn(); updateUndoBtn();
+    showEditBtns(); updateUndoBtn();
   };
   document.getElementById("cam").onchange = (e) => handlePhoto(e.target.files[0]);
   document.getElementById("gal").onchange = (e) => handlePhoto(e.target.files[0]);
 
-  /* show edit toolbar if a photo was already loaded (editing existing comic) */
-  if(pendingImage){
-    if(!originalImage){ originalImage = pendingImage; editTransform = { rotate: 0, trimmed: false }; }
-    showEditBtns(); syncTrimBtn(); updateUndoBtn();
-  }
+  /* show edit toolbar if photo already loaded (editing existing comic) */
+  if(pendingImage){ showEditBtns(); updateUndoBtn(); }
 
-  /* rotate 90° clockwise */
-  document.getElementById("rotate-cw").onclick = async () => {
-    if(!originalImage) return;
-    editTransform.rotate = (editTransform.rotate + 90) % 360;
-    pendingImage = await applyEditTransforms(originalImage, editTransform);
-    document.getElementById("pv").src = pendingImage;
-    updateUndoBtn();
+  /* open crop editor — saves pre-crop state for undo */
+  document.getElementById("crop-open-btn").onclick = () => {
+    if(!pendingImage) return;
+    openCropEditor(pendingImage, (result) => {
+      originalImage = pendingImage;   /* save pre-crop for undo */
+      pendingImage  = result;
+      document.getElementById("pv").src = pendingImage;
+      updateUndoBtn();
+    });
   };
 
-  /* toggle 2:3 trim */
-  document.getElementById("trim-sq").onclick = async () => {
-    if(!originalImage) return;
-    editTransform.trimmed = !editTransform.trimmed;
-    syncTrimBtn();
-    pendingImage = await applyEditTransforms(originalImage, editTransform);
-    document.getElementById("pv").src = pendingImage;
-    updateUndoBtn();
-  };
-
-  /* undo all edits — restore original */
+  /* undo last crop — restore pre-crop image */
   document.getElementById("undo-edit").onclick = () => {
     if(!originalImage) return;
-    editTransform = { rotate: 0, trimmed: false };
-    pendingImage = originalImage;
+    pendingImage  = originalImage;
+    originalImage = null;
     document.getElementById("pv").src = pendingImage;
-    syncTrimBtn(); updateUndoBtn();
+    updateUndoBtn();
   };
 
   /* identify */
@@ -1891,7 +1903,7 @@ function renderForm(){
           existing._photoUrl = pendingImage;
           existing.imageDirty = true;
         }
-        pendingImage = null; originalImage = null; editTransform = { rotate: 0, trimmed: false }; /* free memory */
+        pendingImage = null; originalImage = null; /* free memory */
         saveComics();
         editingId = null;
         tab = "detail"; detailId = existing.id; render();
@@ -1906,7 +1918,7 @@ function renderForm(){
           newComic._photoUrl = pendingImage;
           newComic.imageDirty = true;
         }
-        pendingImage = null; originalImage = null; editTransform = { rotate: 0, trimmed: false }; /* free memory */
+        pendingImage = null; originalImage = null; /* free memory */
         comics.push(newComic);
         saveComics();
         detailId = newComic.id; tab = "detail";
@@ -2658,7 +2670,7 @@ function setTab(t, restoreScroll){
 }
 document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click", ()=>{
   editingId = null;
-  pendingImage = null; originalImage = null; editTransform = { rotate: 0, trimmed: false };
+  pendingImage = null; originalImage = null;
   pendingAiFields = {}; /* free memory when leaving Add tab */
   setTab(b.dataset.tab);
 }));
