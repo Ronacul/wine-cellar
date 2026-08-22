@@ -225,6 +225,13 @@ h1{
 }
 .confetti{position:fixed; inset:0; pointer-events:none; z-index:1000}
 
+/* ================= fullscreen mode ================= */
+.app.fullscreen{position:fixed;inset:0;width:100vw;height:100vh;max-width:none;margin:0;padding:0;border-radius:0;z-index:9999}
+.app.fullscreen header{max-width:none}
+.app.fullscreen .board-wrap{max-width:100vw}
+.app.fullscreen .palette{max-width:100vw}
+.app.fullscreen #adminPanel{display:none}
+
 /* ================= toast ================= */
 .toast{
   position:fixed; left:50%; bottom:calc(var(--safe-b) + 28px); transform:translateX(-50%);
@@ -273,9 +280,10 @@ h1{
 }
 </style>
 
-<div class="app">
-<details id="adminPanel" style="width:100%;max-width:460px;margin-bottom:12px;padding:12px;background:var(--panel2);border-radius:9px;border:1px solid var(--line)">
-  <summary style="cursor:pointer;font-weight:600;font-size:12px;color:var(--ink-dim);user-select:none">⚙️ DEV ADMIN</summary>
+<div class="app" id="gameApp">
+<div style="width:100%;max-width:460px;display:flex;gap:6px;margin-bottom:12px">
+  <details id="adminPanel" style="flex:1;padding:12px;background:var(--panel2);border-radius:9px;border:1px solid var(--line)">
+    <summary style="cursor:pointer;font-weight:600;font-size:12px;color:var(--ink-dim);user-select:none">⚙️ DEV ADMIN</summary>
   <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
     <button id="btnResetTutorial" class="btn" style="background:var(--error)">Reset Tutorial (First Install)</button>
     <div style="display:flex;gap:6px;font-size:12px">
@@ -308,6 +316,8 @@ h1{
     </div>
   </div>
 </details>
+  <button id="btnFullscreen" style="padding:12px;background:var(--panel2);border:1px solid var(--line);border-radius:9px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;color:var(--ink-dim);transition:background .15s;width:44px;height:44px" title="Full screen">⛶</button>
+</div>
 
 <header>
   <div class="hdr-l">
@@ -326,14 +336,14 @@ h1{
 
 <div class="progress-bar" id="progressBar"></div>
 
-<!-- Ad Banner Top -->
-<div id="adBannerTop" style="width:100%;max-width:460px;height:60px;margin-bottom:12px;background:var(--panel2);border-radius:9px;border:2px dashed var(--line);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--ink-faint)">
-  📺 Banner Ad (728×90 / 320×50)
-</div>
-
 <div class="play">
   <div class="board-wrap"><div class="board" id="board"></div></div>
   <div class="palette pal-pad" id="palette"></div>
+</div>
+
+<!-- Ad Banner Bottom -->
+<div id="adBannerTop" style="width:100%;max-width:460px;height:60px;margin-top:12px;background:var(--panel2);border-radius:9px;border:2px dashed var(--line);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--ink-faint)">
+  📺 Banner Ad (728×90 / 320×50)
 </div>
 
 <!-- Ad Video Placeholder -->
@@ -1572,6 +1582,23 @@ document.getElementById("btnSkipAd").onclick = () => {
   document.getElementById("adVideoContainer").style.display = "none";
   document.getElementById("toggleAdVideo").checked = false;
   state.showAdVideo = false;
+};
+
+document.getElementById("btnFullscreen").onclick = () => {
+  const app = document.getElementById("gameApp");
+  app.classList.toggle("fullscreen");
+
+  if (app.classList.contains("fullscreen")){
+    document.getElementById("btnFullscreen").textContent = "⛶ ✕";
+    if (document.documentElement.requestFullscreen){
+      document.documentElement.requestFullscreen().catch(() => {});
+    }
+  } else {
+    document.getElementById("btnFullscreen").textContent = "⛶";
+    if (document.fullscreenElement){
+      document.exitFullscreen().catch(() => {});
+    }
+  }
 };
 
 /* ================= init ================= */
