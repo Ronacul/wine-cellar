@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chromoku — 7-Day Tutorial</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 16px;
+            padding-bottom: 120px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 24px;
+            margin-top: 16px;
+        }
+
+        h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+            background: linear-gradient(45deg, #00d4ff, #0099ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .day-info {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .day-badge {
+            background: rgba(0, 212, 255, 0.2);
+            border: 2px solid #00d4ff;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .mechanic-label {
+            background: rgba(255, 153, 0, 0.2);
+            border: 2px solid #ff9900;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+
+        .game-container {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(0, 212, 255, 0.3);
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 600px;
+            width: 100%;
+            backdrop-filter: blur(10px);
+            margin-bottom: 24px;
+        }
+
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            margin-bottom: 20px;
+            aspect-ratio: 1;
+        }
+
+        .cell {
+            aspect-ratio: 1;
+            border-radius: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: bold;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+        }
+
+        .cell:hover {
+            transform: scale(1.05);
+            border-color: rgba(255, 255, 255, 0.8);
+        }
+
+        .cell.selected {
+            border-color: #ffff00;
+            box-shadow: 0 0 12px rgba(255, 255, 0, 0.5);
+            transform: scale(1.08);
+        }
+
+        /* Color variants */
+        .cell.red { background: linear-gradient(135deg, #ff6b6b, #c92a2a); }
+        .cell.blue { background: linear-gradient(135deg, #4ecdc4, #1097a6); }
+        .cell.yellow { background: linear-gradient(135deg, #ffd93d, #ffb700); }
+        .cell.green { background: linear-gradient(135deg, #95e1d3, #38a169); }
+        .cell.purple { background: linear-gradient(135deg, #c77dff, #7209b7); }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            font-size: 14px;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .stat {
+            text-align: center;
+            background: rgba(0, 212, 255, 0.1);
+            padding: 8px 12px;
+            border-radius: 8px;
+            flex: 1;
+            min-width: 80px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #aaa;
+            text-transform: uppercase;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #00d4ff;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #00d4ff, #0099ff);
+            border: none;
+            color: #000;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 14px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 212, 255, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button.secondary {
+            background: rgba(0, 212, 255, 0.2);
+            color: #00d4ff;
+            border: 2px solid #00d4ff;
+        }
+
+        button.secondary:hover {
+            background: rgba(0, 212, 255, 0.3);
+        }
+
+        button.help {
+            background: rgba(255, 153, 0, 0.3);
+            color: #ff9900;
+            border: 2px solid #ff9900;
+        }
+
+        button.help:hover {
+            background: rgba(255, 153, 0, 0.4);
+        }
+
+        .day-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+            gap: 8px;
+            margin-top: 16px;
+            width: 100%;
+        }
+
+        .day-btn {
+            padding: 8px 12px;
+            font-size: 12px;
+            width: 100%;
+            background: rgba(0, 212, 255, 0.1);
+            color: #00d4ff;
+            border: 1px solid #00d4ff;
+        }
+
+        .day-btn.active {
+            background: linear-gradient(135deg, #00d4ff, #0099ff);
+            color: #000;
+        }
+
+        .day-btn.completed {
+            background: rgba(0, 200, 100, 0.2);
+            border-color: #00c864;
+            color: #00c864;
+        }
+
+        /* Banner Ad (Mock) */
+        .banner-ad {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to right, #333, #222);
+            border-top: 2px solid rgba(0, 212, 255, 0.3);
+            padding: 12px;
+            text-align: center;
+            font-size: 12px;
+            color: #aaa;
+            z-index: 100;
+        }
+
+        .banner-ad-content {
+            max-width: 728px;
+            margin: 0 auto;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1a1a2e;
+            border: 2px solid #00d4ff;
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 400px;
+            text-align: center;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal h2 {
+            color: #00d4ff;
+            margin-bottom: 16px;
+            font-size: 24px;
+        }
+
+        .modal p {
+            color: #ccc;
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+
+        .modal button {
+            width: 100%;
+        }
+
+        .tutorial-text {
+            background: rgba(0, 212, 255, 0.1);
+            border-left: 4px solid #00d4ff;
+            padding: 12px;
+            margin-top: 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            text-align: left;
+            line-height: 1.5;
+        }
+
+        .message {
+            background: rgba(0, 212, 255, 0.1);
+            border: 2px solid #00d4ff;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .message.success {
+            border-color: #00c864;
+            background: rgba(0, 200, 100, 0.1);
+            color: #00c864;
+        }
+
+        @media (max-width: 600px) {
+            .game-container {
+                padding: 16px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .cell {
+                font-size: 20px;
+            }
+
+            .day-info {
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .day-badge, .mechanic-label {
+                width: 100%;
+            }
+
+            button {
+                padding: 10px 16px;
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🎨 Chromoku</h1>
+        <p style="color: #aaa; font-size: 14px;">7-Day Tutorial • Tap to swap cells</p>
+    </header>
+
+    <div class="day-info">
+        <div class="day-badge">Day <span id="currentDay">1</span> of 7</div>
+        <div class="mechanic-label" id="mechanicLabel">Learn Color Matching</div>
+    </div>
+
+    <div class="game-container">
+        <div id="message" class="message" style="display: none;"></div>
+
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-label">Moves</div>
+                <div class="stat-value"><span id="moves">0</span>/<span id="maxMoves">10</span></div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Target</div>
+                <div class="stat-value" id="targetColor">Red</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Match %</div>
+                <div class="stat-value"><span id="matchPercent">0</span>%</div>
+            </div>
+        </div>
+
+        <div class="game-board" id="gameBoard"></div>
+
+        <div class="controls">
+            <button id="newGameBtn" onclick="newGame()">New Puzzle</button>
+            <button class="secondary" id="hintBtn" onclick="showHintModal()">Need Help?</button>
+            <button class="secondary" onclick="showTutorial()">How to Play</button>
+        </div>
+
+        <div class="day-selector" id="daySelector"></div>
+    </div>
+
+    <!-- Tutorial Modal -->
+    <div class="modal" id="tutorialModal">
+        <div class="modal-content">
+            <h2 id="tutorialTitle">Day 1: Basics</h2>
+            <p id="tutorialText">Tap adjacent cells to swap them.</p>
+            <div class="tutorial-text" id="tutorialHint"></div>
+            <button onclick="closeTutorial()">Got It!</button>
+        </div>
+    </div>
+
+    <!-- Hint Modal (Rewarded Video Mock) -->
+    <div class="modal" id="hintModal">
+        <div class="modal-content">
+            <h2>💡 Get a Hint</h2>
+            <p>Watch a 15-second ad to reveal one solution cell.</p>
+            <div style="background: rgba(0, 0, 0, 0.5); padding: 20px; margin: 16px 0; border-radius: 8px;">
+                <p style="font-size: 12px; color: #aaa; margin-bottom: 12px;">🎬 Rewarded Video Ad</p>
+                <div id="adTimer" style="font-size: 24px; font-weight: bold;">15</div>
+            </div>
+            <button onclick="watchAd()" style="background: linear-gradient(135deg, #ff9900, #ff6600);">Watch Ad (15s)</button>
+            <button class="secondary" onclick="closeHintModal()" style="margin-top: 12px;">Skip</button>
+        </div>
+    </div>
+
+    <!-- Banner Ad (Mock) -->
+    <div class="banner-ad">
+        <div class="banner-ad-content">
+            [Mock Google AdSense Banner — 728×90] • chromoku.dev
+        </div>
+    </div>
+
+    <script>
+        // Game state
+        const DAYS = [
+            {
+                day: 1,
+                title: "Learn Basics",
+                mechanic: "Color Matching",
+                size: 5,
+                colors: 2,
+                maxMoves: 10,
+                hint: "Tap adjacent cells to swap them. Make all cells the same color.",
+                tutorialText: "Welcome to Chromoku! Your goal is to make all cells the same color by tapping and swapping adjacent cells. You have 10 moves to solve it."
+            },
+            {
+                day: 2,
+                title: "Add Combos",
+                mechanic: "Multi-Color",
+                size: 5,
+                colors: 3,
+                maxMoves: 15,
+                hint: "With 3 colors, you need to plan ahead. Think strategically.",
+                tutorialText: "Now there are 3 colors! This makes it harder. Plan your moves carefully to get all cells to one color."
+            },
+            {
+                day: 3,
+                title: "Chain Reactions",
+                mechanic: "Cascades",
+                size: 5,
+                colors: 3,
+                maxMoves: 20,
+                hint: "Watch for cascades! Matched cells collapse and cause chain reactions.",
+                tutorialText: "When you match 3+ cells, they collapse and cells above fall down. This can create chain reactions. Use this to your advantage!"
+            },
+            {
+                day: 4,
+                title: "Time Pressure",
+                mechanic: "Speed Challenge",
+                size: 5,
+                colors: 4,
+                maxMoves: 25,
+                hint: "Work faster! Each puzzle solved quickly earns bonus points.",
+                tutorialText: "Day 4 introduces timed challenges. Solve puzzles under pressure and earn bonuses for speed.",
+                disabled: true
+            },
+            {
+                day: 5,
+                title: "Multipliers",
+                mechanic: "Scoring",
+                size: 5,
+                colors: 4,
+                maxMoves: 30,
+                hint: "Strategic moves score more points. Look for combo opportunities.",
+                tutorialText: "Now scoring matters! Each move has a point value. Use combos to multiply your score.",
+                disabled: true
+            },
+            {
+                day: 6,
+                title: "Spatial Patterns",
+                mechanic: "Pattern Matching",
+                size: 5,
+                colors: 4,
+                maxMoves: 35,
+                hint: "Some cells must match specific patterns, not just colors.",
+                tutorialText: "Advanced: Certain cells must form specific shapes or patterns. Match the pattern shown at the top.",
+                disabled: true
+            },
+            {
+                day: 7,
+                title: "Master Test",
+                mechanic: "All Skills",
+                size: 5,
+                colors: 4,
+                maxMoves: 40,
+                hint: "Combine everything you've learned. Speed, strategy, and pattern recognition.",
+                tutorialText: "Final day! Use all skills learned this week: matching, cascades, speed, scoring, and patterns. Ready to unlock Classic Levels?",
+                disabled: true
+            }
+        ];
+
+        let currentDayIndex = 0;
+        let gameBoard = [];
+        let selectedCell = null;
+        let moves = 0;
+        let puzzleSolved = false;
+
+        const colorMap = ['red', 'blue', 'yellow', 'green', 'purple'];
+
+        function getCurrentDay() {
+            return DAYS[currentDayIndex];
+        }
+
+        function initGame() {
+            const day = getCurrentDay();
+            moves = 0;
+            selectedCell = null;
+            puzzleSolved = false;
+
+            // Generate random board
+            gameBoard = [];
+            for (let i = 0; i < day.size * day.size; i++) {
+                gameBoard.push(colorMap[Math.floor(Math.random() * day.colors)]);
+            }
+
+            renderBoard();
+            updateStats();
+            updateDaySelector();
+
+            // Show tutorial on first day or when skipping
+            if (currentDayIndex === 0) {
+                setTimeout(showTutorial, 500);
+            }
+        }
+
+        function renderBoard() {
+            const day = getCurrentDay();
+            const boardEl = document.getElementById('gameBoard');
+            boardEl.innerHTML = '';
+            boardEl.style.gridTemplateColumns = `repeat(${day.size}, 1fr)`;
+
+            gameBoard.forEach((color, idx) => {
+                const cell = document.createElement('div');
+                cell.className = `cell ${color}`;
+                cell.innerHTML = idx; // Debug: show index
+                cell.onclick = () => selectCell(idx);
+                boardEl.appendChild(cell);
+            });
+        }
+
+        function selectCell(idx) {
+            if (puzzleSolved || getCurrentDay().disabled) return;
+
+            if (selectedCell === null) {
+                selectedCell = idx;
+                renderBoard();
+                highlightCell(idx);
+            } else if (selectedCell === idx) {
+                selectedCell = null;
+                renderBoard();
+            } else if (isAdjacent(selectedCell, idx)) {
+                swapCells(selectedCell, idx);
+                selectedCell = null;
+                moves++;
+                renderBoard();
+                updateStats();
+                checkWin();
+            } else {
+                selectedCell = idx;
+                renderBoard();
+                highlightCell(idx);
+            }
+        }
+
+        function isAdjacent(a, b) {
+            const day = getCurrentDay();
+            const size = day.size;
+            const aRow = Math.floor(a / size), aCol = a % size;
+            const bRow = Math.floor(b / size), bCol = b % size;
+            const dist = Math.abs(aRow - bRow) + Math.abs(aCol - bCol);
+            return dist === 1;
+        }
+
+        function swapCells(a, b) {
+            [gameBoard[a], gameBoard[b]] = [gameBoard[b], gameBoard[a]];
+        }
+
+        function highlightCell(idx) {
+            const cells = document.querySelectorAll('.cell');
+            cells[idx].classList.add('selected');
+        }
+
+        function updateStats() {
+            const day = getCurrentDay();
+            const colors = [...new Set(gameBoard)];
+            const targetColor = colors[0];
+            const matchCount = gameBoard.filter(c => c === targetColor).length;
+            const matchPercent = Math.round((matchCount / gameBoard.length) * 100);
+
+            document.getElementById('moves').textContent = moves;
+            document.getElementById('maxMoves').textContent = day.maxMoves;
+            document.getElementById('targetColor').textContent = targetColor.charAt(0).toUpperCase() + targetColor.slice(1);
+            document.getElementById('matchPercent').textContent = matchPercent;
+        }
+
+        function checkWin() {
+            const day = getCurrentDay();
+            const colors = [...new Set(gameBoard)];
+
+            if (colors.length === 1 && moves <= day.maxMoves) {
+                puzzleSolved = true;
+                showMessage(`🎉 Day ${day.day} Complete! Moves: ${moves}`, 'success');
+            } else if (moves >= day.maxMoves) {
+                showMessage(`❌ Out of moves! Try again.`, 'fail');
+            }
+        }
+
+        function showMessage(text, type = 'info') {
+            const msgEl = document.getElementById('message');
+            msgEl.textContent = text;
+            msgEl.className = `message ${type}`;
+            msgEl.style.display = 'block';
+            setTimeout(() => msgEl.style.display = 'none', 3000);
+        }
+
+        function newGame() {
+            initGame();
+            showMessage('New puzzle!');
+        }
+
+        function showTutorial() {
+            const day = getCurrentDay();
+            document.getElementById('tutorialTitle').textContent = `Day ${day.day}: ${day.title}`;
+            document.getElementById('tutorialText').textContent = day.tutorialText;
+            document.getElementById('tutorialHint').textContent = `Mechanic: ${day.mechanic}`;
+            document.getElementById('tutorialModal').classList.add('active');
+        }
+
+        function closeTutorial() {
+            document.getElementById('tutorialModal').classList.remove('active');
+        }
+
+        function showHintModal() {
+            if (getCurrentDay().disabled) {
+                showMessage('This day is locked. Complete earlier days first!');
+                return;
+            }
+            document.getElementById('hintModal').classList.add('active');
+            startAdTimer();
+        }
+
+        function closeHintModal() {
+            document.getElementById('hintModal').classList.remove('active');
+        }
+
+        function startAdTimer() {
+            let time = 15;
+            document.getElementById('adTimer').textContent = time;
+            const interval = setInterval(() => {
+                time--;
+                document.getElementById('adTimer').textContent = time;
+                if (time <= 0) {
+                    clearInterval(interval);
+                    document.querySelector('#hintModal button').innerHTML = 'Ad Complete!';
+                }
+            }, 1000);
+        }
+
+        function watchAd() {
+            showMessage('💡 Hint: Look for the most common color!');
+            closeHintModal();
+        }
+
+        function updateDaySelector() {
+            const selector = document.getElementById('daySelector');
+            selector.innerHTML = '';
+
+            DAYS.forEach((day, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'day-btn';
+                if (idx < currentDayIndex) btn.classList.add('completed');
+                if (idx === currentDayIndex) btn.classList.add('active');
+                if (day.disabled) btn.disabled = true;
+
+                btn.textContent = `Day ${day.day}`;
+                btn.onclick = () => {
+                    if (!day.disabled) {
+                        currentDayIndex = idx;
+                        document.getElementById('currentDay').textContent = day.day;
+                        document.getElementById('mechanicLabel').textContent = day.mechanic;
+                        initGame();
+                    }
+                };
+
+                selector.appendChild(btn);
+            });
+        }
+
+        // Initialize
+        window.addEventListener('load', initGame);
+    </script>
+</body>
+</html>
