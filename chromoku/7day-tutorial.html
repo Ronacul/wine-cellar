@@ -1,706 +1,1103 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="theme-color" content="#f7f7f8">
-    <title>Chromoku — 7-Day Tutorial</title>
-    <style>
-        :root {
-            --bg: #f7f7f8;
-            --panel: #fff;
-            --panel2: #eeeef2;
-            --ink: #17172b;
-            --ink-dim: #63637a;
-            --ink-faint: #9c9caf;
-            --line: rgba(0,0,0,.10);
-            --line-2: rgba(0,0,0,.18);
-            --cell: #fff;
-            --board: rgba(0,0,0,.14);
-            --shadow: 0 1px 2px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.06);
-            --teal: #17a2b8;
-            --orange: #fd7e14;
-            --ok: #7da87b;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            :root:not([data-theme="light"]) {
-                --bg: #14141f;
-                --panel: #1e1e2e;
-                --panel2: #282838;
-                --ink: #ececf4;
-                --ink-dim: #9a9ab2;
-                --ink-faint: #63637a;
-                --line: rgba(255,255,255,.11);
-                --line-2: rgba(255,255,255,.20);
-                --cell: #252537;
-                --board: rgba(255,255,255,.16);
-                --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.25);
-            }
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            background: var(--bg);
-            color: var(--ink);
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            -webkit-font-smoothing: antialiased;
-            -webkit-tap-highlight-color: transparent;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 8px 12px 12px;
-        }
-
-        header {
-            width: 100%;
-            max-width: 460px;
-            text-align: center;
-            padding-bottom: 10px;
-            border-bottom: 1px solid var(--line);
-            margin-bottom: 14px;
-        }
-
-        h1 {
-            font-size: 19px;
-            font-weight: 800;
-            letter-spacing: -0.03em;
-            line-height: 1.1;
-        }
-
-        .sub {
-            font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
-            font-size: 10px;
-            color: var(--ink-faint);
-            text-align: center;
-            letter-spacing: 0.06em;
-            text-transform: uppercase;
-            margin-top: 2px;
-        }
-
-        .day-info {
-            width: 100%;
-            max-width: 460px;
-            display: flex;
-            gap: 8px;
-            justify-content: center;
-            align-items: center;
-            margin-bottom: 16px;
-            flex-wrap: wrap;
-        }
-
-        .day-badge {
-            background: var(--panel2);
-            padding: 6px 14px;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--ink-dim);
-        }
-
-        .day-badge .num {
-            color: var(--ink);
-            font-weight: 800;
-        }
-
-        .mechanic-label {
-            background: var(--panel2);
-            padding: 6px 14px;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--ink-dim);
-        }
-
-        .game-container {
-            width: 100%;
-            max-width: 460px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 20px;
-        }
-
-        .stats {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            flex-wrap: wrap;
-            width: 100%;
-        }
-
-        .stat {
-            text-align: center;
-            background: var(--panel2);
-            padding: 8px 14px;
-            border-radius: 8px;
-            flex: 0 1 auto;
-        }
-
-        .stat-label {
-            font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
-            font-size: 9px;
-            color: var(--ink-faint);
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-            margin-bottom: 2px;
-        }
-
-        .stat-value {
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--ink);
-            font-variant-numeric: tabular-nums;
-        }
-
-        .board-wrap {
-            width: 100%;
-            max-width: min(86vw, 360px);
-        }
-
-        .board {
-            display: grid;
-            gap: 12px;
-            aspect-ratio: 1;
-            padding: 12px;
-            background: var(--board);
-            border-radius: 18px;
-        }
-
-        .board.size-5 {
-            grid-template-columns: repeat(5, 1fr);
-        }
-
-        .board.size-7 {
-            grid-template-columns: repeat(7, 1fr);
-        }
-
-        .cell {
-            position: relative;
-            background: var(--cell);
-            border-radius: 8px;
-            aspect-ratio: 1;
-            cursor: pointer;
-            transition: background 0.12s, box-shadow 0.12s;
-            box-shadow: var(--shadow);
-        }
-
-        .cell:hover {
-            background: var(--panel2);
-        }
-
-        .cell.selected {
-            box-shadow: 0 0 0 3px var(--bg), 0 0 0 6px var(--teal);
-        }
-
-        .fill {
-            position: absolute;
-            inset: 0;
-            border-radius: 12px;
-            background: var(--c);
-            transition: background 0.12s;
-        }
-
-        .cell.given .fill {
-            border-radius: 2px;
-        }
-
-        /* Colour swatches */
-        .palette {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            justify-content: center;
-            width: 100%;
-        }
-
-        .swatch {
-            flex: 0 0 auto;
-            width: 50px;
-            height: 50px;
-            border-radius: 14px;
-            background: var(--c);
-            cursor: pointer;
-            transition: transform 0.12s, box-shadow 0.12s;
-            box-shadow: var(--shadow);
-            border: none;
-            padding: 0;
-        }
-
-        .swatch:active {
-            transform: scale(0.93);
-        }
-
-        .swatch.on {
-            box-shadow: 0 0 0 3px var(--bg), 0 0 0 6px var(--c);
-            transform: scale(1.06);
-        }
-
-        .controls {
-            display: flex;
-            gap: 8px;
-            justify-content: center;
-            flex-wrap: wrap;
-            width: 100%;
-        }
-
-        button {
-            font-family: inherit;
-            font-size: 13px;
-            font-weight: 600;
-            padding: 10px 16px;
-            border-radius: 10px;
-            background: var(--ink);
-            color: var(--bg);
-            border: none;
-            cursor: pointer;
-            transition: opacity 0.15s;
-        }
-
-        button:hover {
-            opacity: 0.85;
-        }
-
-        button.secondary {
-            background: var(--panel2);
-            color: var(--ink-dim);
-        }
-
-        button.secondary:hover {
-            background: var(--panel);
-            color: var(--ink);
-        }
-
-        .day-selector {
-            display: flex;
-            gap: 6px;
-            justify-content: center;
-            flex-wrap: wrap;
-            width: 100%;
-        }
-
-        .day-btn {
-            font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
-            font-size: 12px;
-            font-weight: 600;
-            padding: 8px 12px;
-            background: var(--panel2);
-            color: var(--ink-dim);
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background 0.15s, color 0.15s;
-        }
-
-        .day-btn:hover:not(:disabled) {
-            background: var(--panel);
-            color: var(--ink);
-        }
-
-        .day-btn.active {
-            background: var(--ink);
-            color: var(--bg);
-        }
-
-        .day-btn.completed {
-            background: var(--ok);
-            color: white;
-        }
-
-        .day-btn:disabled {
-            opacity: 0.35;
-            cursor: default;
-        }
-
-        .message {
-            text-align: center;
-            font-size: 14px;
-            padding: 10px 14px;
-            border-radius: 8px;
-            background: var(--panel2);
-            color: var(--ink);
-            display: none;
-            width: 100%;
-        }
-
-        .message.show {
-            display: block;
-        }
-
-        .message.success {
-            background: var(--ok);
-            color: white;
-        }
-
-        /* Modal */
-        .overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.45);
-            z-index: 50;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
-        .overlay.show {
-            display: flex;
-        }
-
-        .modal {
-            background: var(--panel);
-            border-radius: 18px;
-            padding: 24px 22px;
-            width: 100%;
-            max-width: 360px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
-            animation: slideIn 0.3s ease;
-        }
-
-        @keyframes slideIn {
-            from {
-                transform: translateY(-30px);
-                opacity: 0;
-            }
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
-        }
-
-        .modal h2 {
-            font-size: 20px;
-            font-weight: 800;
-            letter-spacing: -0.02em;
-            margin-bottom: 4px;
-        }
-
-        .modal-text {
-            font-size: 13px;
-            color: var(--ink-dim);
-            line-height: 1.55;
-            margin-bottom: 16px;
-        }
-
-        .modal button {
-            width: 100%;
-            margin-top: 8px;
-        }
-
-        @media (max-width: 600px) {
-            h1 {
-                font-size: 18px;
-            }
-
-            .stat {
-                flex: 1;
-                min-width: 80px;
-            }
-
-            button {
-                font-size: 12px;
-                padding: 9px 14px;
-            }
-        }
-    </style>
-</head>
-<body>
-    <header>
-        <h1>Chromoku</h1>
-        <p class="sub">7-Day Tutorial</p>
-    </header>
-
-    <div class="day-info">
-        <div class="day-badge">Day <span class="num" id="currentDay">1</span> of 7</div>
-        <div class="mechanic-label" id="mechanicLabel">Learn Basics</div>
-    </div>
-
-    <div class="game-container">
-        <div id="message" class="message"></div>
-
-        <div class="stats">
-            <div class="stat">
-                <div class="stat-label">Moves</div>
-                <div class="stat-value"><span id="moves">0</span>/<span id="maxMoves">10</span></div>
-            </div>
-            <div class="stat">
-                <div class="stat-label">Filled</div>
-                <div class="stat-value"><span id="matchPercent">0</span>%</div>
-            </div>
-        </div>
-
-        <div class="board-wrap">
-            <div class="board size-5" id="gameBoard"></div>
-        </div>
-
-        <div class="palette" id="palette"></div>
-
-        <div class="controls">
-            <button onclick="newGame()">New Puzzle</button>
-            <button class="secondary" onclick="showTutorial()">How to Play</button>
-        </div>
-
-        <div class="day-selector" id="daySelector"></div>
-    </div>
-
-    <!-- Tutorial Modal -->
-    <div class="overlay" id="tutorialOverlay">
-        <div class="modal">
-            <h2 id="tutorialTitle">Day 1: Basics</h2>
-            <div class="modal-text" id="tutorialText">Tap a colour swatch, then tap cells to fill them.</div>
-            <div class="modal-text" style="font-size: 12px; color: var(--ink-faint);" id="tutorialHint"></div>
-            <button onclick="closeTutorial()">Got it</button>
-        </div>
-    </div>
-
-    <script>
-        const DAYS = [
-            {
-                day: 1,
-                title: "Basics",
-                mechanic: "Learn Basics",
-                size: 5,
-                colors: 2,
-                maxMoves: 10,
-                hint: "Tap a colour, then tap cells to fill them. Make all cells the same colour.",
-                tutorialText: "Welcome to Chromoku! Tap a colour swatch at the bottom, then tap cells to fill them. Your goal is to make all cells the same colour within your move limit."
-            },
-            {
-                day: 2,
-                title: "Three Colours",
-                mechanic: "Strategic Thinking",
-                size: 5,
-                colors: 3,
-                maxMoves: 15,
-                hint: "With three colours, plan your moves. Which colour order gets you there fastest?",
-                tutorialText: "Now there are three colours! This requires more strategy. Think ahead: which sequence of colours will reach the goal?"
-            },
-            {
-                day: 3,
-                title: "Patterns",
-                mechanic: "Pattern Recognition",
-                size: 5,
-                colors: 3,
-                maxMoves: 20,
-                hint: "Look for colour patterns. Which cells cluster together?",
-                tutorialText: "Patterns matter. Some colour layouts are trickier than others. Look for clusters and adjacencies."
-            },
-            {
-                day: 4,
-                title: "Complexity",
-                mechanic: "Harder Puzzles",
-                size: 5,
-                colors: 4,
-                maxMoves: 25,
-                hint: "Four colours make this trickier. Think several moves ahead.",
-                tutorialText: "Things get harder. Four colours means more combinations to consider.",
-                disabled: true
-            },
-            {
-                day: 5,
-                title: "Large Grids",
-                mechanic: "Bigger Boards",
-                size: 7,
-                colors: 4,
-                maxMoves: 30,
-                hint: "Larger grids change the strategy. Corners vs edges matter more.",
-                tutorialText: "This puzzle is bigger (7×7). Larger boards need different thinking.",
-                disabled: true
-            },
-            {
-                day: 6,
-                title: "Many Colours",
-                mechanic: "Mastering Variety",
-                size: 7,
-                colors: 5,
-                maxMoves: 40,
-                hint: "Five colours on a 7×7 grid. Advanced strategy required.",
-                tutorialText: "Five colours and a large grid. This is where expert play shines.",
-                disabled: true
-            },
-            {
-                day: 7,
-                title: "Mastery",
-                mechanic: "Master Challenge",
-                size: 7,
-                colors: 5,
-                maxMoves: 45,
-                hint: "The ultimate challenge. Use everything you've learned.",
-                tutorialText: "Your final test. Combine everything: strategy, pattern recognition, and speed.",
-                disabled: true
-            }
-        ];
-
-        let currentDayIndex = 0;
-        let gameBoard = [];
-        let selectedColor = null;
-        let moves = 0;
-        let puzzleSolved = false;
-
-        const colorMap = {
-            0: { name: "Teal", hex: "#17a2b8", var: "--teal" },
-            1: { name: "Orange", hex: "#fd7e14", var: "--orange" },
-            2: { name: "Green", hex: "#28a745", var: "--ok" },
-            3: { name: "Purple", hex: "#6f42c1", var: "--purple" },
-            4: { name: "Red", hex: "#dc3545", var: "--red" }
-        };
-
-        function getCurrentDay() {
-            return DAYS[currentDayIndex];
-        }
-
-        function initGame() {
-            const day = getCurrentDay();
-            moves = 0;
-            selectedColor = null;
-            puzzleSolved = false;
-
-            gameBoard = [];
-            for (let i = 0; i < day.size * day.size; i++) {
-                gameBoard.push(Math.floor(Math.random() * day.colors));
-            }
-
-            renderBoard();
-            renderPalette();
-            updateStats();
-            updateDaySelector();
-
-            if (currentDayIndex === 0) {
-                setTimeout(showTutorial, 500);
-            }
-        }
-
-        function renderBoard() {
-            const day = getCurrentDay();
-            const boardEl = document.getElementById('gameBoard');
-            boardEl.innerHTML = '';
-            boardEl.className = `board size-${day.size}`;
-
-            gameBoard.forEach((colorIdx, idx) => {
-                const cell = document.createElement('div');
-                cell.className = 'cell';
-                const fill = document.createElement('div');
-                fill.className = 'fill';
-                fill.style.setProperty('--c', colorMap[colorIdx].hex);
-                cell.appendChild(fill);
-                cell.onclick = () => fillCell(idx);
-                boardEl.appendChild(cell);
-            });
-        }
-
-        function renderPalette() {
-            const day = getCurrentDay();
-            const paletteEl = document.getElementById('palette');
-            paletteEl.innerHTML = '';
-
-            for (let i = 0; i < day.colors; i++) {
-                const swatch = document.createElement('button');
-                swatch.className = 'swatch';
-                swatch.style.setProperty('--c', colorMap[i].hex);
-                if (selectedColor === i) swatch.classList.add('on');
-                swatch.onclick = () => selectColor(i);
-                paletteEl.appendChild(swatch);
-            }
-        }
-
-        function selectColor(idx) {
-            if (puzzleSolved || getCurrentDay().disabled) return;
-            selectedColor = selectedColor === idx ? null : idx;
-            renderPalette();
-        }
-
-        function fillCell(idx) {
-            if (selectedColor === null || puzzleSolved || getCurrentDay().disabled) return;
-            if (gameBoard[idx] === selectedColor) return;
-
-            gameBoard[idx] = selectedColor;
-            moves++;
-            renderBoard();
-            updateStats();
-            checkWin();
-        }
-
-        function updateStats() {
-            const day = getCurrentDay();
-            const filledCount = gameBoard.filter(c => c === gameBoard[0]).length;
-            const fillPercent = Math.round((filledCount / gameBoard.length) * 100);
-
-            document.getElementById('moves').textContent = moves;
-            document.getElementById('maxMoves').textContent = day.maxMoves;
-            document.getElementById('matchPercent').textContent = fillPercent;
-        }
-
-        function checkWin() {
-            const day = getCurrentDay();
-            const allSame = gameBoard.every(c => c === gameBoard[0]);
-
-            if (allSame && moves <= day.maxMoves) {
-                puzzleSolved = true;
-                showMessage(`🎉 Day ${day.day} Complete! (${moves} moves)`, 'success');
-            } else if (moves >= day.maxMoves) {
-                showMessage(`Out of moves. Try again?`, 'fail');
-            }
-        }
-
-        function showMessage(text, type = '') {
-            const msgEl = document.getElementById('message');
-            msgEl.textContent = text;
-            msgEl.className = `message show ${type}`;
-            setTimeout(() => msgEl.classList.remove('show'), 3000);
-        }
-
-        function newGame() {
-            initGame();
-            showMessage('New puzzle!');
-        }
-
-        function showTutorial() {
-            const day = getCurrentDay();
-            document.getElementById('tutorialTitle').textContent = `Day ${day.day}: ${day.title}`;
-            document.getElementById('tutorialText').textContent = day.tutorialText;
-            document.getElementById('tutorialHint').textContent = day.mechanic;
-            document.getElementById('tutorialOverlay').classList.add('show');
-        }
-
-        function closeTutorial() {
-            document.getElementById('tutorialOverlay').classList.remove('show');
-        }
-
-        function updateDaySelector() {
-            const selector = document.getElementById('daySelector');
-            selector.innerHTML = '';
-
-            DAYS.forEach((day, idx) => {
-                const btn = document.createElement('button');
-                btn.className = 'day-btn';
-                btn.textContent = `Day ${day.day}`;
-
-                if (idx < currentDayIndex) btn.classList.add('completed');
-                if (idx === currentDayIndex) btn.classList.add('active');
-                if (day.disabled) btn.disabled = true;
-
-                btn.onclick = () => {
-                    if (!day.disabled) {
-                        currentDayIndex = idx;
-                        document.getElementById('currentDay').textContent = day.day;
-                        document.getElementById('mechanicLabel').textContent = day.mechanic;
-                        initGame();
-                    }
-                };
-
-                selector.appendChild(btn);
-            });
-        }
-
-        window.addEventListener('load', initGame);
-    </script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#f7f7f8">
+<title>Chromoku 7-Day Tutorial</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<meta name="description" content="Learn Chromoku in 7 days — one puzzle per day.">
+<style>
+/* ================= tokens ================= */
+:root{
+  --bg:#f7f7f8; --panel:#fff; --panel2:#eeeef2;
+  --ink:#17172b; --ink-dim:#63637a; --ink-faint:#9c9caf;
+  --line:rgba(0,0,0,.10); --line-2:rgba(0,0,0,.18);
+  --cell:#fff; --cell-given:#e9e9f0; --board:rgba(0,0,0,.14);
+  --ring:#17172b; --shadow:0 1px 2px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.06);
+  --error:#e74c3c;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  --safe-b:env(safe-area-inset-bottom,0px);
+  --safe-t:env(safe-area-inset-top,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#14141f; --panel:#1e1e2e; --panel2:#282838;
+    --ink:#ececf4; --ink-dim:#9a9ab2; --ink-faint:#63637a;
+    --line:rgba(255,255,255,.11); --line-2:rgba(255,255,255,.20);
+    --cell:#252537; --cell-given:#32324a; --board:rgba(255,255,255,.16);
+    --ring:#ececf4; --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#14141f; --panel:#1e1e2e; --panel2:#282838;
+  --ink:#ececf4; --ink-dim:#9a9ab2; --ink-faint:#63637a;
+  --line:rgba(255,255,255,.11); --line-2:rgba(255,255,255,.20);
+  --cell:#252537; --cell-given:#32324a; --board:rgba(255,255,255,.16);
+  --ring:#ececf4; --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.25);
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink)}
+.app{
+  min-height:100vh; width:100%;
+  background:var(--bg); color:var(--ink); font-family:var(--sans);
+  -webkit-font-smoothing:antialiased; -webkit-tap-highlight-color:transparent;
+  display:flex; flex-direction:column; align-items:center;
+  padding:calc(var(--safe-t) + 8px) 12px calc(var(--safe-b) + 12px);
+}
+button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer}
+
+/* ================= header ================= */
+header{
+  width:100%; max-width:460px; display:grid;
+  grid-template-columns:1fr auto 1fr; align-items:center; gap:8px;
+  padding-bottom:10px; border-bottom:1px solid var(--line); margin-bottom:14px;
+}
+.hdr-l{display:flex;gap:2px}
+.hdr-r{display:flex;gap:2px;justify-content:flex-end;align-items:center}
+h1{
+  font-size:19px; font-weight:800; letter-spacing:-.03em; text-align:center;
+  line-height:1.1;
+}
+.sub{
+  font-family:var(--mono); font-size:10px; color:var(--ink-faint);
+  text-align:center; letter-spacing:.06em; text-transform:uppercase; margin-top:2px;
+}
+.icon-btn{
+  width:34px; height:34px; border-radius:9px; font-size:15px; color:var(--ink-dim);
+  display:grid; place-items:center; transition:background .15s,color .15s;
+}
+.icon-btn:hover{background:var(--panel2); color:var(--ink)}
+.icon-btn[disabled]{opacity:.35; cursor:default}
+.icon-btn[disabled]:hover{background:transparent; color:var(--ink-dim)}
+
+/* ================= progress bar ================= */
+.progress-bar{
+  width:100%; max-width:460px; display:flex; gap:4px; margin-bottom:12px;
+}
+.progress-step{
+  flex:1; height:4px; border-radius:2px; background:var(--line);
+  transition:background .3s;
+}
+.progress-step.done{background:#c9a227}
+.progress-step.current{background:var(--ink); animation:pulse-progress .8s infinite alternate}
+.progress-step.upcoming{background:var(--line-2)}
+@keyframes pulse-progress{from{opacity:1}to{opacity:.6}}
+
+/* ================= board ================= */
+.play{
+  flex:1; width:100%; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:26px;
+}
+.board-wrap{width:100%; max-width:min(86vw,360px)}
+.board{
+  display:grid; gap:var(--bgap,12px); aspect-ratio:1; padding:var(--bgap,12px);
+  background:var(--board); border-radius:18px;
+}
+.box{display:grid; gap:var(--cgap,4px)}
+.cell{
+  position:relative; background:var(--cell); border-radius:var(--crad,8px);
+  transition:background .12s;
+}
+.cell:not(.given){cursor:pointer}
+.cell:not(.given):hover{background:var(--panel2)}
+.fill{position:absolute; inset:0; border-radius:12px; background:var(--c)}
+.fill.pat{box-shadow:inset 0 0 0 1.5px var(--line-2)}
+.cell.given{background:var(--cell-given)}
+.cell.given .fill{border-radius:2px}
+.board.done .fill{border-radius:2px; transition:border-radius .25s}
+.board.dbl .fill{
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite:exclude;
+  padding:22%;
+}
+.dot{
+  position:absolute; inset:22%; border-radius:6px; background:var(--c);
+  box-shadow:0 0 0 2px rgba(0,0,0,.28),0 0 0 3.5px var(--cell-given);
+}
+.board.dbl .dot{
+  inset:26%; border-radius:3px;
+  box-shadow:none;
+}
+.dot.given{border-radius:0}
+.board.done .dot{border-radius:0; transition:border-radius .25s}
+
+/* ================= palette ================= */
+.palette{display:flex; flex-direction:column; gap:26px; align-items:stretch;
+  width:100%; max-width:min(86vw,360px)}
+.palette.tight{gap:10px}
+.prow{display:flex; gap:clamp(5px,1.5vw,8px); align-items:center; flex-wrap:nowrap}
+.prow.wrap{gap:clamp(4px,1.2vw,7px)}
+.swatch.spacer{background:none; box-shadow:none; visibility:hidden; pointer-events:none}
+.swatch.inner{background:transparent; border-radius:7px; box-shadow:var(--shadow)}
+.swatch.inner::after{content:""; position:absolute; inset:26%; border-radius:3px;
+  background:var(--c)}
+.swatch.donut{
+  border-radius:4px;
+  -webkit-mask:
+    linear-gradient(#000 0 0) center/46% 46% no-repeat,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;
+  mask:
+    linear-gradient(#000 0 0) center/46% 46% no-repeat,
+    linear-gradient(#000 0 0);
+  mask-composite:exclude;
+}
+.swatch.inner{border-radius:4px}
+.palette.dbl-pal{gap:6px}
+.palette.dbl-pal .prow,
+.palette.dbl-pal .prow.wrap{gap:clamp(3px,0.8vw,5px)}
+.swatch.inner.on{box-shadow:0 0 0 3px var(--bg),0 0 0 6px var(--c); transform:scale(1.06); z-index:1}
+.swatch{
+  flex:1 1 0; min-width:0; aspect-ratio:1; border-radius:14px; background:var(--c);
+  position:relative; transition:transform .12s, box-shadow .12s;
+  box-shadow:var(--shadow); overflow:visible;
+}
+.swatch::after{content:""; position:absolute; inset:-6px; z-index:1}
+.swatch:active{transform:scale(.93)}
+.swatch.on{box-shadow:0 0 0 3px var(--bg),0 0 0 6px var(--c); transform:scale(1.06); z-index:1}
+.swatch.done{opacity:.35; transform:scale(.82); transition:opacity .2s, transform .2s}
+.swatch.shaped{background:transparent; box-shadow:none}
+.swatch.shaped::before{content:""; position:absolute; inset:0; background:var(--c);
+  clip-path:var(--clip); border-radius:3px}
+.swatch.shaped.on{box-shadow:0 0 0 3px var(--bg),0 0 0 6px var(--c)}
+.swatch.shaped.done::before{opacity:.35}
+.swatch .k{
+  position:absolute; bottom:-17px; left:0; right:0; text-align:center;
+  font-family:var(--mono); font-size:9px; color:var(--ink-faint);
+}
+.swatch .cnt{
+  position:absolute; top:-6px; right:-6px; min-width:18px; height:18px;
+  padding:0 4px; border-radius:9px; background:var(--panel);
+  color:var(--ink); font-family:var(--sans); font-size:11px; font-weight:700;
+  line-height:18px; text-align:center; box-shadow:var(--shadow);
+  font-variant-numeric:tabular-nums; pointer-events:none;
+}
+.swatch.done .cnt{display:none}
+.swatch.pat{box-shadow:var(--shadow),inset 0 0 0 1.5px var(--line-2)}
+.swatch.pat.on{box-shadow:inset 0 0 0 1.5px var(--line-2),0 0 0 3px var(--bg),0 0 0 6px var(--ink); transform:scale(1.06); z-index:1}
+.swatch.erase{
+  background:var(--panel); border:1.5px solid var(--line-2); color:var(--ink-dim);
+  display:grid; place-items:center; font-size:19px;
+}
+
+/* ================= modal ================= */
+.overlay{
+  position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:50;
+  display:grid; place-items:center; padding:20px;
+  animation:fade .18s ease-out;
+}
+.overlay.hide{display:none}
+.modal{
+  background:var(--panel); border-radius:18px; padding:24px 22px;
+  width:100%; max-width:360px; box-shadow:0 20px 60px rgba(0,0,0,.28);
+  max-height:86vh; overflow-y:auto;
+}
+.modal h2{font-size:20px; font-weight:800; letter-spacing:-.02em; margin-bottom:4px}
+.modal .lede{font-size:13px; color:var(--ink-dim); line-height:1.5; margin-bottom:16px}
+.modal ul{list-style:none; display:flex; flex-direction:column; gap:9px; margin-bottom:18px}
+.modal li{font-size:13.5px; line-height:1.45; display:flex; gap:9px; align-items:flex-start}
+.modal li b{font-weight:600}
+.bullet{
+  flex:0 0 6px; width:6px; height:6px; border-radius:2px; margin-top:6px; background:var(--ink-faint);
+}
+.btn{
+  width:100%; padding:13px; border-radius:11px; font-size:14px; font-weight:700;
+  background:var(--ink); color:var(--bg); transition:opacity .15s;
+}
+.btn:hover{opacity:.85}
+.btn.ghost{background:var(--panel2); color:var(--ink); margin-top:8px}
+.exp-icon{font-size:48px; margin-bottom:8px}
+.exp-body{
+  font-size:14px; line-height:1.55; color:var(--ink-dim);
+  text-align:left; margin:12px 0 20px; padding:0 4px;
+}
+.confetti{position:fixed; inset:0; pointer-events:none; z-index:1000}
+
+/* ================= toast ================= */
+.toast{
+  position:fixed; left:50%; bottom:calc(var(--safe-b) + 28px); transform:translateX(-50%);
+  background:var(--ink); color:var(--bg); font-size:13px; font-weight:600;
+  padding:10px 20px; border-radius:10px; z-index:60; animation:fade .15s ease-out;
+}
+.toast.hide{display:none}
+
+/* ================= animation ================= */
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@keyframes pop{0%{transform:scale(.4);opacity:.3}60%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-4px)}40%{transform:translateX(4px)}60%{transform:translateX(-2px)}80%{transform:translateX(2px)}}
+@keyframes wave{0%,100%{transform:scale(1)}45%{transform:scale(1.16)}}
+@media (prefers-reduced-motion:no-preference){
+  .fill.new,.dot.new{animation:pop .22s cubic-bezier(.34,1.4,.64,1)}
+  .cell.bad{animation:shake .3s}
+  .cell.bad .fill{box-shadow:inset 0 0 0 3px var(--error)}
+  .cell.won{animation:wave .5s ease-in-out}
+}
+@media (prefers-reduced-motion:reduce){
+  .cell.bad .fill{box-shadow:inset 0 0 0 3px var(--error)}
+}
+
+.board.done .cell .fill,.board.done .cell .dot{opacity:1!important}
+.board.sharp .cell:not(.given) .fill{border-radius:2px}
+.board.sharp .cell:not(.given) .dot{border-radius:0}
+
+@media (min-width:520px){
+  .board-wrap{max-width:400px}
+  .palette{max-width:400px}
+  h1{font-size:21px}
+}
+</style>
+
+<div class="app">
+<header>
+  <div class="hdr-l">
+    <button class="icon-btn" id="btnInfo" aria-label="About today">?</button>
+    <button class="icon-btn" id="btnUndo" aria-label="Undo" disabled>↶</button>
+  </div>
+  <div>
+    <h1>Chromoku</h1>
+    <div class="sub" id="sub">Day 1 · 4×4 Sudoku</div>
+  </div>
+  <div class="hdr-r">
+    <button class="icon-btn" id="btnHint" aria-label="Book (hint)">📖</button>
+    <button class="icon-btn" id="btnReset" aria-label="Reset">↻</button>
+  </div>
+</header>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<div class="play">
+  <div class="board-wrap"><div class="board" id="board"></div></div>
+  <div class="palette pal-pad" id="palette"></div>
+</div>
+
+<div class="overlay hide" id="overlay"><div class="modal" id="modal"></div></div>
+<div class="toast hide" id="toast"></div>
+</div>
+
+<script>
+"use strict";
+
+/* ================= Tutorial metadata ================= */
+
+const TUTORIAL_DAYS = [
+  {
+    day: 1,
+    title: "4×4 Sudoku",
+    icon: "🟨",
+    givens: 8,
+    n: 4,
+    boxless: false,
+    description: "Learn the basics: fill a 4×4 grid with 4 colours.",
+    tutorial: {
+      title: "Welcome to Chromoku!",
+      body: "Your goal: fill the grid so each <b>row</b>, <b>column</b>, and <b>2×2 box</b> contains each colour exactly once.<br><br>" +
+            "A few cells are already filled in (given). Tap a colour, then tap an empty cell to place it.<br>" +
+            "Tap the same colour again to clear it.<br><br>" +
+            "The givens are locked — you can only change the cells you place.",
+    }
+  },
+  {
+    day: 2,
+    title: "4×4 Latin",
+    icon: "🟧",
+    givens: 8,
+    n: 4,
+    boxless: true,
+    description: "No boxes — just rows and columns.",
+    tutorial: {
+      title: "Latin Mode",
+      body: "Same grid, <b>new rule</b>: there are no boxes now.<br><br>" +
+            "Each colour must appear exactly once in every <b>row</b> and every <b>column</b>.<br>" +
+            "Box uniqueness? That's gone. The puzzle is simpler in concept but trickier to solve — " +
+            "you lose the box constraint that normally narrows things down.",
+    }
+  },
+  {
+    day: 3,
+    title: "6×6 Sudoku",
+    icon: "🟩",
+    givens: 15,
+    n: 6,
+    boxless: false,
+    description: "A bigger board with 6 colours and 3×2 boxes.",
+    tutorial: {
+      title: "Going Bigger",
+      body: "The board is now 6×6, with <b>6 colours</b>.<br><br>" +
+            "The box shape changed: each box is <b>3 wide × 2 tall</b> instead of 2×2.<br>" +
+            "The rules stay the same: rows, columns, and boxes must each have all 6 colours.",
+    }
+  },
+  {
+    day: 4,
+    title: "6×6 Symbols",
+    icon: "🟪",
+    givens: 15,
+    n: 6,
+    boxless: false,
+    description: "Same puzzle, different marks — try shapes instead of colours.",
+    tutorial: {
+      title: "Shape Marks",
+      body: "Still a 6×6 grid, but now the marks are <b>shapes</b> instead of colours.<br><br>" +
+            "Squares, circles, triangles, diamonds — the rule is still one per row/column/box.<br>" +
+            "Shapes read the same way as colours; they're just a different way to distinguish the marks.",
+    }
+  },
+  {
+    day: 5,
+    title: "4×4 Double",
+    icon: "🍩",
+    givens: 8,
+    n: 4,
+    boxless: false,
+    double: true,
+    description: "Two puzzles on one board — outer and inner layers.",
+    tutorial: {
+      title: "Double Layering",
+      body: "Now there are <b>two puzzles</b> on the same board.<br><br>" +
+            "The <b>outer squares</b> (the big coloured areas) form one Sudoku.<br>" +
+            "The <b>inner squares</b> (the small dots inside) form a second, completely independent Sudoku.<br><br>" +
+            "Tap the top palette row for outer colours, the bottom row for inner colours.",
+    }
+  },
+  {
+    day: 6,
+    title: "9×9 Sudoku",
+    icon: "⬜",
+    givens: 28,
+    n: 9,
+    boxless: false,
+    description: "The classic puzzle — 9×9 with 9 colours and 3×3 boxes.",
+    tutorial: {
+      title: "The Classic",
+      body: "Welcome to the full 9×9 grid, the puzzle that started it all.<br><br>" +
+            "9 rows, 9 columns, 9 boxes — and 9 colours to place.<br>" +
+            "The rules are identical: uniqueness in every row, column, and box.<br>" +
+            "But with so many cells, the logic runs much deeper.",
+    }
+  },
+  {
+    day: 7,
+    title: "10×10 Latin",
+    icon: "🟥",
+    givens: 35,
+    n: 10,
+    boxless: true,
+    description: "The mastery puzzle — 10×10 with no boxes. Uniqueness only in rows and columns.",
+    tutorial: {
+      title: "Mastery",
+      body: "You've made it to the final day.<br><br>" +
+            "A 10×10 Latin grid: 10 colours, no boxes.<br>" +
+            "Only rows and columns count. This is where the intuition you've built comes together.<br><br>" +
+            "After today, you're ready for the full game.",
+    }
+  },
+];
+
+/* ================= colour palette (Kelly's 22) ================= */
+
+const HUES = [
+  { hex:"#c10020", label:"Red"       },
+  { hex:"#007d34", label:"Green"     },
+  { hex:"#00538a", label:"Blue"      },
+  { hex:"#f4c800", label:"Yellow"    },
+  { hex:"#ff6800", label:"Orange"    },
+  { hex:"#803e75", label:"Purple"    },
+  { hex:"#a6bdd7", label:"Ice"       },
+  { hex:"#232c16", label:"Dark Olive" },
+  { hex:"#593315", label:"Brown"     },
+  { hex:"#ffb300", label:"Gold"      },
+];
+
+const SHAPES = [
+  { label:"Square",    clip:"inset(2%)" },
+  { label:"Circle",    clip:"circle(50%)" },
+  { label:"Triangle",  clip:"polygon(50% 4%,96% 96%,4% 96%)" },
+  { label:"Diamond",   clip:"polygon(50% 2%,98% 50%,50% 98%,2% 50%)" },
+  { label:"Star",      clip:"polygon(50% 2%,61% 37%,98% 37%,68% 59%,79% 95%,50% 73%,21% 95%,32% 59%,2% 37%,39% 37%)" },
+  { label:"Pentagon",  clip:"polygon(50% 2%,98% 38%,79% 96%,21% 96%,2% 38%)" },
+  { label:"Hexagon",   clip:"polygon(25% 3%,75% 3%,98% 50%,75% 97%,25% 97%,2% 50%)" },
+  { label:"Cross",     clip:"polygon(34% 2%,66% 2%,66% 34%,98% 34%,98% 66%,66% 66%,66% 98%,34% 98%,34% 66%,2% 66%,2% 34%,34% 34%)" },
+  { label:"Down",      clip:"polygon(4% 4%,96% 4%,50% 96%)" },
+  { label:"Chevron",   clip:"polygon(4% 4%,50% 4%,96% 50%,50% 96%,4% 96%,42% 50%)" },
+];
+
+/* ================= PRNG ================= */
+
+function mulberry32(seed){
+  let a = seed >>> 0;
+  return function(){
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function shuffled(arr, rng){
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(rng() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/* ================= puzzle engine ================= */
+
+function boxDims(n, rotate){
+  const h = Math.floor(Math.sqrt(n));
+  for (let bh = h; bh >= 1; bh--) if (n % bh === 0) {
+    const dims = { bh, bw: n / bh };
+    return rotate && dims.bh !== dims.bw ? { bh: dims.bw, bw: dims.bh } : dims;
+  }
+  return { bh:1, bw:n };
+}
+
+function legal(grid, n, idx, val, boxless){
+  const { bw, bh } = boxDims(n);
+  const r = Math.floor(idx / n), c = idx % n;
+  for (let i = 0; i < n; i++){
+    if (i !== c && grid[r * n + i] === val) return false;
+    if (i !== r && grid[i * n + c] === val) return false;
+  }
+  if (boxless) return true;
+  const r0 = Math.floor(r / bh) * bh, c0 = Math.floor(c / bw) * bw;
+  for (let rr = r0; rr < r0 + bh; rr++)
+    for (let cc = c0; cc < c0 + bw; cc++)
+      if ((rr !== r || cc !== c) && grid[rr * n + cc] === val) return false;
+  return true;
+}
+
+function randomSolvedGrid(n, rng, boxless){
+  const g = new Array(n * n).fill(null);
+  (function rec(){
+    const i = g.indexOf(null);
+    if (i === -1) return true;
+    for (const v of shuffled([...Array(n).keys()], rng)){
+      if (legal(g, n, i, v, boxless)){
+        g[i] = v;
+        if (rec()) return true;
+        g[i] = null;
+      }
+    }
+    return false;
+  })();
+  return g;
+}
+
+function countSolutions(grid, n, cap, boxless){
+  const { bw, bh } = boxDims(n), FULL = (1 << n) - 1, per = n / bw;
+  const g = grid.slice();
+  const rows = new Array(n).fill(0), cols = new Array(n).fill(0), box = new Array(n).fill(0);
+  const bi = new Int32Array(n * n);
+  for (let i = 0; i < n * n; i++) bi[i] = ((((i / n) | 0) / bh) | 0) * per + (((i % n) / bw) | 0);
+  for (let i = 0; i < n * n; i++){
+    const v = g[i];
+    if (v !== null && v !== undefined){
+      const b = 1 << v;
+      rows[(i / n) | 0] |= b; cols[i % n] |= b; if (!boxless) box[bi[i]] |= b;
+    }
+  }
+  let found = 0;
+  (function rec(){
+    if (found >= cap) return;
+    let best = -1, bestMask = 0, bestCnt = n + 1;
+    for (let i = 0; i < n * n; i++){
+      if (g[i] !== null && g[i] !== undefined) continue;
+      const avail = FULL & ~(rows[(i / n) | 0] | cols[i % n] | (boxless ? 0 : box[bi[i]]));
+      if (avail === 0) return;
+      let cnt = 0, x = avail;
+      while (x){ x &= x - 1; cnt++; }
+      if (cnt < bestCnt){ bestCnt = cnt; best = i; bestMask = avail; if (cnt === 1) break; }
+    }
+    if (best === -1){ found++; return; }
+    const r = (best / n) | 0, c = best % n, b = bi[best];
+    let mask = bestMask;
+    while (mask){
+      const bit = mask & -mask; mask ^= bit;
+      g[best] = 31 - Math.clz32(bit);
+      rows[r] |= bit; cols[c] |= bit; if (!boxless) box[b] |= bit;
+      rec();
+      rows[r] &= ~bit; cols[c] &= ~bit; if (!boxless) box[b] &= ~bit; g[best] = null;
+      if (found >= cap) return;
+    }
+  })();
+  return found;
+}
+
+function removalOrder(n, rng, boxless){
+  if (boxless) return shuffled([...Array(n * n).keys()], rng);
+  const { bw, bh } = boxDims(n), per = n / bw, buckets = [];
+  for (let b = 0; b < n; b++){
+    const r0 = ((b / per) | 0) * bh, c0 = (b % per) * bw, cells = [];
+    for (let r = r0; r < r0 + bh; r++)
+      for (let c = c0; c < c0 + bw; c++) cells.push(r * n + c);
+    buckets.push(shuffled(cells, rng));
+  }
+  const order = [];
+  for (let k = 0; k < n; k++)
+    for (const b of shuffled([...Array(n).keys()], rng))
+      if (buckets[b][k] !== undefined) order.push(buckets[b][k]);
+  return order;
+}
+
+function generatePuzzle(seed, n, givens, boxless){
+  const rng = mulberry32(seed);
+  const solution = randomSolvedGrid(n, rng, boxless);
+  const puzzle = solution.slice();
+  const target = n * n - givens;
+  let removed = 0;
+
+  for (const i of removalOrder(n, rng, boxless)){
+    if (removed >= target) break;
+    const keep = puzzle[i];
+    puzzle[i] = null;
+    if (countSolutions(puzzle, n, 2, boxless) === 1) removed++;
+    else puzzle[i] = keep;
+  }
+  return { solution, puzzle, givens:puzzle.map(v => v !== null) };
+}
+
+/* ================= state ================= */
+
+const state = {
+  day: 1,
+  n: 4,
+  boxless: false,
+  dbl: false,
+  layers: [],
+  sel: null,
+  erase: false,
+  done: false,
+  history: [],
+  showedTutorial: false,
+};
+
+const LS_TUTORIAL = "chromoku.tutorial.v1";
+
+function loadProgress(){
+  try {
+    const p = JSON.parse(localStorage.getItem(LS_TUTORIAL) || "{}");
+    return p || {};
+  } catch {
+    return {};
+  }
+}
+
+function saveProgress(){
+  const p = loadProgress();
+  p["day" + state.day] = { done: state.done };
+  try {
+    localStorage.setItem(LS_TUTORIAL, JSON.stringify(p));
+  } catch {}
+}
+
+/* ================= game setup ================= */
+
+function loadDay(dayNum){
+  state.day = dayNum;
+  const meta = TUTORIAL_DAYS[dayNum - 1];
+  if (!meta) return;
+
+  state.n = meta.n;
+  state.boxless = meta.boxless;
+  state.dbl = meta.double || false;
+  state.done = false;
+  state.sel = null;
+  state.erase = false;
+  state.history = [];
+
+  // Generate puzzle with fixed seed so it's the same every day
+  const seed = dayNum * 12345;
+  const p = generatePuzzle(seed, state.n, meta.givens, state.boxless);
+  state.layers = [{
+    grid: p.puzzle.slice(),
+    solution: p.solution.slice(),
+    givens: p.givens.slice(),
+  }];
+
+  render();
+  paintUndo();
+  showTutorialIfNeeded();
+}
+
+function showTutorialIfNeeded(){
+  const p = loadProgress();
+  const meta = TUTORIAL_DAYS[state.day - 1];
+  if (meta && !p["day" + state.day]){
+    showTutorial(meta);
+    state.showedTutorial = true;
+  }
+}
+
+function showTutorial(meta){
+  openModal(
+    '<div style="text-align:center; margin-bottom:16px">' + meta.icon + '</div>' +
+    '<h2>' + meta.tutorial.title + '</h2>' +
+    '<p class="lede" style="margin-bottom:16px">' + meta.tutorial.body + '</p>' +
+    '<button class="btn" id="mGo">Got it, let\'s go!</button>'
+  );
+  document.getElementById("mGo").onclick = closeModal;
+}
+
+function showBook(){
+  const meta = TUTORIAL_DAYS[state.day - 1];
+  if (!meta) return;
+  openModal(
+    '<h2>Day ' + state.day + ': ' + meta.title + '</h2>' +
+    '<p class="lede">' + meta.description + '</p>' +
+    '<ul style="margin:16px 0">' +
+    '<li><span class="bullet"></span><b>Givens:</b> ' + meta.givens + ' (pre-filled cells)</li>' +
+    '<li><span class="bullet"></span><b>Size:</b> ' + meta.n + '×' + meta.n + '</li>' +
+    '<li><span class="bullet"></span><b>Rules:</b> ' +
+      (meta.boxless ? 'Rows and columns only (Latin)' : 'Rows, columns, and boxes (Sudoku)') +
+    '</li>' +
+    '</ul>' +
+    '<button class="btn ghost" id="mClose" style="margin-top:20px">Close</button>'
+  );
+  document.getElementById("mClose").onclick = closeModal;
+}
+
+/* ================= conflict detection ================= */
+
+function conflictsAt(L, idx){
+  const n = state.n, g = state.layers[L].grid, v = g[idx];
+  const out = new Set();
+  if (v === null || v === undefined) return out;
+  const { bw, bh } = boxDims(n);
+  const r = Math.floor(idx / n), c = idx % n;
+  for (let i = 0; i < n; i++){
+    if (i !== c && g[r * n + i] === v) out.add(r * n + i);
+    if (i !== r && g[i * n + c] === v) out.add(i * n + c);
+  }
+  if (!state.boxless){
+    const r0 = Math.floor(r / bh) * bh, c0 = Math.floor(c / bw) * bw;
+    for (let rr = r0; rr < r0 + bh; rr++)
+      for (let cc = c0; cc < c0 + bw; cc++){
+        const j = rr * n + cc;
+        if (j !== idx && g[j] === v) out.add(j);
+      }
+  }
+  if (out.size) out.add(idx);
+  return out;
+}
+
+function isSolved(){
+  for (let L = 0; L < state.layers.length; L++){
+    const g = state.layers[L].grid;
+    if (g.some(v => v === null || v === undefined)) return false;
+    for (let i = 0; i < g.length; i++) if (conflictsAt(L, i).size) return false;
+  }
+  return true;
+}
+
+/* ================= rendering ================= */
+
+function getMarks(n){
+  const meta = TUTORIAL_DAYS[state.day - 1];
+  if (meta && meta.day === 4){
+    // Day 4 uses shapes
+    return SHAPES.slice(0, n).map((sh, i) => ({
+      hex: (HUES[i] && HUES[i].hex) || "var(--ink)",
+      clip: sh.clip,
+      label: sh.label,
+    }));
+  }
+  return HUES.slice(0, n);
+}
+
+function renderBoard(){
+  const n = state.n;
+  const { bw, bh } = boxDims(n);
+  const boxesPerRow = state.boxless ? n : n / bw, boxRows = state.boxless ? n : n / bh;
+  let html = "";
+
+  if (state.boxless){
+    for (let i = 0; i < n * n; i++){
+      const v = state.layers[0].grid[i];
+      let inner = "";
+      if (v !== null && v !== undefined){
+        const mark = getMarks(n)[v];
+        const st = mark.clip
+          ? "--c:" + mark.hex + ";clip-path:" + mark.clip + ";border-radius:3px"
+          : "--c:" + mark.hex;
+        inner = '<div class="fill" style="' + st + '"></div>';
+      }
+      html += '<div class="cell' + (state.layers[0].givens[i] ? " given" : "")
+            + '" data-i="' + i + '">' + inner + "</div>";
+    }
+  } else {
+    for (let b = 0; b < n; b++){
+      const r0 = Math.floor(b / boxesPerRow) * bh, c0 = (b % boxesPerRow) * bw;
+      let inner = "";
+      for (let r = r0; r < r0 + bh; r++){
+        for (let c = c0; c < c0 + bw; c++){
+          const i = r * n + c;
+          const v = state.layers[0].grid[i];
+          let cellInner = "";
+          if (v !== null && v !== undefined){
+            const mark = getMarks(n)[v];
+            const st = mark.clip
+              ? "--c:" + mark.hex + ";clip-path:" + mark.clip + ";border-radius:3px"
+              : "--c:" + mark.hex;
+            cellInner = '<div class="fill" style="' + st + '"></div>';
+          }
+          inner += '<div class="cell' + (state.layers[0].givens[i] ? " given" : "")
+                 + '" data-i="' + i + '">' + cellInner + "</div>";
+        }
+      }
+      html += '<div class="box" style="grid-template-columns:repeat(' + bw + ',1fr);'
+            + 'grid-template-rows:repeat(' + bh + ',1fr)">' + inner + "</div>";
+    }
+  }
+
+  const board = document.getElementById("board");
+  const sc = n <= 4 ? [12, 4, 8] : n <= 9 ? [11, 2, 5] : [7, 1, 3];
+  board.style.setProperty("--bgap", sc[0] + "px");
+  board.style.setProperty("--cgap", sc[1] + "px");
+  board.style.setProperty("--crad", sc[2] + "px");
+  board.style.gridTemplateColumns = "repeat(" + boxesPerRow + ",1fr)";
+  board.style.gridTemplateRows = "repeat(" + boxRows + ",1fr)";
+  board.classList.remove("done");
+  board.innerHTML = html;
+  board.querySelectorAll("[data-i]").forEach(el => {
+    el.onclick = () => onCell(parseInt(el.dataset.i, 10));
+  });
+  if (state.done) markWon();
+}
+
+function renderPalette(){
+  const marks = getMarks(state.n);
+  const counts = new Array(state.n).fill(0);
+  for (const v of state.layers[0].grid) if (v !== null && v !== undefined) counts[v]++;
+
+  let rows = "";
+  const swatches = marks.map((c, i) => {
+    const placed = counts[i];
+    const done = placed >= state.n;
+    const remaining = Math.max(0, state.n - placed);
+    const shaped = !!c.clip && state.day !== 1;
+    return '<button class="swatch' + (done ? " done" : "")
+      + (state.sel && state.sel.colour === i ? " on" : "")
+      + (shaped ? " shaped" : "")
+      + '" data-c="' + i + '" style="' + (c.clip ? "--c:" + c.hex + ";--clip:" + c.clip : "--c:" + c.hex)
+      + '" aria-label="' + c.label + (remaining > 0 ? ", " + remaining + " remaining" : ", done") + '">'
+      + (remaining > 0 ? '<span class="cnt">' + remaining + "</span>" : "")
+      + (state.n <= 4 ? '<span class="k">' + (i + 1) + "</span>" : "")
+      + "</button>";
+  });
+  const nRows = state.n > 4 ? 2 : 1;
+  const perRow = Math.ceil(swatches.length / nRows);
+  for (let k = 0; k < swatches.length; k += perRow)
+    rows += '<div class="prow' + (state.n > 4 ? " wrap" : "") + '">'
+          + swatches.slice(k, k + perRow).join("") + "</div>";
+
+  const p = document.getElementById("palette");
+  p.className = "palette pal-pad" + (state.n > 4 ? " tight" : "");
+  p.innerHTML = rows;
+  p.querySelectorAll("[data-c]").forEach(b => {
+    b.onclick = () => {
+      const i = +b.dataset.c;
+      const same = state.sel && state.sel.colour === i;
+      state.sel = same ? null : { layer: 0, colour: i };
+      state.erase = false;
+      renderPalette();
+    };
+  });
+}
+
+function renderSub(){
+  const meta = TUTORIAL_DAYS[state.day - 1];
+  const sub = document.getElementById("sub");
+  if (meta){
+    sub.textContent = "Day " + state.day + " · " + meta.title;
+  }
+}
+
+function renderProgressBar(){
+  const bar = document.getElementById("progressBar");
+  let html = "";
+  for (let d = 1; d <= 7; d++){
+    const p = loadProgress();
+    const done = p["day" + d] && p["day" + d].done;
+    const cls = d < state.day ? "done" : d === state.day ? "current" : "upcoming";
+    html += '<div class="progress-step ' + cls + '" title="Day ' + d + '"></div>';
+  }
+  bar.innerHTML = html;
+}
+
+function render(){
+  renderBoard();
+  renderPalette();
+  renderSub();
+  renderProgressBar();
+  paintUndo();
+}
+
+function paintCell(i){
+  const el = document.querySelector('[data-i="' + i + '"]');
+  if (!el) return;
+  const v = state.layers[0].grid[i];
+  let inner = "";
+  if (v !== null && v !== undefined){
+    const mark = getMarks(state.n)[v];
+    const st = mark.clip
+      ? "--c:" + mark.hex + ";clip-path:" + mark.clip + ";border-radius:3px"
+      : "--c:" + mark.hex;
+    inner = '<div class="fill" style="' + st + '"></div>';
+  }
+  el.innerHTML = inner;
+}
+
+function markWon(){
+  const n = state.n;
+  document.getElementById("board").classList.add("done");
+  document.querySelectorAll("[data-i]").forEach(el => {
+    const i = +el.dataset.i, r = Math.floor(i / n), c = i % n;
+    el.style.animationDelay = ((r + c) * 70) + "ms";
+    el.classList.add("won");
+  });
+}
+
+function flashConflicts(set){
+  set.forEach(i => {
+    const el = document.querySelector('[data-i="' + i + '"]');
+    if (!el) return;
+    el.classList.add("bad");
+    setTimeout(() => el.classList.remove("bad"), 620);
+  });
+}
+
+function paintUndo(){
+  const b = document.getElementById("btnUndo");
+  if (b) b.disabled = state.done || state.history.length === 0;
+}
+
+/* ================= interaction ================= */
+
+function placeColour(i, val){
+  const prev = state.layers[0].grid[i];
+  if (prev !== val) state.history.push({ i, prev });
+  state.layers[0].grid[i] = val;
+  paintCell(i);
+  renderPalette();
+
+  if (val !== null){
+    const bad = conflictsAt(0, i);
+    if (bad.size) flashConflicts(bad);
+  }
+
+  if (isSolved()) win();
+}
+
+function onCell(i){
+  if (state.done) return;
+
+  if (state.erase){
+    const prev = state.layers[0].grid[i];
+    if (!state.layers[0].givens[i] && prev !== null){
+      state.history.push({ i, prev });
+      state.layers[0].grid[i] = null;
+      paintCell(i);
+      renderPalette();
+    }
+    return;
+  }
+
+  if (state.sel === null){ toast("Pick a colour first"); return; }
+  if (state.layers[0].givens[i]) return;
+  placeColour(i, state.layers[0].grid[i] === state.sel.colour ? null : state.sel.colour);
+}
+
+function undo(){
+  if (state.done || !state.history.length) return;
+  const move = state.history.pop();
+  state.layers[0].grid[move.i] = move.prev;
+  paintCell(move.i);
+  renderPalette();
+  paintUndo();
+}
+
+function resetDay(){
+  const meta = TUTORIAL_DAYS[state.day - 1];
+  if (meta){
+    const seed = state.day * 12345;
+    const p = generatePuzzle(seed, state.n, meta.givens, state.boxless);
+    state.layers[0].grid = p.puzzle.slice();
+    state.done = false;
+    state.sel = null;
+    state.history = [];
+    render();
+  }
+}
+
+/* ================= win ================= */
+
+function win(){
+  state.done = true;
+  saveProgress();
+  setTimeout(() => {
+    fireConfetti();
+    const p = loadProgress();
+    const nextDay = state.day + 1;
+    openModal(
+      '<h2>Day ' + state.day + ' complete!</h2>' +
+      '<p class="lede">' +
+        (nextDay <= 7
+          ? 'Return tomorrow for day ' + nextDay + ', or start it now.'
+          : 'You\'ve completed the tutorial! Ready for the full game at <a href="index.html" style="color:inherit">Chromoku</a>.') +
+      '</p>' +
+      (nextDay <= 7
+        ? '<button class="btn" id="mNext">Start day ' + nextDay + '</button>' +
+          '<button class="btn ghost" id="mReview">Review day ' + state.day + '</button>'
+        : '<button class="btn" id="mPlay">Play full game</button>') +
+      '<button class="btn ghost" id="mDone">All done for now</button>'
+    );
+    if (nextDay <= 7){
+      document.getElementById("mNext").onclick = () => { closeModal(); loadDay(nextDay); };
+      document.getElementById("mReview").onclick = closeModal;
+    } else {
+      document.getElementById("mPlay").onclick = () => { window.location.href = "index.html"; };
+    }
+    document.getElementById("mDone").onclick = closeModal;
+  }, 1100);
+}
+
+/* ================= confetti ================= */
+
+function fireConfetti(){
+  const cvs = document.createElement("canvas");
+  cvs.className = "confetti";
+  cvs.width = window.innerWidth;
+  cvs.height = window.innerHeight;
+  document.body.appendChild(cvs);
+  const ctx = cvs.getContext("2d");
+  const colours = HUES.slice(0, Math.min(9, HUES.length)).map(h => h.hex);
+  const N = 120;
+  const particles = [];
+  for (let i = 0; i < N; i++){
+    particles.push({
+      x: cvs.width * 0.5 + (Math.random() - 0.5) * cvs.width * 0.4,
+      y: cvs.height * 0.45,
+      vx: (Math.random() - 0.5) * 12,
+      vy: -Math.random() * 14 - 4,
+      w: 4 + Math.random() * 6,
+      h: 3 + Math.random() * 4,
+      rot: Math.random() * Math.PI * 2,
+      rv: (Math.random() - 0.5) * 0.3,
+      col: colours[Math.floor(Math.random() * colours.length)],
+      grav: 0.18 + Math.random() * 0.06,
+      life: 1,
+    });
+  }
+  let raf;
+  function tick(){
+    ctx.clearRect(0, 0, cvs.width, cvs.height);
+    let alive = false;
+    for (const p of particles){
+      p.x += p.vx; p.y += p.vy;
+      p.vy += p.grav;
+      p.vx *= 0.99;
+      p.rot += p.rv;
+      p.life -= 0.006;
+      if (p.life <= 0 || p.y > cvs.height + 20) continue;
+      alive = true;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.globalAlpha = Math.min(1, p.life * 2);
+      ctx.fillStyle = p.col;
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.restore();
+    }
+    if (alive) raf = requestAnimationFrame(tick);
+    else cvs.remove();
+  }
+  raf = requestAnimationFrame(tick);
+  setTimeout(() => { cancelAnimationFrame(raf); cvs.remove(); }, 4000);
+}
+
+/* ================= modal ================= */
+
+function openModal(html){
+  const modal = document.getElementById("modal");
+  modal.innerHTML = html;
+  document.getElementById("overlay").classList.remove("hide");
+}
+
+function closeModal(){
+  document.getElementById("overlay").classList.add("hide");
+}
+
+function toast(text){
+  const el = document.getElementById("toast");
+  el.textContent = text;
+  el.classList.remove("hide");
+  setTimeout(() => el.classList.add("hide"), 2000);
+}
+
+/* ================= keyboard ================= */
+
+document.addEventListener("keydown", e => {
+  if (!document.getElementById("overlay").classList.contains("hide")){
+    if (e.key === "Escape") closeModal();
+    return;
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z"){
+    e.preventDefault();
+    undo();
+    return;
+  }
+  const k = parseInt(e.key, 10);
+  if (k >= 1 && k <= Math.min(state.n, 9)){
+    state.sel = { layer: 0, colour: k - 1 };
+    state.erase = false;
+    renderPalette();
+  }
+  else if (e.key === "Backspace" || e.key === "Delete"){
+    state.erase = true;
+    state.sel = null;
+    renderPalette();
+  }
+});
+
+/* ================= ui events ================= */
+
+document.getElementById("btnInfo").onclick = () => {
+  const meta = TUTORIAL_DAYS[state.day - 1];
+  if (meta) showTutorial(meta.tutorial || meta);
+};
+
+document.getElementById("btnUndo").onclick = undo;
+
+document.getElementById("btnHint").onclick = showBook;
+
+document.getElementById("btnReset").onclick = () => {
+  openModal(
+    '<h2>Reset day ' + state.day + '?</h2>' +
+    '<p class="lede">Clear all your placements and start over.</p>' +
+    '<button class="btn" id="mYes">Yes, reset</button>' +
+    '<button class="btn ghost" id="mNo">Cancel</button>'
+  );
+  document.getElementById("mYes").onclick = () => { closeModal(); resetDay(); };
+  document.getElementById("mNo").onclick = closeModal;
+};
+
+/* ================= init ================= */
+
+loadDay(1);
+</script>
 </body>
 </html>
