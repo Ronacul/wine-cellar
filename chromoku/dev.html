@@ -295,6 +295,14 @@ h1{
       <button id="btnExtendTime" class="btn" style="flex:1">+30 sec</button>
     </div>
     <input type="number" id="timeAdjustInput" placeholder="Time adjust (sec)" style="padding:8px;border-radius:6px;border:1px solid var(--line);font-family:var(--mono);font-size:12px">
+    <div style="display:flex;gap:4px;font-size:11px">
+      <label style="flex:1;display:flex;gap:4px;align-items:center;cursor:pointer">
+        <input type="checkbox" id="toggleAdBanner" checked> Banner Ad
+      </label>
+      <label style="flex:1;display:flex;gap:4px;align-items:center;cursor:pointer">
+        <input type="checkbox" id="toggleAdVideo"> Video Ad
+      </label>
+    </div>
     <div style="font-size:11px;color:var(--ink-faint);padding:8px;background:var(--panel);border-radius:6px">
       <div><b>Status:</b> Day <span id="statusDay">1</span> · Hearts: <span id="statusHearts">5</span> · Time: <span id="statusTime">0s</span></div>
     </div>
@@ -318,9 +326,27 @@ h1{
 
 <div class="progress-bar" id="progressBar"></div>
 
+<!-- Ad Banner Top -->
+<div id="adBannerTop" style="width:100%;max-width:460px;height:60px;margin-bottom:12px;background:var(--panel2);border-radius:9px;border:2px dashed var(--line);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--ink-faint)">
+  📺 Banner Ad (728×90 / 320×50)
+</div>
+
 <div class="play">
   <div class="board-wrap"><div class="board" id="board"></div></div>
   <div class="palette pal-pad" id="palette"></div>
+</div>
+
+<!-- Ad Video Placeholder -->
+<div id="adVideoContainer" style="width:100%;max-width:460px;margin-top:12px;display:none">
+  <div style="position:relative;aspect-ratio:16/9;background:var(--panel2);border-radius:9px;border:2px dashed var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden">
+    <div style="text-align:center;z-index:2">
+      <div style="font-size:48px;margin-bottom:8px">🎬</div>
+      <div style="font-size:12px;color:var(--ink-dim);margin-bottom:4px">Rewarded Video Ad</div>
+      <div id="videoCountdown" style="font-size:24px;font-weight:800;color:var(--ink);font-family:var(--mono)">15</div>
+      <div style="font-size:10px;color:var(--ink-faint);margin-top:8px">Watch to earn hearts</div>
+    </div>
+    <button id="btnSkipAd" class="btn ghost" style="position:absolute;bottom:12px;width:auto;padding:8px 16px;font-size:12px">Skip (5s)</button>
+  </div>
 </div>
 
 <div class="overlay hide" id="overlay"><div class="modal" id="modal"></div></div>
@@ -708,10 +734,13 @@ const state = {
   showedTutorial: false,
   showingFirstMoveGuide: false,
   firstMoveTarget: null,
+  firstMoveLayer: 0,
   moveCount: 0,
   hearts: 5,
   currentTime: 0,
   timeAdjust: 0,
+  showAdBanner: true,
+  showAdVideo: false,
 };
 
 const LS_TUTORIAL = "chromoku.tutorial.v1";
@@ -755,9 +784,10 @@ function startFirstMoveGuide(){
 
   const meta = TUTORIAL_DAYS[state.day - 1];
   if (meta && meta.easyFirst){
-    const best = findBestFirstMove(state.layers[0].grid, state.layers[0].solution, state.n, state.boxless);
+    const layer = state.firstMoveLayer || 0;
+    const best = findBestFirstMove(state.layers[layer].grid, state.layers[layer].solution, state.n, state.boxless);
     if (best.cell >= 0 && best.value >= 0){
-      state.firstMoveTarget = best;
+      state.firstMoveTarget = { ...best, layer };
       animateFirstMove();
     }
   }
@@ -773,9 +803,13 @@ function animateFirstMove(){
 
   const cellIdx = state.firstMoveTarget.cell;
   const val = state.firstMoveTarget.value;
+  const layer = state.firstMoveTarget.layer || 0;
 
   const cellEl = document.querySelector('[data-i="' + cellIdx + '"]');
-  const swatchEl = document.querySelector('[data-c="' + val + '"]');
+  // For double puzzles, select swatch with data-layer attribute
+  const swatchEl = state.dbl
+    ? document.querySelector('[data-c="' + val + '"][data-layer="' + layer + '"]')
+    : document.querySelector('[data-c="' + val + '"]');
 
   if (cellEl && swatchEl) {
     cellEl.classList.add("tutorial-glow");
@@ -791,15 +825,35 @@ function removeFirstMoveAnimations(){
 function checkFirstMoveComplete(cellIdx, val){
   if (!state.showingFirstMoveGuide || !state.firstMoveTarget) return false;
   if (cellIdx === state.firstMoveTarget.cell && val === state.firstMoveTarget.value){
-    stopFirstMoveGuide();
-    fireConfetti();
-    openModal(
-      '<h2 style="text-align:center">🎉 You got it!</h2>' +
-      '<p class="lede" style="text-align:center">One move, and look what happened. Keep placing colours to solve the puzzle!</p>' +
-      '<button class="btn" id="mGo">Continue</button>'
-    );
-    document.getElementById("mGo").onclick = closeModal;
-    return true;
+    const isDouble = state.dbl && state.firstMoveLayer < 1;
+
+    if (isDouble){
+      // For double puzzles: complete outer, then show inner
+      state.firstMoveLayer = 1;
+      removeFirstMoveAnimations();
+      fireConfetti(40);
+      openModal(
+        '<h2 style="text-align:center">🍩 Outer layer done!</h2>' +
+        '<p class="lede" style="text-align:center">Now try the inner layer (small dots)...</p>' +
+        '<button class="btn" id="mGo">Tap inner swatch</button>'
+      );
+      document.getElementById("mGo").onclick = () => {
+        closeModal();
+        setTimeout(() => startFirstMoveGuide(), 300);
+      };
+      return true;
+    } else {
+      // Single layer: complete
+      stopFirstMoveGuide();
+      fireConfetti();
+      openModal(
+        '<h2 style="text-align:center">🎉 You got it!</h2>' +
+        '<p class="lede" style="text-align:center">One move, and look what happened. Keep placing colours to solve the puzzle!</p>' +
+        '<button class="btn" id="mGo">Continue</button>'
+      );
+      document.getElementById("mGo").onclick = closeModal;
+      return true;
+    }
   }
   return false;
 }
@@ -820,6 +874,7 @@ function loadDay(dayNum){
   state.history = [];
   state.showingFirstMoveGuide = false;
   state.firstMoveTarget = null;
+  state.firstMoveLayer = 0;
   state.moveCount = 0;
 
   // Generate puzzle with fixed seed
@@ -1480,6 +1535,44 @@ document.getElementById("timeAdjustInput").addEventListener("keydown", (e) => {
     }
   }
 });
+
+document.getElementById("toggleAdBanner").onchange = (e) => {
+  state.showAdBanner = e.target.checked;
+  document.getElementById("adBannerTop").style.display = e.target.checked ? "flex" : "none";
+};
+
+document.getElementById("toggleAdVideo").onchange = (e) => {
+  state.showAdVideo = e.target.checked;
+  document.getElementById("adVideoContainer").style.display = e.target.checked ? "block" : "none";
+  if (e.target.checked){
+    startVideoCountdown();
+  }
+};
+
+function startVideoCountdown(){
+  let remaining = 15;
+  document.getElementById("videoCountdown").textContent = remaining;
+  const timer = setInterval(() => {
+    remaining--;
+    if (remaining > 0){
+      document.getElementById("videoCountdown").textContent = remaining;
+    } else {
+      clearInterval(timer);
+      document.getElementById("adVideoContainer").style.display = "none";
+      document.getElementById("toggleAdVideo").checked = false;
+      state.showAdVideo = false;
+      state.hearts = Math.min(state.hearts + 1, 5);
+      updateAdminStatus();
+      toast("Video complete! +1 heart");
+    }
+  }, 1000);
+}
+
+document.getElementById("btnSkipAd").onclick = () => {
+  document.getElementById("adVideoContainer").style.display = "none";
+  document.getElementById("toggleAdVideo").checked = false;
+  state.showAdVideo = false;
+};
 
 /* ================= init ================= */
 

@@ -673,6 +673,7 @@ const state = {
   showedTutorial: false,
   showingFirstMoveGuide: false,
   firstMoveTarget: null,
+  firstMoveLayer: 0,
   moveCount: 0,
 };
 
@@ -717,9 +718,10 @@ function startFirstMoveGuide(){
 
   const meta = TUTORIAL_DAYS[state.day - 1];
   if (meta && meta.easyFirst){
-    const best = findBestFirstMove(state.layers[0].grid, state.layers[0].solution, state.n, state.boxless);
+    const layer = state.firstMoveLayer || 0;
+    const best = findBestFirstMove(state.layers[layer].grid, state.layers[layer].solution, state.n, state.boxless);
     if (best.cell >= 0 && best.value >= 0){
-      state.firstMoveTarget = best;
+      state.firstMoveTarget = { ...best, layer };
       animateFirstMove();
     }
   }
@@ -735,9 +737,13 @@ function animateFirstMove(){
 
   const cellIdx = state.firstMoveTarget.cell;
   const val = state.firstMoveTarget.value;
+  const layer = state.firstMoveTarget.layer || 0;
 
   const cellEl = document.querySelector('[data-i="' + cellIdx + '"]');
-  const swatchEl = document.querySelector('[data-c="' + val + '"]');
+  // For double puzzles, select swatch with data-layer attribute
+  const swatchEl = state.dbl
+    ? document.querySelector('[data-c="' + val + '"][data-layer="' + layer + '"]')
+    : document.querySelector('[data-c="' + val + '"]');
 
   if (cellEl && swatchEl) {
     cellEl.classList.add("tutorial-glow");
@@ -753,15 +759,35 @@ function removeFirstMoveAnimations(){
 function checkFirstMoveComplete(cellIdx, val){
   if (!state.showingFirstMoveGuide || !state.firstMoveTarget) return false;
   if (cellIdx === state.firstMoveTarget.cell && val === state.firstMoveTarget.value){
-    stopFirstMoveGuide();
-    fireConfetti();
-    openModal(
-      '<h2 style="text-align:center">🎉 You got it!</h2>' +
-      '<p class="lede" style="text-align:center">One move, and look what happened. Keep placing colours to solve the puzzle!</p>' +
-      '<button class="btn" id="mGo">Continue</button>'
-    );
-    document.getElementById("mGo").onclick = closeModal;
-    return true;
+    const isDouble = state.dbl && state.firstMoveLayer < 1;
+
+    if (isDouble){
+      // For double puzzles: complete outer, then show inner
+      state.firstMoveLayer = 1;
+      removeFirstMoveAnimations();
+      fireConfetti(40);
+      openModal(
+        '<h2 style="text-align:center">🍩 Outer layer done!</h2>' +
+        '<p class="lede" style="text-align:center">Now try the inner layer (small dots)...</p>' +
+        '<button class="btn" id="mGo">Tap inner swatch</button>'
+      );
+      document.getElementById("mGo").onclick = () => {
+        closeModal();
+        setTimeout(() => startFirstMoveGuide(), 300);
+      };
+      return true;
+    } else {
+      // Single layer: complete
+      stopFirstMoveGuide();
+      fireConfetti();
+      openModal(
+        '<h2 style="text-align:center">🎉 You got it!</h2>' +
+        '<p class="lede" style="text-align:center">One move, and look what happened. Keep placing colours to solve the puzzle!</p>' +
+        '<button class="btn" id="mGo">Continue</button>'
+      );
+      document.getElementById("mGo").onclick = closeModal;
+      return true;
+    }
   }
   return false;
 }
@@ -782,6 +808,7 @@ function loadDay(dayNum){
   state.history = [];
   state.showingFirstMoveGuide = false;
   state.firstMoveTarget = null;
+  state.firstMoveLayer = 0;
   state.moveCount = 0;
 
   // Generate puzzle with fixed seed
