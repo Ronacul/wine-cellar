@@ -994,7 +994,7 @@ function renderPalette(){
       const done = placed >= state.n;
       const remaining = Math.max(0, state.n - placed);
       const shaped = !!c.clip && state.day !== 1;
-      return '<button class="swatch' + (done ? " done" : "")
+      return '<button class="swatch donut' + (done ? " done" : "")
         + (state.sel && state.sel.layer === 0 && state.sel.colour === i ? " on" : "")
         + (shaped ? " shaped" : "")
         + '" data-c="' + i + '" data-layer="0" style="' + (c.clip ? "--c:" + c.hex + ";--clip:" + c.clip : "--c:" + c.hex)
@@ -1016,7 +1016,7 @@ function renderPalette(){
       const done = placed >= state.n;
       const remaining = Math.max(0, state.n - placed);
       const shaped = !!c.clip && state.day !== 1;
-      return '<button class="swatch' + (done ? " done" : "")
+      return '<button class="swatch inner' + (done ? " done" : "")
         + (state.sel && state.sel.layer === 1 && state.sel.colour === i ? " on" : "")
         + (shaped ? " shaped" : "")
         + '" data-c="' + i + '" data-layer="1" style="' + (c.clip ? "--c:" + c.hex + ";--clip:" + c.clip : "--c:" + c.hex)
