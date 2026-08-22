@@ -759,23 +759,71 @@ From Day 1, track:
 
 ---
 
+## Interactive Prototype
+
+**Status:** Complete  
+**Location:** `chromoku/7day-tutorial.html`  
+**Purpose:** Validate core tutorial UX + ad placement strategy
+
+### Prototype Features
+
+- **Days 1–3 fully playable** with actual colour-matching mechanics (tap adjacent cells to swap, make all one colour)
+- **Days 4–7 UI present** with locked state (shows progression path)
+- **Mock Google AdSense banner** at bottom (styled accurately, non-functional for compliance)
+- **Rewarded video modal** with 15-second countdown timer
+- **Tutorial modals** explaining each day's mechanic
+- **Stats display:** move counter, target colour, match percentage
+- **Day selector buttons** with completion tracking
+- **Responsive design** for mobile and desktop
+
+### How to Test
+
+1. Open `chromoku/7day-tutorial.html` in a browser
+2. Play Days 1–3 (tap adjacent cells to match all to one colour)
+3. Click "Need Help?" to see rewarded video flow (15s mock ad)
+4. Try clicking day buttons to verify UI progression and disabled state
+5. Test on mobile to validate responsive layout
+
+### Validation Checklist
+
+- [ ] Is the 5×5 grid size right for daily play? (Feels too easy/hard?)
+- [ ] Is 2 minutes the right time estimate for Easy (Day 1)?
+- [ ] Do banner ads feel intrusive or acceptable?
+- [ ] Does the "Need Help?" rewarded video feel natural when stuck?
+- [ ] Are day selector buttons clear about progression?
+- [ ] Responsive layout works on phone/tablet/desktop?
+
+### Learnings for Full Development
+
+This prototype informs Phase 1 development:
+- Color-matching mechanics validate as fun/engaging
+- Tutorial progression (one mechanic per day) feels natural
+- Mock ad placement doesn't interrupt gameplay
+- Day 1–3 logic can be reused in full game
+- Days 4–7 mechanics (time pressure, combos, patterns) still need implementation
+
+---
+
 ## Next Steps
 
-1. **Design the first 52 weeks of puzzles** (26 Quick × 2 + 26 Extended × 2)
+1. **Validate prototype** (internal testing, phone/desktop feel)
+   - Use checklist above to refine difficulty/ad placement
+   
+2. **Design the first 52 weeks of puzzles** (26 Quick × 2 + 26 Extended × 2)
    - Can outsource to freelancer or DIY
    - ~2–4 hours per puzzle type per week
    
-2. **Build puzzle generation/storage** (if AI-generated: Gemini API)
+3. **Build puzzle generation/storage** (if AI-generated: Gemini API)
    
-3. **Implement daily logic** (timezone-aware, cache, resets)
+4. **Implement daily logic** (timezone-aware, cache, resets)
    
-4. **Build sharing + leaderboard** (basic, client-side only)
+5. **Build sharing + leaderboard** (basic, client-side only)
    
-5. **Integrate with monetization** (AdMob in Classic, none in Daily)
+6. **Integrate with monetization** (AdMob in Classic, none in Daily)
    
-6. **Beta test** (internal + friends)
+7. **Beta test** (internal + friends)
    
-7. **Launch!**
+8. **Launch!**
 
 ---
 
