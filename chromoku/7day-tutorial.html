@@ -238,6 +238,9 @@ h1{
 @keyframes pop{0%{transform:scale(.4);opacity:.3}60%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
 @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-4px)}40%{transform:translateX(4px)}60%{transform:translateX(-2px)}80%{transform:translateX(2px)}}
 @keyframes wave{0%,100%{transform:scale(1)}45%{transform:scale(1.16)}}
+@keyframes pulse-glow{0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,.6)}50%{box-shadow:0 0 0 12px rgba(255,255,255,0)}}
+@keyframes pulse-swatch{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+@keyframes arrow-bounce{0%,100%{opacity:.4;transform:translate(-8px,-8px)}50%{opacity:1;transform:translate(0,0)}}
 @media (prefers-reduced-motion:no-preference){
   .fill.new,.dot.new{animation:pop .22s cubic-bezier(.34,1.4,.64,1)}
   .cell.bad{animation:shake .3s}
@@ -251,6 +254,16 @@ h1{
 .board.done .cell .fill,.board.done .cell .dot{opacity:1!important}
 .board.sharp .cell:not(.given) .fill{border-radius:2px}
 .board.sharp .cell:not(.given) .dot{border-radius:0}
+
+/* ================= first-move tutorial ================= */
+.cell.tutorial-glow{animation:pulse-glow 1.5s infinite}
+.swatch.tutorial-pulse{animation:pulse-swatch 1.2s infinite}
+.tutorial-arrow{
+  position:absolute; width:40px; height:40px; z-index:100;
+  background:radial-gradient(circle, rgba(255,255,255,.8) 0%, rgba(255,255,255,.3) 70%);
+  border-radius:50%; pointer-events:none;
+  animation:arrow-bounce 1s infinite;
+}
 
 @media (min-width:520px){
   .board-wrap{max-width:400px}
@@ -296,111 +309,130 @@ const TUTORIAL_DAYS = [
     day: 1,
     title: "4×4 Sudoku",
     icon: "🟨",
-    givens: 8,
+    givens: 10,
     n: 4,
     boxless: false,
     description: "Learn the basics: fill a 4×4 grid with 4 colours.",
     tutorial: {
       title: "Welcome to Chromoku!",
-      body: "Your goal: fill the grid so each <b>row</b>, <b>column</b>, and <b>2×2 box</b> contains each colour exactly once.<br><br>" +
-            "A few cells are already filled in (given). Tap a colour, then tap an empty cell to place it.<br>" +
-            "Tap the same colour again to clear it.<br><br>" +
-            "The givens are locked — you can only change the cells you place.",
+      body: "<b>Goal:</b> fill the grid so each row, column, and 2×2 box has all 4 colours exactly once.<br><br>" +
+            "<b>How to play:</b> Tap a colour, then tap an empty cell to place it. Tap again to clear.",
+      diagram: '<div style="margin:12px 0;padding:12px;background:var(--panel2);border-radius:8px;font-size:12px;text-align:center;line-height:1.6">' +
+               '✓ Each colour appears once per row, column, and box<br>' +
+               '✗ No repeats allowed' +
+               '</div>'
     }
   },
   {
     day: 2,
     title: "4×4 Latin",
     icon: "🟧",
-    givens: 8,
+    givens: 10,
     n: 4,
     boxless: true,
     description: "No boxes — just rows and columns.",
     tutorial: {
       title: "Latin Mode",
-      body: "Same grid, <b>new rule</b>: there are no boxes now.<br><br>" +
-            "Each colour must appear exactly once in every <b>row</b> and every <b>column</b>.<br>" +
-            "Box uniqueness? That's gone. The puzzle is simpler in concept but trickier to solve — " +
-            "you lose the box constraint that normally narrows things down.",
+      body: "<b>New rule:</b> No boxes now, just rows and columns.<br><br>" +
+            "Each colour appears exactly once per row and per column.",
+      diagram: '<div style="margin:12px 0;padding:12px;background:var(--panel2);border-radius:8px;font-size:12px;text-align:center;line-height:1.6">' +
+               '✓ Each colour once per row & column<br>' +
+               '✗ Boxes don\'t matter' +
+               '</div>'
     }
   },
   {
     day: 3,
     title: "6×6 Sudoku",
     icon: "🟩",
-    givens: 15,
+    givens: 20,
     n: 6,
     boxless: false,
     description: "A bigger board with 6 colours and 3×2 boxes.",
     tutorial: {
       title: "Going Bigger",
-      body: "The board is now 6×6, with <b>6 colours</b>.<br><br>" +
-            "The box shape changed: each box is <b>3 wide × 2 tall</b> instead of 2×2.<br>" +
-            "The rules stay the same: rows, columns, and boxes must each have all 6 colours.",
+      body: "<b>Now:</b> 6×6 grid with 6 colours.<br><br>" +
+            "Boxes are 3 wide × 2 tall. Same rules: rows, columns, and boxes must each have all 6 colours.",
+      diagram: '<div style="margin:12px 0;padding:12px;background:var(--panel2);border-radius:8px;font-size:12px;text-align:center;line-height:1.6">' +
+               '3 wide × 2 tall boxes<br>' +
+               '(instead of 2×2)' +
+               '</div>'
     }
   },
   {
     day: 4,
     title: "6×6 Symbols",
     icon: "🟪",
-    givens: 15,
+    givens: 20,
     n: 6,
     boxless: false,
     description: "Same puzzle, different marks — try shapes instead of colours.",
     tutorial: {
       title: "Shape Marks",
-      body: "Still a 6×6 grid, but now the marks are <b>shapes</b> instead of colours.<br><br>" +
-            "Squares, circles, triangles, diamonds — the rule is still one per row/column/box.<br>" +
-            "Shapes read the same way as colours; they're just a different way to distinguish the marks.",
+      body: "<b>Same rules,</b> but marks are shapes instead of colours.<br><br>" +
+            "Squares, circles, triangles — one per row/column/box, just like colours.",
+      diagram: '<div style="margin:12px 0;padding:12px;background:var(--panel2);border-radius:8px;font-size:12px;text-align:center;line-height:1.6">' +
+               '🟪 ⭕ 🔺 ◀️ ⬛ 🔷<br>' +
+               'Each shape unique per row, column, box' +
+               '</div>'
     }
   },
   {
     day: 5,
     title: "4×4 Double",
     icon: "🍩",
-    givens: 8,
+    givens: 10,
     n: 4,
     boxless: false,
     double: true,
     description: "Two puzzles on one board — outer and inner layers.",
     tutorial: {
       title: "Double Layering",
-      body: "Now there are <b>two puzzles</b> on the same board.<br><br>" +
-            "The <b>outer squares</b> (the big coloured areas) form one Sudoku.<br>" +
-            "The <b>inner squares</b> (the small dots inside) form a second, completely independent Sudoku.<br><br>" +
-            "Tap the top palette row for outer colours, the bottom row for inner colours.",
+      body: "<b>Two independent puzzles</b> on the same board: outer squares (big coloured areas) and inner squares (small dots).<br><br>" +
+            "Top palette = outer; bottom palette = inner.",
+      diagram: '<div style="margin:12px 0;padding:12px;background:var(--panel2);border-radius:8px;font-size:12px;text-align:center;line-height:1.6">' +
+               '🟪 Big squares (outer Sudoku)<br>' +
+               '🟩 Small dots (inner Sudoku)<br>' +
+               'Completely separate puzzles' +
+               '</div>'
     }
   },
   {
     day: 6,
     title: "9×9 Sudoku",
     icon: "⬜",
-    givens: 28,
+    givens: 35,
     n: 9,
     boxless: false,
     description: "The classic puzzle — 9×9 with 9 colours and 3×3 boxes.",
     tutorial: {
       title: "The Classic",
-      body: "Welcome to the full 9×9 grid, the puzzle that started it all.<br><br>" +
-            "9 rows, 9 columns, 9 boxes — and 9 colours to place.<br>" +
-            "The rules are identical: uniqueness in every row, column, and box.<br>" +
-            "But with so many cells, the logic runs much deeper.",
+      body: "<b>Full 9×9 grid</b> with 9 colours and 3×3 boxes.<br><br>" +
+            "Same rules, deeper logic: rows, columns, and boxes must each have all 9 colours.",
+      diagram: '<div style="margin:12px 0;padding:12px;background:var(--panel2);border-radius:8px;font-size:12px;text-align:center;line-height:1.6">' +
+               '9 rows × 9 columns<br>' +
+               '9 boxes (3×3 each)<br>' +
+               '9 colours' +
+               '</div>'
     }
   },
   {
     day: 7,
     title: "10×10 Latin",
     icon: "🟥",
-    givens: 35,
+    givens: 45,
     n: 10,
     boxless: true,
     description: "The mastery puzzle — 10×10 with no boxes. Uniqueness only in rows and columns.",
     tutorial: {
       title: "Mastery",
-      body: "You've made it to the final day.<br><br>" +
-            "A 10×10 Latin grid: 10 colours, no boxes.<br>" +
-            "Only rows and columns count. This is where the intuition you've built comes together.<br><br>" +
-            "After today, you're ready for the full game.",
+      body: "<b>Final challenge:</b> 10×10 Latin grid with 10 colours, no boxes.<br><br>" +
+            "Only rows and columns matter. You're ready for the full game after this.",
+      diagram: '<div style="margin:12px 0;padding:12px;background:var(--panel2);border-radius:8px;font-size:12px;text-align:center;line-height:1.6">' +
+               '10 rows × 10 columns<br>' +
+               '10 colours<br>' +
+               'No boxes' +
+               '</div>'
     }
   },
 ];
@@ -583,9 +615,12 @@ const state = {
   done: false,
   history: [],
   showedTutorial: false,
+  showingFirstMoveGuide: false,
+  firstMoveCount: 0,
 };
 
 const LS_TUTORIAL = "chromoku.tutorial.v1";
+const LS_VERSION = "chromoku.tutorial.version";
 
 function loadProgress(){
   try {
@@ -604,6 +639,70 @@ function saveProgress(){
   } catch {}
 }
 
+function clearTutorialIfFresh(){
+  const version = localStorage.getItem(LS_VERSION);
+  if (version !== "2") {
+    try {
+      localStorage.removeItem(LS_TUTORIAL);
+      localStorage.setItem(LS_VERSION, "2");
+    } catch {}
+  }
+}
+
+function hasSeenPuzzle(){
+  const p = loadProgress();
+  return p["day" + state.day] && p["day" + state.day].done;
+}
+
+function startFirstMoveGuide(){
+  if (hasSeenPuzzle() || state.showingFirstMoveGuide) return;
+  state.showingFirstMoveGuide = true;
+  state.firstMoveCount = 0;
+  animateFirstMove();
+}
+
+function stopFirstMoveGuide(){
+  state.showingFirstMoveGuide = false;
+  removeFirstMoveAnimations();
+}
+
+function animateFirstMove(){
+  if (!state.showingFirstMoveGuide) return;
+  state.firstMoveCount++;
+  if (state.firstMoveCount > 3) { stopFirstMoveGuide(); return; }
+
+  // Find first empty cell
+  const grid = state.layers[0].grid;
+  let emptyCell = -1;
+  for (let i = 0; i < grid.length; i++) {
+    if (grid[i] === null || grid[i] === undefined) {
+      emptyCell = i;
+      break;
+    }
+  }
+  if (emptyCell === -1) return;
+
+  const cellEl = document.querySelector('[data-i="' + emptyCell + '"]');
+  const swatches = document.querySelectorAll('[data-c]');
+  const randomSwatch = swatches[Math.floor(Math.random() * swatches.length)];
+
+  if (cellEl && randomSwatch) {
+    cellEl.classList.add("tutorial-glow");
+    randomSwatch.classList.add("tutorial-pulse");
+
+    setTimeout(() => {
+      cellEl.classList.remove("tutorial-glow");
+      randomSwatch.classList.remove("tutorial-pulse");
+      setTimeout(() => animateFirstMove(), 1000);
+    }, 3000);
+  }
+}
+
+function removeFirstMoveAnimations(){
+  document.querySelectorAll(".tutorial-glow").forEach(el => el.classList.remove("tutorial-glow"));
+  document.querySelectorAll(".tutorial-pulse").forEach(el => el.classList.remove("tutorial-pulse"));
+}
+
 /* ================= game setup ================= */
 
 function loadDay(dayNum){
@@ -618,6 +717,8 @@ function loadDay(dayNum){
   state.sel = null;
   state.erase = false;
   state.history = [];
+  state.showingFirstMoveGuide = false;
+  state.firstMoveCount = 0;
 
   // Generate puzzle with fixed seed so it's the same every day
   const seed = dayNum * 12345;
@@ -644,19 +745,23 @@ function showTutorialIfNeeded(){
 
 function showTutorial(meta){
   openModal(
-    '<div style="text-align:center; margin-bottom:16px">' + meta.icon + '</div>' +
+    '<div style="text-align:center; margin-bottom:16px; font-size:48px">' + meta.icon + '</div>' +
     '<h2>' + meta.tutorial.title + '</h2>' +
-    '<p class="lede" style="margin-bottom:16px">' + meta.tutorial.body + '</p>' +
-    '<button class="btn" id="mGo">Got it, let\'s go!</button>'
+    '<p class="lede">' + meta.tutorial.body + '</p>' +
+    (meta.tutorial.diagram ? meta.tutorial.diagram : '') +
+    '<button class="btn" id="mGo">Let\'s play!</button>'
   );
-  document.getElementById("mGo").onclick = closeModal;
+  document.getElementById("mGo").onclick = () => {
+    closeModal();
+    setTimeout(() => startFirstMoveGuide(), 300);
+  };
 }
 
 function showBook(){
   const meta = TUTORIAL_DAYS[state.day - 1];
   if (!meta) return;
   openModal(
-    '<h2>Day ' + state.day + ': ' + meta.title + '</h2>' +
+    '<h2>' + meta.title + '</h2>' +
     '<p class="lede">' + meta.description + '</p>' +
     '<ul style="margin:16px 0">' +
     '<li><span class="bullet"></span><b>Givens:</b> ' + meta.givens + ' (pre-filled cells)</li>' +
@@ -822,7 +927,7 @@ function renderSub(){
   const meta = TUTORIAL_DAYS[state.day - 1];
   const sub = document.getElementById("sub");
   if (meta){
-    sub.textContent = "Day " + state.day + " · " + meta.title;
+    sub.textContent = meta.title + " · " + state.day + " of 7";
   }
 }
 
@@ -833,7 +938,9 @@ function renderProgressBar(){
     const p = loadProgress();
     const done = p["day" + d] && p["day" + d].done;
     const cls = d < state.day ? "done" : d === state.day ? "current" : "upcoming";
-    html += '<div class="progress-step ' + cls + '" title="Day ' + d + '"></div>';
+    const meta = TUTORIAL_DAYS[d - 1];
+    const title = meta ? meta.title : "Day " + d;
+    html += '<div class="progress-step ' + cls + '" title="' + title + '"></div>';
   }
   bar.innerHTML = html;
 }
@@ -893,6 +1000,7 @@ function placeColour(i, val){
   state.layers[0].grid[i] = val;
   paintCell(i);
   renderPalette();
+  stopFirstMoveGuide();
 
   if (val !== null){
     const bad = conflictsAt(0, i);
@@ -947,23 +1055,27 @@ function resetDay(){
 
 function win(){
   state.done = true;
+  stopFirstMoveGuide();
   saveProgress();
   setTimeout(() => {
     fireConfetti();
     const p = loadProgress();
     const nextDay = state.day + 1;
+    const nextMeta = nextDay <= 7 ? TUTORIAL_DAYS[nextDay - 1] : null;
+    const nextTitle = nextMeta ? nextMeta.title : null;
+    const currentMeta = TUTORIAL_DAYS[state.day - 1];
     openModal(
-      '<h2>Day ' + state.day + ' complete!</h2>' +
+      '<h2>' + currentMeta.title + ' complete!</h2>' +
       '<p class="lede">' +
         (nextDay <= 7
-          ? 'Return tomorrow for day ' + nextDay + ', or start it now.'
-          : 'You\'ve completed the tutorial! Ready for the full game at <a href="index.html" style="color:inherit">Chromoku</a>.') +
+          ? 'Ready for <b>' + nextTitle + '</b>?'
+          : 'You\'ve completed the tutorial! Ready for the <b>full game</b>?') +
       '</p>' +
       (nextDay <= 7
-        ? '<button class="btn" id="mNext">Start day ' + nextDay + '</button>' +
-          '<button class="btn ghost" id="mReview">Review day ' + state.day + '</button>'
-        : '<button class="btn" id="mPlay">Play full game</button>') +
-      '<button class="btn ghost" id="mDone">All done for now</button>'
+        ? '<button class="btn" id="mNext">Start ' + nextTitle + '</button>' +
+          '<button class="btn ghost" id="mReview">Practice again</button>'
+        : '<button class="btn" id="mPlay">Play full Chromoku</button>') +
+      '<button class="btn ghost" id="mDone">Later</button>'
     );
     if (nextDay <= 7){
       document.getElementById("mNext").onclick = () => { closeModal(); loadDay(nextDay); };
@@ -1085,8 +1197,10 @@ document.getElementById("btnUndo").onclick = undo;
 document.getElementById("btnHint").onclick = showBook;
 
 document.getElementById("btnReset").onclick = () => {
+  const meta = TUTORIAL_DAYS[state.day - 1];
+  const title = meta ? meta.title : "puzzle";
   openModal(
-    '<h2>Reset day ' + state.day + '?</h2>' +
+    '<h2>Reset ' + title + '?</h2>' +
     '<p class="lede">Clear all your placements and start over.</p>' +
     '<button class="btn" id="mYes">Yes, reset</button>' +
     '<button class="btn ghost" id="mNo">Cancel</button>'
@@ -1097,6 +1211,7 @@ document.getElementById("btnReset").onclick = () => {
 
 /* ================= init ================= */
 
+clearTutorialIfFresh();
 loadDay(1);
 </script>
 </body>
