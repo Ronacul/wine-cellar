@@ -3752,26 +3752,20 @@ function showHelp(){
     + '<p class="lede">' + swatches + "<br><br>One new puzzle every day, at three difficulties. "
     + "Repeats shake at you, but never block you.</p>"
     + '<div style="display:grid; gap:8px; margin-top:12px">'
-    + '<div style="font-size:12px; color:var(--ink-dim); font-weight:600">Mechanics tutorials</div>'
-    + '<button class="btn ghost" id="tutLatin" style="justify-self:start; font-size:11px">Latin</button>'
-    + '<button class="btn ghost" id="tutDouble" style="justify-self:start; font-size:11px">Double</button>'
+    + '<div style="font-size:12px; color:var(--ink-dim); font-weight:600">Tutorials</div>'
+    + '<button class="btn ghost" id="tutReplay" style="justify-self:start; font-size:11px">📚 Full tutorial (restart)</button>'
+    + '<button class="btn ghost" id="tutLatin" style="justify-self:start; font-size:11px">Latin rules</button>'
+    + '<button class="btn ghost" id="tutDouble" style="justify-self:start; font-size:11px">Double layer</button>'
     + '<button class="btn ghost" id="tutScramble" style="justify-self:start; font-size:11px">Scramble</button>'
     + '</div>'
     + '<button class="btn" onclick="closeModal()">Play</button>'
   );
 
   // Tutorial buttons
+  document.getElementById("tutReplay").onclick = () => { closeModal(); state.mode = "levels"; loadLevel(0); };
   document.getElementById("tutLatin").onclick = () => { closeModal(); showExplainers(["latin"], () => showHelp()); };
   document.getElementById("tutDouble").onclick = () => { closeModal(); showExplainers(["double"], () => showHelp()); };
   document.getElementById("tutScramble").onclick = () => { closeModal(); showExplainers(["scramble"], () => showHelp()); };
-
-  // Add "Replay tutorial" button
-  const m = document.getElementById("modal");
-  const tutBtn = document.createElement("button");
-  tutBtn.className = "btn ghost";
-  tutBtn.textContent = "📚 Replay tutorial";
-  tutBtn.onclick = () => { closeModal(); state.mode = "levels"; loadLevel(0); };
-  m.appendChild(tutBtn);
 
   save(LS_HELP, true);
 }
