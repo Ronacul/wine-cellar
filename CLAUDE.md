@@ -280,12 +280,13 @@ The "What's new" section is hardcoded in `renderSync()` in `index.html`. Add new
 
 ## Chromoku (colour puzzle game)
 
-**The canonical Chromoku repo is `Ronacul/Chromoku` (private).** The
-`chromoku/` directory in this repo is a historical copy and is NOT the source
-of truth. All Chromoku development should target the private repo:
+Chromoku lives in **this repo** at `chromoku/index.html`. There is no separate
+`Ronacul/Chromoku` repo — that note was wrong. All Chromoku development happens
+here in `wine-cellar/chromoku/`.
 
-1. Add the repo: `add_repo` → `Ronacul/Chromoku`
-2. Make changes in that repo's `index.html`
-3. Push to `Ronacul/Chromoku`, not to `wine-cellar/chromoku/`
+- Game: `chromoku/index.html` (single-file SPA, vanilla JS)
+- Design doc: `chromoku/CHROMOKU.md`
+- Mark picker tool: `chromoku/MARK_PICKER.md`
+- Tutorial: `chromoku/TUTORIAL.md`
 
-See `Ronacul/Chromoku/CHROMOKU.md` for the full game design doc.
+Edit locally at `G:\My Drive\Claude Stuff\wine-cellar\chromoku\index.html`, commit and push to `Ronacul/wine-cellar`.
