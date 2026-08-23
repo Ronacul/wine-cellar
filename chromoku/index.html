@@ -662,6 +662,7 @@ html.dev #adminBar{display:flex}
   </label>
   <button id="adminReset" style="background:#3a1a1a;border:1px solid #6a3a3a;border-radius:4px;color:#df9f9f;font-family:var(--mono);font-size:11px;padding:2px 8px;cursor:pointer">Reset progress</button>
   <button id="adminDaily" style="background:#2a5a2a;border:1px solid #3a6a3a;border-radius:4px;color:#9fdf9f;font-family:var(--mono);font-size:11px;padding:2px 8px;cursor:pointer">Daily</button>
+  <button id="adminNext" style="background:#2a4a5a;border:1px solid #3a6a7a;border-radius:4px;color:#9fcfdf;font-family:var(--mono);font-size:11px;padding:2px 8px;cursor:pointer">→ Next day</button>
 </div>
 
 <div class="play">
@@ -1122,7 +1123,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.9.6";
+const CHROMOKU_VERSION = "v0.9.7";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -4747,6 +4748,12 @@ function updateAdminBar(){
   if (dateEl) dateEl.value = dayToISO(state.day);
   const lvlEl = document.getElementById("adminLevel");
   if (lvlEl) lvlEl.value = (state.mode === "levels" && state.lvl) ? state.lvl.cfg.level : progress().level;
+  // Keep the → Next day button label in sync so the tester can see what comes next
+  const nextBtn = document.getElementById("adminNext");
+  if (nextBtn){
+    const dc = dailyConfig();
+    nextBtn.title = dayToISO(state.day) + " · " + dc.label + " · " + dc.tier;
+  }
 }
 (function(){
   const go = document.getElementById("adminGo");
@@ -4791,6 +4798,16 @@ function updateAdminBar(){
   };
   const dailyBtn = document.getElementById("adminDaily");
   if (dailyBtn) dailyBtn.onclick = () => enterDaily();
+  // → Next day: advance state.day by 1 (wraps through the weekly schedule) and
+  // reload the daily. Lets testers walk Mon → Tue → … → Sun → Mon without
+  // touching the date picker.
+  const nextBtn = document.getElementById("adminNext");
+  if (nextBtn) nextBtn.onclick = () => {
+    state.day = state.day + 1;
+    save(LS_DAY, state.day);
+    updateAdminBar();
+    enterDaily();
+  };
   updateAdminBar();
 })();
 

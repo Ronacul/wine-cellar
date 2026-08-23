@@ -8,6 +8,10 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.9.7] 2026-08-23 — Admin: → Next day button cycles through weekly schedule
+
+- **Admin bar — "→ Next day" button:** Increments `state.day` by 1 and reloads the daily, so testers can walk Monday → Tuesday → … → Sunday → Monday without touching the date picker. The button's tooltip shows the date + day name + tier for the current day (e.g. *2026-08-23 · Sunday · Master*). `updateAdminBar()` keeps the tooltip in sync on every navigation.
+
 ### [v0.9.6] 2026-08-23 — Daily difficulty escalation: Mon (easiest) → Sun (hardest)
 
 - **6×6 Sudoku added:** `s6` size with 2×3 boxes (`boxDims(6)` already handled this). Givens: Easy 20, Medium 15, Hard 11.
