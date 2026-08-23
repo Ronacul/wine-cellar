@@ -2005,6 +2005,8 @@ function loadLevel(n){
   // until the player makes their first move.
   if (isTutorialLevel(n)){
     state._tutHintLayer = 0; // Double mode: start by coaching the outer (donut) layer
+    state._tutHintCount = 0; // how many auto-hints have fired this level (for power-up demo timing)
+    if (n === 0) state._tutPowerupDemo = false; // reset the one-shot demo on full tutorial restart
     if (state._hintTimer) clearTimeout(state._hintTimer);
     if (state._hintInterval) clearInterval(state._hintInterval);
     // First hint after 1.5s; repeat every 4.5s.
@@ -3196,6 +3198,16 @@ const MECHANIC_EXPLAINERS = {
        + "A 6×6 normally has 3-wide × 2-tall boxes. With rotation it's 2-wide × 3-tall.<br>"
        + "Same rules, different spatial reasoning.",
   },
+  powerups: {
+    title:"Power-ups",
+    icon:"⚡",
+    body:"Four helpers sit below the board during levels. They share a pool (⚡) that recharges over time.<br><br>"
+       + "<b>🔦 Flash hint</b> — flashes the most-constrained empty cell and its correct colour, the same mechanic the tutorial used to guide you. Tap it, fill the cell. <em>No star penalty.</em><br><br>"
+       + "<b>💡 Reveal</b> — fills one random empty cell for you. Lowers your star ceiling.<br><br>"
+       + "<b>⏸ Freeze</b> — pauses the clock for 15 seconds. Lowers your star ceiling.<br><br>"
+       + "<b>⏰ Add time</b> — adds 30 seconds to the clock. Lowers your star ceiling.<br><br>"
+       + "Flash hint is the only one that doesn't cost stars — it just points, it doesn't play.",
+  },
 };
 
 function seenMechanics(){
@@ -3212,6 +3224,9 @@ function markMechanicSeen(id){
 function newMechanics(cfg){
   const seen = seenMechanics();
   const out = [];
+  // Power-ups explainer fires once on first real (non-tutorial) level, after the
+  // player has learned the flash hint mechanic through the tutorial.
+  if (!cfg.tutorial && !seen.has("powerups")) out.push("powerups");
   if (cfg.boxless && !seen.has("latin")) out.push("latin");
   if (cfg.layers > 1 && !seen.has("double")) out.push("double");
   if (cfg.boxRotate && !seen.has("boxRotate")) out.push("boxRotate");
@@ -3940,8 +3955,9 @@ function showHelp(){
     + '<p class="lede">' + swatches + "<br><br>One new puzzle every day, at three difficulties. "
     + "Repeats shake at you, but never block you.</p>"
     + '<div style="display:grid; gap:8px; margin-top:12px">'
-    + '<div style="font-size:12px; color:var(--ink-dim); font-weight:600">Tutorials</div>'
+    + '<div style="font-size:12px; color:var(--ink-dim); font-weight:600">Tutorials & rules</div>'
     + '<button class="btn ghost" id="tutReplay" style="justify-self:start; font-size:11px">📚 Full tutorial (restart)</button>'
+    + '<button class="btn ghost" id="tutPowerups" style="justify-self:start; font-size:11px">⚡ Power-ups</button>'
     + '<button class="btn ghost" id="tutLatin" style="justify-self:start; font-size:11px">Latin rules</button>'
     + '<button class="btn ghost" id="tutDouble" style="justify-self:start; font-size:11px">Double layer</button>'
     + '<button class="btn ghost" id="tutScramble" style="justify-self:start; font-size:11px">Scramble</button>'
@@ -3951,6 +3967,7 @@ function showHelp(){
 
   // Tutorial buttons
   document.getElementById("tutReplay").onclick = () => { closeModal(); state.mode = "levels"; loadLevel(0); };
+  document.getElementById("tutPowerups").onclick = () => { closeModal(); showExplainers(["powerups"], () => showHelp()); };
   document.getElementById("tutLatin").onclick = () => { closeModal(); showExplainers(["latin"], () => showHelp()); };
   document.getElementById("tutDouble").onclick = () => { closeModal(); showExplainers(["double"], () => showHelp()); };
   document.getElementById("tutScramble").onclick = () => { closeModal(); showExplainers(["scramble"], () => showHelp()); };
@@ -4037,6 +4054,21 @@ function flashHint(isManual){
     }, startDelay);
   }
 
+  // Track hint count for power-up demo (tutorial auto-hints only).
+  if (!isManual && state.lvl && state.lvl.cfg.tutorial){
+    state._tutHintCount = (state._tutHintCount || 0) + 1;
+  }
+
+  // Power-up demo: on the 3rd auto-hint in tutorial level ≥ 2, flash the 🔦 button
+  // first so the player sees it, then let the normal cell+swatch flash follow.
+  // Fires only once per tutorial run (_tutPowerupDemo guards re-entry).
+  const doDemo = !isManual
+    && !state._tutPowerupDemo
+    && state.lvl && state.lvl.cfg.tutorial
+    && (state.lvl.cfg.level || 0) >= 2
+    && (state._tutHintCount || 0) >= 3;
+  if (doDemo) state._tutPowerupDemo = true;
+
   // Determine which layers to hint this cycle.
   // Tutorial Double mode: hint only the current focus layer (_tutHintLayer), which
   // alternates each time the user fills a cell — donut then hole then donut then hole.
@@ -4057,10 +4089,21 @@ function flashHint(isManual){
 
   if (!hintLayers.length) return; // nothing to hint
 
+  // Demo: flash the 🔦 button, then offset the cell+swatch flash so the player
+  // sees: button blinks → cell blinks → swatch blinks.
+  let startOffset = 0;
+  if (doDemo){
+    const btn = document.getElementById("puFlash");
+    if (btn){
+      pulseRing(btn, 0);
+      startOffset = CELL_MS + SWATCH_GAP; // push cell/swatch after button finishes
+    }
+  }
+
   // Interleave: all cell flashes first (donut, hole), then all swatch flashes (donut, hole).
   // This gives the pattern: donut-cell → hole-cell → donut-swatch → hole-swatch
   // so no two of the same kind appear consecutively.
-  let t = 0;
+  let t = startOffset;
   for (const { li, cellEl } of hintLayers){
     if (li === 0) pulseRing(cellEl, t);
     else          pulseDot(cellEl, t);
