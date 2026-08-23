@@ -1507,7 +1507,7 @@ const TUTORIAL_CONFIGS = [
     title:"Six colours, same rules",
     desc:"Each row, column and bold box must contain one of each colour — no repeats." },
   // Level 2: 6×6 Latin — rows and columns only (no boxes)
-  { n:6, boxless:true, layers:1, givens:28, tutorial:true, noTimer:true,
+  { n:6, boxless:true, layers:1, givens:33, tutorial:true, noTimer:true,
     title:"Latin: no boxes",
     desc:"No bold boxes this time. Only rows and columns — one of each in each." },
   // Level 3: 4×4 shapes — different mark set
@@ -1519,7 +1519,7 @@ const TUTORIAL_CONFIGS = [
     title:"Double: two grids, one board",
     desc:"The outer ring is one puzzle; the inner centre is another. Fill both." },
   // Level 5: 9×9 — bigger grid
-  { n:9, boxless:false, layers:1, givens:65, tutorial:true, noTimer:true,
+  { n:9, boxless:false, layers:1, givens:77, tutorial:true, noTimer:true,
     title:"Nine colours, 9x9 grid",
     desc:"Bigger grid, same rules. Every row, column and 3x3 box gets one of each." },
   // Level 6: 6×6 double
@@ -2851,11 +2851,36 @@ function winTutorialLevel(lv){
   const isLast = lvNum >= TUTORIAL_CONFIGS.length - 1;
   const nextCfg = isLast ? null : TUTORIAL_CONFIGS[lvNum + 1];
   markWon();
+
+  // Build a mini palette strip showing what was just mastered.
+  // Outer layer swatches — coloured squares (or shaped if markSet:"shapes")
+  function miniChip(m, size){
+    const sz = size || 26;
+    const bg = m.kind === "pattern"
+      ? 'background-color:var(--panel2);background-image:' + m.bg + ';background-size:' + (m.bgS || '24px')
+      : 'background:' + m.hex;
+    const clip = m.clip ? ';clip-path:' + m.clip + ';border-radius:2px' : ';border-radius:5px';
+    return '<span style="display:inline-block;width:' + sz + 'px;height:' + sz + 'px;flex-shrink:0;'
+           + bg + clip + '"></span>';
+  }
+  const outerChips = MARKS.slice(0, state.n).map(m => miniChip(m, 26)).join('');
+  let swatchHtml =
+    '<div style="display:flex;gap:5px;justify-content:center;flex-wrap:wrap;margin:10px 0 4px">'
+    + outerChips + '</div>';
+  // Inner layer dots for Double mode
+  if (state.layers.length > 1){
+    const innerChips = INNER.slice(0, state.n).map(m => miniChip(m, 18)).join('');
+    swatchHtml +=
+      '<div style="display:flex;gap:5px;justify-content:center;flex-wrap:wrap;margin-bottom:12px">'
+      + innerChips + '</div>';
+  }
+
   setTimeout(() => {
     fireConfetti();
     if (isLast){
       openModal(
         "<h2>Tutorial complete! 🎉</h2>"
+        + swatchHtml
         + '<p class="lede">You\'ve learned all the mechanics. Time to play for real!</p>'
         + '<button class="btn" id="mTutDone">▶ Start playing</button>'
         + '<button class="btn ghost" id="mTutRestart">Replay tutorial</button>'
@@ -2864,9 +2889,9 @@ function winTutorialLevel(lv){
       document.getElementById("mTutRestart").onclick = () => { closeModal(); loadLevel(0); };
     } else {
       openModal(
-        '<h2>✓ Got it!</h2>'
-        + '<p class="lede" style="color:var(--gold)">' + lv.cfg.title + '</p>'
-        + '<div style="background:var(--panel2);border-radius:10px;padding:12px 16px;margin:12px 0;text-align:left">'
+        '<h2>✓ ' + lv.cfg.title + '</h2>'
+        + swatchHtml
+        + '<div style="background:var(--panel2);border-radius:10px;padding:12px 16px;margin:8px 0;text-align:left">'
         + '<div style="font-size:10px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Next up</div>'
         + '<div style="font-size:14px;font-weight:600;color:var(--ink);margin-bottom:4px">' + nextCfg.title + '</div>'
         + (nextCfg.desc ? '<div style="font-size:12px;color:var(--ink-dim)">' + nextCfg.desc + '</div>' : '')
