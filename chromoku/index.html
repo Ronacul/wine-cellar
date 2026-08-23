@@ -1068,6 +1068,11 @@ const LS_FADE  = "chromoku.fade-done.v1";    // toggle: fade completed units
 const LS_ROUND = "chromoku.round-marks.v1";  // toggle: rounded corners on guesses
 const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player has seen
 
+// ── Build identity ──────────────────────────────────────────────────────────
+// Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
+// PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
+const CHROMOKU_VERSION = "v0.9.1";
+
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
 // Settings → "Admin tools". Long-press detection on the gear is removed in
@@ -4189,6 +4194,7 @@ function showAbout(){
     + '<p class="lede"><b>A colour-logic puzzle.</b> Fill every row, column and box so no mark repeats. That\'s the whole game.</p>'
     + '<p style="font-size:13px; color:var(--ink-dim); margin:16px 0; line-height:1.6">The logo above is a digital recreation of a quilt pattern made by the developer\'s mother. The nested squares represent Chromoku\'s Double mechanic — two puzzles, one unified solution. A tribute to the art of patterns and the joy of puzzles.</p>'
     + '<p style="font-size:12px; color:var(--ink-faint); margin-top:20px"><b>Coming:</b> Nov 8 daily puzzle featuring this exact pattern — a homage to quilting and motherhood.</p>'
+    + '<p style="font-size:11px; color:var(--ink-faint); margin-top:16px; font-family:var(--mono)">' + CHROMOKU_VERSION + '</p>'
     + '<button class="btn ghost" onclick="closeModal()">Done</button>'
   );
 }
