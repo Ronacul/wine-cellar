@@ -863,7 +863,7 @@ function openCropEditor(src, onApply){
   modal.querySelector("#crop-reset").onclick = () => {
     rotation = 0; offsetX = 0; offsetY = 0; zoom = 1.0; updateZoomLabel(); draw();
   };
-  modal.querySelector("#crop-cancel").onclick = () => modal.remove();
+  modal.querySelector("#crop-cancel").onclick = () => { img.onerror = null; img.src = ""; modal.remove(); };
 
   /* apply — render crop frame to output canvas */
   modal.querySelector("#crop-apply").onclick = () => {
@@ -884,7 +884,8 @@ function openCropEditor(src, onApply){
       img.height * sc * outScale
     );
     const result = out.toDataURL("image/jpeg", 0.82);
-    out.width = 0; out.height = 0; img.src = "";
+    out.width = 0; out.height = 0;
+    img.onerror = null; img.src = ""; /* clear onerror first — empty src triggers it */
     modal.remove();
     onApply(result);
   };
