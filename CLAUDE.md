@@ -289,22 +289,52 @@ here in `wine-cellar/chromoku/`.
 - Mark picker tool: `chromoku/MARK_PICKER.md`
 - Tutorial: `chromoku/TUTORIAL.md`
 
-### Chromoku links
+### Chromoku branches
 
-| Link | Branch | Purpose |
-|---|---|---|
-| 🎮 **https://ronacul.github.io/wine-cellar/chromoku/** | `main` | **Playtest / playtest** — always the live testable version |
+Two persistent branches always exist — **never collapse them**:
 
-GitHub Pages serves only `main`, so `main` IS the playtest link. There is no second link yet (Cloudflare Pages is a future step for a separate stable/prod URL).
+| Branch | Banner | URL | Contains |
+|---|---|---|---|
+| `main` | 🧪 **PLAYTEST BUILD** (blue bar) | https://ronacul.github.io/wine-cellar/chromoku/ | Every new feature under test |
+| `release` | none | Cloudflare Pages (coming) | Approved, tested features only |
+
+- `main` is GitHub Pages — always live at the playtest URL above.
+- `release` is the stable/prod branch; Cloudflare Pages will serve it when configured.
+- **Never** remove the banner from `main`. **Never** add the banner to `release`.
 
 ### Chromoku push workflow
 
-Claude always develops on a task branch (`claude/chromoku-*`). To get changes live:
+Claude always develops on a task branch (`claude/chromoku-*`):
 
-- **"Push to playtest"** or **"Push to main"** → Claude merges the task branch into `main` and pushes. GitHub Pages updates in ~1 min.
-- Task branches are invisible to you (not served anywhere) — always ask Claude to push to main when you want to test.
-- Claude must include both links in every Chromoku response:
-  - 🔧 **Branch** (current dev, not yet live): `https://github.com/Ronacul/wine-cellar/blob/BRANCH/chromoku/index.html`
-  - 🎮 **Playtest** (live now): `https://ronacul.github.io/wine-cellar/chromoku/`
+1. **Develop** on task branch (invisible, not served anywhere)
+2. **"Push to playtest"** → Claude merges task branch → `main`. Banner stays. GitHub Pages updates in ~1 min. Bump `CHROMOKU_VERSION` PATCH or MINOR. Add a CHANGELOG.md entry.
+3. **User tests** at the playtest URL
+4. **"Push to release"** (or "push to mainline") → Claude merges `main` → `release`, removes the banner line in that commit, tags `chromoku-vX.Y.Z`, pushes. Moves CHANGELOG entry from Playtest → Released section.
 
-Always push at the end of every Chromoku session so phone/other devices can play the latest version.
+### Merging main → release (exact steps)
+
+```bash
+git checkout release
+git merge main --no-commit --no-ff
+# Strip the one banner line — sed removes it in-place
+sed -i '/PLAYTEST BUILD/d' chromoku/index.html
+git add chromoku/index.html
+git commit -m "Release chromoku vX.Y.Z — <one-line description>"
+git tag chromoku-vX.Y.Z
+git push origin release --tags
+```
+
+### Revision history convention
+
+- Version string: `CHROMOKU_VERSION = "vMAJOR.MINOR.PATCH"` near top of `index.html`; displayed in the About modal (long-press logo → About)
+- **PATCH** — bug fix or polish (no new gameplay)
+- **MINOR** — new gameplay feature, new mechanic, significant UI change
+- **MAJOR** — full redesign or breaking change
+- `chromoku/CHANGELOG.md` is the canonical record — add an entry on every push to `main`; mark released entries when they merge to `release`
+
+### Links to include in every Chromoku response
+
+- 🔧 **Branch** (current dev, not yet live): `https://github.com/Ronacul/wine-cellar/blob/BRANCH/chromoku/index.html`
+- 🧪 **Playtest** (live on `main`): https://ronacul.github.io/wine-cellar/chromoku/
+
+Always push to `main` at the end of every Chromoku session so phone/other devices can test the latest version.

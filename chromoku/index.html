@@ -1068,6 +1068,11 @@ const LS_FADE  = "chromoku.fade-done.v1";    // toggle: fade completed units
 const LS_ROUND = "chromoku.round-marks.v1";  // toggle: rounded corners on guesses
 const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player has seen
 
+// ── Build identity ──────────────────────────────────────────────────────────
+// Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
+// PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
+const CHROMOKU_VERSION = "v0.9.1";
+
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
 // Settings → "Admin tools". Long-press detection on the gear is removed in
@@ -4189,6 +4194,7 @@ function showAbout(){
     + '<p class="lede"><b>A colour-logic puzzle.</b> Fill every row, column and box so no mark repeats. That\'s the whole game.</p>'
     + '<p style="font-size:13px; color:var(--ink-dim); margin:16px 0; line-height:1.6">The logo above is a digital recreation of a quilt pattern made by the developer\'s mother. The nested squares represent Chromoku\'s Double mechanic — two puzzles, one unified solution. A tribute to the art of patterns and the joy of puzzles.</p>'
     + '<p style="font-size:12px; color:var(--ink-faint); margin-top:20px"><b>Coming:</b> Nov 8 daily puzzle featuring this exact pattern — a homage to quilting and motherhood.</p>'
+    + '<p style="font-size:11px; color:var(--ink-faint); margin-top:16px; font-family:var(--mono)">' + CHROMOKU_VERSION + '</p>'
     + '<button class="btn ghost" onclick="closeModal()">Done</button>'
   );
 }
@@ -4463,11 +4469,21 @@ function showSettings(){
     closeModal(); loadLevel(n);
   };
   if (adminMode) m.querySelector("#dbgReset").onclick = () => {
-    try { localStorage.removeItem(LS_PROG); } catch {}
-    toast("Progress reset");
-    closeModal();
-    if (state.mode === "levels") loadLevel(1);
-    else render();
+    const stayLevel = state.mode === "levels" && state.lvl ? state.lvl.cfg.level : null;
+    openModal(
+      '<h2>Reset all progress?</h2>'
+      + '<p class="lede">Clears all stars, level progress and lives. Cannot be undone.</p>'
+      + '<button class="btn" id="dbgResetConfirm">Clear progress</button>'
+      + '<button class="btn ghost" id="dbgResetCancel">Cancel</button>'
+    );
+    document.getElementById("dbgResetConfirm").onclick = () => {
+      try { localStorage.removeItem(LS_PROG); } catch {}
+      toast("Progress reset");
+      closeModal();
+      if (stayLevel) loadLevel(stayLevel);
+      else render();
+    };
+    document.getElementById("dbgResetCancel").onclick = () => { closeModal(); showSettings(); };
   };
 }
 
@@ -4476,7 +4492,7 @@ function showSettings(){
 // ── Logo button — short press = help, long press (≥500ms) = about/admin ──
 (function(){
   var btn = document.getElementById("btnLogo");
-  btn.innerHTML = makeLogo(40, 10);
+  btn.innerHTML = makeLogo(40, 4);  // 4×4 crop — sunset corner of the quilt
   var _t = null;
   btn.addEventListener("pointerdown", function(){
     _t = setTimeout(function(){ _t = null; showAbout(); }, 500);
@@ -4496,7 +4512,30 @@ document.getElementById("btnReset").onclick = confirmReset;
 document.getElementById("btnMark").onclick  = () => state.bookmark ? openMarkModal() : setBookmark();
 document.getElementById("btnNew").onclick = () => loadPuzzle(state.size, state.diff, true);
 document.getElementById("btnQuit").onclick = confirmQuit;
-document.getElementById("btnSettings").onclick = showSettings;
+// Settings button: short press = settings, long press (≥800ms) = enable admin mode.
+// Long-press is the "secret" shortcut to turn on admin tools without needing
+// to open settings first — useful after a fresh session loses the flag.
+(function(){
+  var sb = document.getElementById("btnSettings");
+  var _st = null;
+  sb.addEventListener("pointerdown", function(){
+    _st = setTimeout(function(){
+      _st = null;
+      adminMode = true;
+      try { localStorage.setItem(LS_ADMIN, "1"); } catch {}
+      document.documentElement.classList.add("dev");
+      toast("Admin mode enabled");
+      showSettings();
+    }, 800);
+  });
+  sb.addEventListener("pointerup", function(){
+    if (_st){ clearTimeout(_st); _st = null; showSettings(); }
+  });
+  sb.addEventListener("pointerleave", function(){
+    if (_st){ clearTimeout(_st); _st = null; }
+  });
+  sb.addEventListener("contextmenu", function(e){ e.preventDefault(); });
+})();
 
 // Initialize adds badge and update it
 updateAddsBadge();
