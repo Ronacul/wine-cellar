@@ -405,13 +405,25 @@ h1{
   clip-path:var(--clip); border-radius:3px}
 .swatch.shaped.on{box-shadow:0 0 0 3px var(--bg),0 0 0 6px var(--c)}
 .swatch.shaped.done::before{opacity:.35}
-/* Tutorial hint flash — 3 pulses, works on cells and palette swatches */
+/* Tutorial hint flash — white so it shows on any colour */
+/* Donut (layer 0): outer ring border around the whole cell */
 .cell.hint-flash, .swatch.hint-flash {
-  animation: hint-flash 0.38s ease-in-out 3;
+  animation: hint-flash-ring 0.38s ease-in-out 3;
 }
-@keyframes hint-flash {
-  0%, 100% { box-shadow: inset 0 0 0 3px #ffeb3b, 0 0 14px rgba(255,235,59,.8); }
-  50%       { box-shadow: inset 0 0 0 2px transparent, 0 0 0px transparent; }
+@keyframes hint-flash-ring {
+  0%, 100% { box-shadow: inset 0 0 0 3px #fff, 0 0 10px rgba(255,255,255,.7); }
+  50%       { box-shadow: none; }
+}
+/* Donut hole (layer 1): small centred dot — applied to an injected child */
+.hint-dot-flash {
+  position:absolute; inset:20%; border-radius:50%;
+  pointer-events:none; z-index:5;
+}
+.hint-dot-flash.hint-flash-inner { animation: hint-flash-dot 0.38s ease-in-out 3; }
+@keyframes hint-flash-dot {
+  0%, 100% { box-shadow: 0 0 0 2px #fff, 0 0 8px rgba(255,255,255,.8);
+             background:rgba(255,255,255,.18); }
+  50%       { box-shadow:none; background:transparent; }
 }
 /* Scramble mode: Stroop-style interference — colours get random shape
    clip-paths, shapes get random colours. Applied via inline styles in
@@ -3929,22 +3941,39 @@ function showTutorialHint(){
   if (!state.lvl || !state.lvl.cfg.tutorial) return;
 
   const PULSE_MS   = 380;               // duration of one pulse cycle
-  const PULSE_N    = 3;                 // number of pulses per element
-  const CELL_MS    = PULSE_MS * PULSE_N;  // 1140ms for the cell sequence
-  const SWATCH_GAP = 150;              // gap between cell end and swatch start
-  const LAYER_GAP  = 400;             // gap between outer and inner sequences
+  const PULSE_N    = 3;                 // pulses per element
+  const CELL_MS    = PULSE_MS * PULSE_N; // 1140ms total per element
+  const SWATCH_GAP = 150;              // gap between cell sequence and swatch sequence
+  const LAYER_GAP  = 400;             // gap between outer and inner layer sequences
 
-  function pulse(el, startDelay){
+  // Pulse a ring around a cell or swatch (donut / outer ring style)
+  function pulseRing(el, startDelay){
     if (!el) return;
     setTimeout(() => {
       el.classList.remove("hint-flash");
-      void el.offsetWidth;              // force reflow so animation restarts
+      void el.offsetWidth;
       el.classList.add("hint-flash");
       setTimeout(() => el.classList.remove("hint-flash"), CELL_MS + 50);
     }, startDelay);
   }
 
-  let t = 0; // running time cursor
+  // Pulse a centred dot inside a cell (donut hole / inner layer style)
+  // Injects a temporary child element so empty inner cells still flash.
+  function pulseDot(cellEl, startDelay){
+    if (!cellEl) return;
+    setTimeout(() => {
+      const old = cellEl.querySelector(".hint-dot-flash");
+      if (old) old.remove();
+      const dot = document.createElement("div");
+      dot.className = "hint-dot-flash";
+      cellEl.appendChild(dot);
+      void dot.offsetWidth;
+      dot.classList.add("hint-flash-inner");
+      setTimeout(() => dot.remove(), CELL_MS + 100);
+    }, startDelay);
+  }
+
+  let t = 0;
   let flashed = 0;
   for (let li = 0; li < state.layers.length; li++){
     // Double mode: only hint the inner layer once the outer is fully filled
@@ -3959,13 +3988,15 @@ function showTutorialHint(){
     if (cellIdx === null) continue; // layer complete
 
     const correctMark = layer.solution[cellIdx];
-    const cellEl  = document.querySelector('[data-i="' + cellIdx + '"]');
+    const cellEl   = document.querySelector('[data-i="' + cellIdx + '"]');
     const swatchEl = document.querySelector('[data-l="' + li + '"][data-c="' + correctMark + '"]');
 
-    pulse(cellEl,   t);
-    pulse(swatchEl, t + CELL_MS + SWATCH_GAP);
+    // Layer 0 = donut → ring flash; Layer 1 = hole → dot flash
+    if (li === 0) pulseRing(cellEl, t);
+    else          pulseDot(cellEl, t);
 
-    // Advance cursor past this layer's full sequence before the next layer
+    pulseRing(swatchEl, t + CELL_MS + SWATCH_GAP);
+
     t += CELL_MS + SWATCH_GAP + CELL_MS + LAYER_GAP;
     flashed++;
   }
