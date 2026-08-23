@@ -2004,6 +2004,7 @@ function loadLevel(n){
   // Tutorial: flash an empty cell after a short pause, then repeat every 5s
   // until the player makes their first move.
   if (isTutorialLevel(n)){
+    state._tutHintLayer = 0; // Double mode: start by coaching the outer (donut) layer
     if (state._hintTimer) clearTimeout(state._hintTimer);
     if (state._hintInterval) clearInterval(state._hintInterval);
     // First hint after 1.5s; repeat every 4.5s.
@@ -2518,6 +2519,13 @@ function placeColour(L, i, val){
   const prev = state.layers[L].grid[i];
   if (prev !== val) pushHistory([{ L, i, prev }]);
   state.layers[L].grid[i] = val;
+  // Tutorial Double mode: each time the user places on the current focus layer,
+  // shift focus to the other layer so hints alternate donut → hole → donut → hole.
+  if (val !== null && state.lvl && state.lvl.cfg.tutorial && state.layers.length > 1){
+    if (L === (state._tutHintLayer || 0)){
+      state._tutHintLayer = L === 0 ? 1 : 0;
+    }
+  }
   startTimer();
   paintCell(i, val !== null ? L : -1);
   renderPalette();      // keeps the 'done' fade in step with the last placement
@@ -4008,10 +4016,16 @@ function flashHint(isManual){
     }, startDelay);
   }
 
-  // Collect which layers need a hint — all layers simultaneously so Double mode
-  // shows: donut-cell → hole-cell → donut-swatch → hole-swatch each cycle.
+  // Determine which layers to hint this cycle.
+  // Tutorial Double mode: hint only the current focus layer (_tutHintLayer), which
+  // alternates each time the user fills a cell — donut then hole then donut then hole.
+  // Non-tutorial or single-layer: hint all layers (the manual power-up case).
+  const isTutDbl = !isManual && state.lvl && state.lvl.cfg.tutorial && state.layers.length > 1;
+  const focusLayer = isTutDbl ? (state._tutHintLayer || 0) : null; // null = hint all
+
   const hintLayers = [];
   for (let li = 0; li < state.layers.length; li++){
+    if (focusLayer !== null && li !== focusLayer) continue; // skip non-focus layers
     const cellIdx = hintBestCell(li);
     if (cellIdx === null) continue; // layer complete, skip
     const correctMark = state.layers[li].solution[cellIdx];
