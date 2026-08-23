@@ -8,6 +8,12 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.9.3] 2026-08-23 — Fix admin always-on in playtest, fix level reset board
+
+- **Fix A — Admin always visible in playtest:** `adminMode` now defaults to `true` when the playtest banner is present. No more hunting for the toggle or long-pressing ⚙ during playtesting.
+- **Fix B — Level reset shows correct puzzle:** `resetPuzzle()` in level mode now calls `loadLevel()` to rebuild from the level's seed rather than manually clearing moves. This fixes a state-consistency bug where the board could render the wrong puzzle after reset. Power-up counts (hints used) are preserved across the reset — they are not refilled.
+- **Fix C — Add-time modal text:** The "Watch to earn +Ns" line in the ad countdown modal now uses the `ADD_SECS` constant (30) instead of the old hardcoded "+15s".
+
 ### [v0.9.2] 2026-08-23 — Fix add-time, reset-in-levels, admin discoverability
 
 - **Fix A — Admin panel discoverability:** Admin tools toggle moved to the top of the Settings modal. Long-press description added to the toggle row. `pointercancel` event now handled so iOS long-press doesn't silently fail. Level jump input now shows the current level when in level mode.
