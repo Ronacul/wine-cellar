@@ -727,7 +727,7 @@ function openCropEditor(src, onApply){
   const dpr = window.devicePixelRatio || 1;
 
   const modal = document.createElement("div");
-  modal.style.cssText = "position:fixed;inset:0;z-index:300;background:var(--bg);display:flex;flex-direction:column;overflow:hidden";
+  modal.style.cssText = "position:fixed;inset:0;z-index:300;background:var(--bg);display:flex;flex-direction:column;overflow:hidden;padding-bottom:env(safe-area-inset-bottom)";
   modal.innerHTML = `
     <div style="padding:10px 14px 8px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-shrink:0">
       <span style="font-family:'Bangers',cursive;font-size:22px;letter-spacing:.03em;color:var(--accent)">Crop Cover</span>
@@ -877,6 +877,10 @@ function openCropEditor(src, onApply){
   };
 
   img.onload = () => requestAnimationFrame(initCanvas);
+  img.onerror = () => {
+    modal.remove();
+    showToast("⚠️ Could not load photo for cropping", "warn", 4000);
+  };
   img.src = src;
 }
 
@@ -1517,12 +1521,24 @@ function renderDetail(){
     if(!photoData) photoData = await loadPhoto(c).catch(()=>null);
     if(!photoData && src){
       const el = document.getElementById("detail-photo");
-      if(el && el.naturalWidth){ try{ photoData = imgToBase64(el); }catch(e){} }
+      if(el && el.naturalWidth){
+        try {
+          const raw = imgToBase64(el); /* returns raw base64 without data: prefix */
+          if(raw) photoData = "data:image/jpeg;base64," + raw;
+        } catch(e){ /* tainted canvas — CORS */ }
+      }
     }
     if(!photoData){ alert("No cover photo — add one via Edit first."); return; }
     openCropEditor(photoData, async (result) => {
-      await savePhoto(c.id, result);
+      try {
+        await savePhoto(c.id, result);
+      } catch(pe) {
+        console.error("Crop save failed:", pe);
+        showToast("⚠️ Cropped photo failed to save", "warn", 5000);
+      }
       c._photoUrl = result;
+      c.imageDirty = true;
+      saveComics();
       const dp = document.getElementById("detail-photo");
       if(dp){ dp.src = result; }
       else {
@@ -2496,8 +2512,8 @@ function renderSync(){
       <div class="collapse-body">
         <ul class="changelog">
           <li><span class="cl-ver">Aug 23 2026</span>
-            <span class="cl-title">📸 Photo save reliability fix</span><br>
-            <span class="cl-desc">Cover photos now retry on IndexedDB save failure (2 automatic retries). If save still fails, a visible warning toast appears instead of silently losing the photo. Photos kept in memory until confirmed saved — no more disappearing covers after page refresh.</span></li>
+            <span class="cl-title">📸 Photo save + crop editor fixes</span><br>
+            <span class="cl-desc">Cover photos now retry on IndexedDB save failure (2 automatic retries). Visible toast warning on failure instead of silent data loss. Photos kept in memory until save confirmed. Fixed "Crop cover" button showing blank editor — now loads photo correctly from GitHub. Crop editor closes cleanly if photo can't load. Safe-area padding for bottom controls on phones with home bars.</span></li>
           <li><span class="cl-ver">Aug 18 2026</span>
             <span class="cl-title">✂️ Trim to cover shape + grading fix</span><br>
             <span class="cl-desc">New "Trim to cover shape" button crops photos to comic book proportions (2:3). Fixed AI grading fields (marketValue, gradedValue, gradeCandidate) not being saved — run "Update market values" on the Value tab to backfill existing books. Memory leak fixes: smaller images (600px/0.72), blob URL cleanup, canvas freeing. Camera-return navigation fix for iOS.</span></li>
