@@ -927,21 +927,48 @@ function render(){
 }
 async function loadPendingPhotos(){
   const emptyThumbs = document.querySelectorAll(".card .thumb.empty");
-  for(const el of emptyThumbs){
+  /* load all in parallel instead of one-by-one */
+  const tasks = Array.from(emptyThumbs).map(async (el) => {
     const card = el.closest(".card");
-    if(!card) continue;
+    if(!card) return;
     const id = card.dataset.id;
-    if(!id) continue;
+    if(!id) return;
     const data = await getPhoto(id).catch(()=>null);
     if(data){
       const img = document.createElement("img");
-      img.className = "thumb"; img.alt = ""; img.loading = "lazy"; img.src = data;
+      img.className = "thumb"; img.alt = ""; img.loading = "lazy";
+      img.onerror = function(){ thumbFallback(this); };
+      img.src = data;
       el.replaceWith(img);
-      /* cache in-memory for detail view */
       const c = comics.find(x=>x.id===id);
       if(c) c._photoUrl = data;
     }
-  }
+  });
+  await Promise.all(tasks);
+}
+/* fallback when a GitHub-URL thumb 404s — try IndexedDB instead */
+function thumbFallback(imgEl){
+  const card = imgEl.closest(".card");
+  if(!card) return;
+  const id = card.dataset.id;
+  if(!id) return;
+  imgEl.onerror = null; /* prevent infinite loop */
+  getPhoto(id).then(data => {
+    if(data){
+      imgEl.src = data;
+      const c = comics.find(x=>x.id===id);
+      if(c) c._photoUrl = data;
+    } else {
+      /* no photo anywhere — show placeholder */
+      const div = document.createElement("div");
+      div.className = "thumb empty"; div.textContent = "?";
+      imgEl.replaceWith(div);
+    }
+  }).catch(()=>{
+    const div = document.createElement("div");
+    div.className = "thumb empty"; div.textContent = "?";
+    imgEl.replaceWith(div);
+  });
 }
 
 /* ================= list rendering ================= */
@@ -1199,7 +1226,7 @@ function cardHTML(c){
 
   return `<div class="card ${gone ? (sold ? "sold" : "gifted") : ""}" data-id="${esc(c.id)}">
     ${src
-      ? `<img class="thumb" src="${esc(src)}" alt="" loading="lazy">`
+      ? `<img class="thumb" src="${esc(src)}" alt="" loading="lazy" onerror="thumbFallback(this)">`
       : `<div class="thumb empty">?</div>`}
     <div class="card-body">
       <div class="card-info">
@@ -1233,7 +1260,7 @@ function renderDetail(){
       <button id="back">← Back</button>
       <button id="edit" style="margin-left:auto;color:var(--accent)">Edit</button>
     </div>
-    ${src ? `<img class="detail-photo" id="detail-photo" src="${esc(src)}" alt="" crossorigin="anonymous">` : `<div id="detail-photo-placeholder"></div>`}
+    ${src ? `<img class="detail-photo" id="detail-photo" src="${esc(src)}" alt="" crossorigin="anonymous" onerror="detailPhotoFallback(this,'${esc(c.id)}')">` : `<div id="detail-photo-placeholder"></div>`}
     <div style="text-align:center;margin:-8px 0 12px">
       <button class="btn btn-ghost" id="edit-cover-btn" style="font-size:12px;padding:5px 14px">✂️ Crop cover</button>
     </div>
@@ -1332,6 +1359,14 @@ function renderDetail(){
       }
     });
   }
+  /* detail photo fallback when GitHub URL 404s */
+  window.detailPhotoFallback = (imgEl, id) => {
+    imgEl.onerror = null;
+    getPhoto(id).then(data => {
+      if(data){ imgEl.src = data; const c = comics.find(x=>x.id===id); if(c) c._photoUrl = data; }
+      else imgEl.style.display = "none";
+    }).catch(()=>{ imgEl.style.display = "none"; });
+  };
 
   /* bind events */
   document.getElementById("back").onclick = ()=> history.back();
