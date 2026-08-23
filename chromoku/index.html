@@ -2073,18 +2073,31 @@ function render(){
   paintCompletedUnits();
   applySharp();
   renderChallengeBar();
-  // Tutorial tip is hidden — instruction text is shown in the main header #sub
+  const isTutNow = state.mode === "levels" && state.lvl && state.lvl.cfg.tutorial;
+  // Tutorial tip: show description text below controls; hidden in non-tutorial.
   const tip = document.getElementById("tutTip");
-  if (tip) tip.style.display = "none";
+  if (tip){
+    if (isTutNow && state.lvl.cfg.desc){
+      tip.style.display = "";
+      tip.textContent = state.lvl.cfg.desc;
+    } else {
+      tip.style.display = "none";
+    }
+  }
   // Show the ✕ quit button: always during tutorial (acts as back-to-daily),
   // otherwise only once the player has started and the puzzle isn't done.
   const qb = document.getElementById("btnQuit");
-  const isTutNow = state.mode === "levels" && state.lvl && state.lvl.cfg.tutorial;
   if (qb) qb.style.display = (isTutNow || ((state.started || state.elapsed > 0) && !state.done)) ? "" : "none";
+  // In tutorial, hide elements that crowd the header and aren't relevant.
+  const timerEl = document.getElementById("timer");
+  if (timerEl) timerEl.style.display = isTutNow ? "none" : "";
+  const btnMark = document.getElementById("btnMark");
+  if (btnMark) btnMark.style.display = isTutNow ? "none" : "";
+  const btnSettings = document.getElementById("btnSettings");
+  if (btnSettings) btnSettings.style.display = isTutNow ? "none" : "";
   // Banner ad mockup — visible in level mode, but not during tutorial
   const ab = document.getElementById("adBanner");
-  const isTut = state.mode === "levels" && state.lvl && state.lvl.cfg.tutorial;
-  if (ab) ab.style.display = (state.mode === "levels" && !isTut) ? "" : "none";
+  if (ab) ab.style.display = (state.mode === "levels" && !isTutNow) ? "" : "none";
 }
 
 const heartsHTML = p => Array.from({ length:LIVES_MAX }, (_, i) =>
@@ -2203,11 +2216,12 @@ function renderSub(){
   if (state.mode === "levels"){
     const cfg = state.lvl.cfg;
 
-    // Tutorial: show step counter, progress dots and instruction in the header sub
+    // Tutorial: show only "Tutorial N of 7  dots" in the sub header (keep it short so
+    // it fits in the grid column). Description goes in tutTip below.
     if (cfg.tutorial){
       const dots = TUTORIAL_CONFIGS.map((_, i) => i < cfg.level ? "●" : i === cfg.level ? "◉" : "○").join("");
-      sub.textContent = "Tutorial " + (cfg.level + 1) + "/" + TUTORIAL_CONFIGS.length
-        + "  " + dots + "  " + (cfg.desc || cfg.title);
+      sub.textContent = "Tutorial " + (cfg.level + 1) + " of " + TUTORIAL_CONFIGS.length
+        + "  " + dots;
       return;
     }
 
@@ -2435,7 +2449,8 @@ function renderPalette(){
     // No eraser swatch — tapping the same colour on a cell clears it.
     // 9+ marks split into two rows for bigger, more tappable swatches.
     const isDbl = state.layers.length > 1;
-    const nRows = isDbl ? 1 : (state.n > 4 ? 2 : 1);
+    // 9×9 gets 2 rows (9 marks split 5+4); 4×4 and 6×6 fit in one row.
+    const nRows = isDbl ? 1 : (state.n > 6 ? 2 : 1);
     const perRow = Math.ceil(swatches.length / nRows);
     for (let k = 0; k < swatches.length; k += perRow)
       rows += '<div class="prow' + (state.n > 4 ? " wrap" : "") + '">'
@@ -3993,16 +4008,12 @@ function flashHint(isManual){
     }, startDelay);
   }
 
-  // Collect which layers need a hint (layer 0 always; layer 1 only after layer 0 complete)
+  // Collect which layers need a hint — all layers simultaneously so Double mode
+  // shows: donut-cell → hole-cell → donut-swatch → hole-swatch each cycle.
   const hintLayers = [];
   for (let li = 0; li < state.layers.length; li++){
-    if (li > 0){
-      const outer = state.layers[0];
-      const outerDone = outer.grid.every((v, i) => v !== null || outer.givens[i]);
-      if (!outerDone) break; // outer still in progress — only hint the donut
-    }
     const cellIdx = hintBestCell(li);
-    if (cellIdx === null) continue; // layer complete
+    if (cellIdx === null) continue; // layer complete, skip
     const correctMark = state.layers[li].solution[cellIdx];
     const cellEl   = document.querySelector('[data-i="' + cellIdx + '"]');
     const swatchEl = document.querySelector('[data-l="' + li + '"][data-c="' + correctMark + '"]');
