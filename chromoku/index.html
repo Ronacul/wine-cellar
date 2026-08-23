@@ -405,7 +405,7 @@ h1{
   clip-path:var(--clip); border-radius:3px}
 .swatch.shaped.on{box-shadow:0 0 0 3px var(--bg),0 0 0 6px var(--c)}
 .swatch.shaped.done::before{opacity:.35}
-/* Tutorial hint flash — white so it shows on any colour */
+/* Flash hint — white so it shows on any colour; used in tutorial (auto) and as a power-up */
 /* Donut (layer 0): outer ring border around the whole cell */
 .cell.hint-flash, .swatch.hint-flash {
   animation: hint-flash-ring 0.38s ease-in-out 3;
@@ -1743,7 +1743,7 @@ const state = {
   started:false,
   history:[],              // stack of { entries:[{L,i,prev}] } — one per user gesture
   bookmark:null,           // { layers:[grid, ...] } — single-slot board snapshot
-  hints:{ reveals:0, freezes:0, adds:0 },   // hint usage this puzzle
+  hints:{ reveals:0, freezes:0, adds:0, flashes:0 },   // hint usage this puzzle
   frozenUntil:0,           // timestamp: clock display freezes until
 };
 const HISTORY_MAX = 50;
@@ -1914,7 +1914,8 @@ function loadPuzzle(sizeId, diffId, fresh){
     state.mistakes = saved.mistakes || 0;
     state.done = !!saved.done;
     state.started = state.elapsed > 0;
-    state.hints = saved.hints || { reveals:0, freezes:0, adds:0 };
+    state.hints = saved.hints || { reveals:0, freezes:0, adds:0, flashes:0 };
+    if (!state.hints.flashes) state.hints.flashes = 0; // backfill saves
     state.bookmark = saved.bookmark
       ? { layers:saved.bookmark.layers.map(g => g.slice()) }
       : null;
@@ -1930,7 +1931,7 @@ function loadPuzzle(sizeId, diffId, fresh){
     }
     state.elapsed = 0; state.mistakes = 0; state.done = false; state.started = false;
     state.bookmark = null;
-    state.hints = { reveals:0, freezes:0, adds:0 };
+    state.hints = { reveals:0, freezes:0, adds:0, flashes:0 };
   }
   state.since = null; state.sel = null; state.erase = false;
   state.history = []; state.frozenUntil = 0;
@@ -1991,7 +1992,7 @@ function loadLevel(n){
   state.elapsed = 0; state.since = null; state.started = false;
   state.mistakes = 0; state.done = false; state.sel = null; state.erase = false;
   state.history = []; state.bookmark = null;
-  state.hints = { reveals:0, freezes:0, adds:0 }; state.frozenUntil = 0;
+  state.hints = { reveals:0, freezes:0, adds:0, flashes:0 }; state.frozenUntil = 0;
 
   // Don't overwrite the player's highest-level progress when replaying tutorial.
   // Tutorial replay uses levels 0–6; we only advance, never regress.
@@ -2009,10 +2010,10 @@ function loadLevel(n){
     // Each sequence: 3-pulse cell (~1.14s) + gap + 3-pulse swatch (~1.14s) = ~2.5s,
     // leaving ~2s of breathing room before the next cycle.
     state._hintTimer = setTimeout(() => {
-      if (!state.done) showTutorialHint();
+      if (!state.done) flashHint(false);
       state._hintInterval = setInterval(() => {
         if (state.done){ clearInterval(state._hintInterval); state._hintInterval = null; }
-        else showTutorialHint();
+        else flashHint(false);
       }, 4500);
     }, 1500);
   }
@@ -3360,7 +3361,7 @@ async function copyText(text){
 
 // "Sell helpers, not lives." Three tools the player can reach for; each one
 // dents the star rating so there is a reason not to, but never blocks progress.
-const HINT_LIMITS = { reveals:3, freezes:2, adds:2 };
+const HINT_LIMITS = { reveals:3, freezes:2, adds:2, flashes:5 };
 const FREEZE_SECS = 15;
 const ADD_SECS = 30;
 
@@ -3419,23 +3420,29 @@ function renderPowerups(){
   const revLeft = HINT_LIMITS.reveals - state.hints.reveals;
   const frzLeft = HINT_LIMITS.freezes - state.hints.freezes;
   const addLeft = HINT_LIMITS.adds - state.hints.adds;
+  const flsLeft = HINT_LIMITS.flashes - state.hints.flashes;
   const pool = poolRemaining();
   const noPool = pool <= 0;
   const revDis = revLeft <= 0 || noPool;
   const frzDis = frzLeft <= 0 || noPool;
   const addDis = addLeft <= 0 || noPool;
+  const flsDis = flsLeft <= 0 || noPool;
   // Pool indicator
   const regenMs = nextPoolRegenMs();
   const regenStr = noPool && regenMs > 0
     ? ' <span style="font-size:9px;color:var(--ink-dim)">⚡' + Math.ceil(regenMs / 60000) + 'm</span>' : '';
   el.innerHTML =
     '<span style="font-size:9px;color:var(--ink-dim);font-family:var(--mono)">⚡' + pool + '/' + POOL_MAX + regenStr + '</span> '
+    + '<button class="pu" id="puFlash"' + (flsDis ? " disabled" : "") + ' title="Flash hint — shows which cell and colour, no star penalty">'
+    + '<span class="pu-icon">🔦</span><span class="pu-n">' + flsLeft + '</span></button>'
     + '<button class="pu" id="puReveal"' + (revDis ? " disabled" : "") + '>'
     + '<span class="pu-icon">💡</span><span class="pu-n">' + revLeft + '</span></button>'
     + '<button class="pu" id="puFreeze"' + (frzDis ? " disabled" : "") + '>'
     + '<span class="pu-icon">⏸</span><span class="pu-n">' + frzLeft + '</span></button>'
     + '<button class="pu" id="puAdd"' + (addDis ? " disabled" : "") + '>'
     + '<span class="pu-icon">⏰</span><span class="pu-n">' + addLeft + '</span></button>';
+  const pFl = document.getElementById("puFlash");
+  if (pFl) pFl.onclick = () => flashHint(true);
   const pR = document.getElementById("puReveal");
   if (pR) pR.onclick = () => { revealCell(); renderPowerups(); };
   const pF = document.getElementById("puFreeze");
@@ -3489,15 +3496,21 @@ function showHintModal(){
   const revLeft = HINT_LIMITS.reveals - state.hints.reveals;
   const frzLeft = HINT_LIMITS.freezes - state.hints.freezes;
   const addLeft = HINT_LIMITS.adds - state.hints.adds;
+  const flsLeft = HINT_LIMITS.flashes - state.hints.flashes;
   const penalty = totalHints() > 0
-    ? '<p class="lede" style="color:var(--error)">Hints used: ' + totalHints()
+    ? '<p class="lede" style="color:var(--error)">Reveals/freeze/time used: ' + totalHints()
       + (isLvl ? ' · max stars reduced' : '') + '</p>' : '';
 
   openModal(
     '<h2>Hints</h2>'
-    + '<p class="lede">Helpers, not cheats — but each one lowers your star ceiling.</p>'
+    + '<p class="lede">Flash hint is free of star penalty. Reveal/freeze/time each lower your ceiling.</p>'
     + penalty
     + '<div class="hint-opts">'
+    + '<button class="hint-opt" id="hFlash"' + (flsLeft <= 0 ? ' disabled' : '') + '>'
+    + '<span class="h-icon">🔦</span><div class="h-body">'
+    + '<div class="h-title">Flash hint</div>'
+    + '<div class="h-desc">Flashes the best cell and its correct ' + markNoun() + ' — no star penalty.</div></div>'
+    + '<span class="h-count">' + flsLeft + '/' + HINT_LIMITS.flashes + '</span></button>'
     + '<button class="hint-opt" id="hReveal"' + (revLeft <= 0 ? ' disabled' : '') + '>'
     + '<span class="h-icon">💡</span><div class="h-body">'
     + '<div class="h-title">Reveal a cell</div>'
@@ -3518,6 +3531,8 @@ function showHintModal(){
     + '</div>'
     + '<button class="btn ghost" onclick="closeModal()">Cancel</button>'
   );
+  const hFl = document.getElementById("hFlash");
+  if (hFl) hFl.onclick = () => { closeModal(); flashHint(true); };
   const hR = document.getElementById("hReveal");
   if (hR) hR.onclick = () => { closeModal(); revealCell(); };
   const hF = document.getElementById("hFreeze");
@@ -3934,8 +3949,16 @@ function hintBestCell(layerIdx){
 // swatch. For Double mode: outer ring first; inner centre only after outer
 // is completely filled (so the player learns one layer at a time).
 // This mechanic is reusable for any tutorial level type.
-function showTutorialHint(){
-  if (!state.lvl || !state.lvl.cfg.tutorial) return;
+// Flash hint: fires for tutorials automatically, and as a manual power-up in any level.
+// In non-tutorial mode, consumes a pool charge and tracks state.hints.flashes.
+// Does NOT fill the cell — just shows you where to look. No star penalty.
+function flashHint(isManual){
+  if (!state.lvl) return;
+  if (isManual){
+    if (state.done) return;
+    if (state.hints.flashes >= HINT_LIMITS.flashes){ toast("No flash hints left"); return; }
+    if (state.mode === "levels" && poolRemaining() <= 0){ toast("Power-up pool empty — recharges over time"); return; }
+  }
 
   const PULSE_MS   = 380;               // duration of one pulse cycle
   const PULSE_N    = 3;                 // pulses per element
@@ -4002,6 +4025,15 @@ function showTutorialHint(){
   for (const { swatchEl } of hintLayers){
     pulseRing(swatchEl, ts);
     ts += CELL_MS + SWATCH_GAP;
+  }
+
+  // Consume resources for manual (non-tutorial) use
+  if (isManual && state.mode === "levels"){
+    state.hints.flashes++;
+    usePoolCharge();
+    const left = HINT_LIMITS.flashes - state.hints.flashes;
+    toast("🔦 Flash hint · " + left + " left");
+    renderPowerups();
   }
 }
 
