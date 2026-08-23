@@ -1936,9 +1936,11 @@ function loadLevel(n){
   // A preview can advertise a mark set as well as a rule; restore the player's
   // own choice as soon as the level ends.
   // Rotation drives mark set for levels; explicit peek markSet still wins.
+  // Tutorial levels use "classic" (or their explicit markSet); rotatedMarkSet
+  // breaks at level 0 because Math.floor(-1/5) = -1 gives a negative JS modulo.
   activePalette = lv.cfg.markSet && MARKSETS[lv.cfg.markSet]
     ? lv.cfg.markSet
-    : rotatedMarkSet(n, lv.cfg.n);
+    : isTutorialLevel(n) ? "classic" : rotatedMarkSet(n, lv.cfg.n);
   buildMarks();
 
   state.layers = lv.layers.map(x => ({
@@ -3855,19 +3857,11 @@ function showStats(){
   openModal(
     "<h2>Help &amp; Stats</h2>"
 
-    // ── Tutorial section ──
-    + '<div style="background:var(--panel2);border-radius:12px;padding:14px 16px;margin-bottom:16px">'
-    + '<div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:10px">📚 7-Level Tutorial</div>'
-    + '<div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px">'
-    + tutTitles.map((t, i) =>
-        '<div style="font-size:12px;color:var(--ink-dim);display:flex;gap:8px;align-items:center">'
-        + '<span style="font-family:var(--mono);font-size:10px;color:var(--ink-faint);min-width:16px">' + (i + 1) + '</span>'
-        + '<span>' + t + (i >= 5 ? ' <span style="font-size:10px;color:var(--ink-faint)">(Double)</span>' : '') + '</span>'
-        + '</div>'
-      ).join("")
-    + '</div>'
-    + '<button class="btn" id="mTutStart">▶ Start tutorial from level 1</button>'
-    + '</div>'
+    // ── How to play (one-liner) ──
+    + '<p style="font-size:13px;color:var(--ink-dim);margin:0 0 12px">Fill every row, column and box with one of each colour — no repeats.</p>'
+
+    // ── Tutorial button ──
+    + '<button class="btn" id="mTutStart" style="margin-bottom:16px">▶ Play the 7-step tutorial</button>'
 
     // ── Stats section ──
     + '<div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:8px">Your stats</div>'
