@@ -1071,7 +1071,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.9.2";
+const CHROMOKU_VERSION = "v0.9.3";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -1085,7 +1085,9 @@ const DEV = (() => {
     return localStorage.getItem(LS_ADMIN) === "1";
   } catch { return false; }
 })();
-let adminMode = DEV;
+// On playtest builds the banner div is present — default admin ON so
+// the tester never has to hunt for the toggle or long-press.
+let adminMode = DEV || !!document.getElementById("playtestBanner");
 const LS_DAY   = "chromoku.debug-day.v1";   // debug: pin the daily puzzle to a date
 
 // Box dimensions for a given grid size. 4→2x2, 6→3x2, 9→3x3.
@@ -2586,15 +2588,26 @@ function confirmReset(){
 }
 
 function resetPuzzle(){
-  // In level mode: cost a life (same penalty as running out of time).
+  // In level mode: cost a life then reload the level clean from its seed.
+  // Using loadLevel() (not manual clear) guarantees the board, palette, timer
+  // and all sub-renders end up in a consistent state — manual clearing missed
+  // renderSub() and left state.mode-dependent paths partially applied.
   if (state.mode === "levels"){
     const p = progress();
     p.lives = Math.max(0, p.lives - 1);
     if (p.lives < LIVES_MAX) p.livesAt = p.livesAt || Date.now();
     saveProgress2(p);
+    // Power-ups already used carry over — reset should not refill them.
+    const savedHints = Object.assign({}, state.hints);
+    loadLevel(state.lvl.cfg.level);   // re-seeds the same puzzle, resets all state
+    state.hints = savedHints;         // restore used-up power-up counts
+    updateAddsBadge();
+    renderPowerups();
+    toast("Puzzle reset — −1 ♥");
+    return;
   }
 
-  // Clear all player marks, keep givens.
+  // Daily / practice: clear all player marks, keep givens.
   state.layers.forEach(L => {
     for (let i = 0; i < L.grid.length; i++){
       if (!L.givens[i]) L.grid[i] = null;
@@ -2603,29 +2616,23 @@ function resetPuzzle(){
   state.history = [];
   state.mistakes = 0;
   state.bookmark = null;
-
-  // Reset completion/failure state so the board is actually playable.
   state.done = false;
   state.elapsed = 0;
   state.since = null;
   state.started = false;
   state.frozenUntil = 0;
 
-  // Strip done/won CSS left over from a previous failure or win.
   const board = document.getElementById("board");
   if (board){
     board.classList.remove("done");
     board.querySelectorAll(".won").forEach(el => el.classList.remove("won"));
   }
-
   renderBoard();
   renderPalette();
   paintCompletedUnits();
   paintMark();
   paintUndo();
-  if (state.mode === "levels") renderLevelBar();  // refresh heart display
   saveProgress();
-  // Timer restarts on first placement (startTimer is called in placeColour).
   toast("Puzzle reset");
 }
 
@@ -2675,7 +2682,7 @@ function showAddTimeModal(){
     +   '</div>'
     + '</div>'
     + '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px">'
-    +   '<div style="font-size:12px;color:var(--ink-dim)">Watch to earn <b>+15s</b></div>'
+    +   '<div style="font-size:12px;color:var(--ink-dim)">Watch to earn <b>+' + ADD_SECS + 's</b></div>'
     +   '<div id="addCountdown" style="font-size:22px;font-weight:800;font-family:var(--mono);color:var(--ink);min-width:36px;text-align:right">' + secs + 's</div>'
     + '</div>'
   );
