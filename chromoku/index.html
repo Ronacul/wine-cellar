@@ -1013,6 +1013,7 @@ function scrambleStyle(i, v){
 const SIZES = {
   sudoku: [
     { id:"s4",  label:"4×4",   n:4  },
+    { id:"s6",  label:"6×6",   n:6  },   // 2×3 boxes — boxDims(6) gives bh:2,bw:3
     { id:"s9",  label:"9×9",   n:9  },
     { id:"s16", label:"16×16", n:16 },
   ],
@@ -1026,6 +1027,9 @@ const SIZES = {
 const DIFFICULTIES = {
   sudoku: {
     4:  [{ id:"easy", label:"Easy", givens:8 }, { id:"medium", label:"Medium", givens:6 }, { id:"hard", label:"Hard", givens:4 }],
+    // 6×6: 36 cells total. Easy ~20 (55%), medium ~15 (42%), hard ~11 (31%).
+    // boxDims(6) = {bh:2,bw:3} — standard 2×3 box 6×6 sudoku.
+    6:  [{ id:"easy", label:"Easy", givens:20 }, { id:"medium", label:"Medium", givens:15 }, { id:"hard", label:"Hard", givens:11 }],
     9:  [{ id:"easy", label:"Easy", givens:35 }, { id:"medium", label:"Medium", givens:30 }, { id:"hard", label:"Hard", givens:25 }],
     // 16×16 stays near 140 givens: below that the uniqueness check climbs from
     // ~0.2s to tens of seconds, which is not something to do on page load.
@@ -1038,6 +1042,36 @@ const DIFFICULTIES = {
     10: [{ id:"easy", label:"Easy", givens:55 }, { id:"medium", label:"Medium", givens:48 }, { id:"hard", label:"Hard", givens:42 }],
   },
 };
+
+// ── Daily schedule ────────────────────────────────────────────────────────────
+// One entry per JS day-of-week (0 = Sunday … 6 = Saturday).
+// sizeId / diffId: keys into SIZES + DIFFICULTIES above.
+// dbl: true = double-layer variant.  latin: true = no-box ruleset.
+// markSet: palette override for this day ("classic"|"shapes"|"ink"); null = player's saved choice.
+// label / tier: shown in the sub-header under the board.
+// To tune a day, edit its entry — no other code needs changing.
+const DAILY_SCHEDULE = [
+  // 0 — Sunday (hardest)
+  { sizeId:"l10", diffId:"hard", dbl:true,  latin:true,  markSet:"classic", label:"Sunday",    tier:"Master"  },
+  // 1 — Monday (easiest)
+  { sizeId:"s4",  diffId:"hard", dbl:false, latin:false, markSet:"classic", label:"Monday",    tier:"Compact" },
+  // 2 — Tuesday
+  { sizeId:"s6",  diffId:"easy", dbl:false, latin:false, markSet:"shapes",  label:"Tuesday",   tier:"Symbol"  },
+  // 3 — Wednesday
+  { sizeId:"s9",  diffId:"easy", dbl:false, latin:false, markSet:"classic", label:"Wednesday", tier:"Grid"    },
+  // 4 — Thursday
+  { sizeId:"s4",  diffId:"hard", dbl:true,  latin:false, markSet:"classic", label:"Thursday",  tier:"Double"  },
+  // 5 — Friday
+  { sizeId:"s6",  diffId:"hard", dbl:false, latin:false, markSet:"shapes",  label:"Friday",    tier:"Symbol Hard" },
+  // 6 — Saturday
+  { sizeId:"s9",  diffId:"hard", dbl:false, latin:false, markSet:"classic", label:"Saturday",  tier:"Expert"  },
+];
+
+// Returns the DAILY_SCHEDULE entry for the current state.day.
+function dailyConfig(){
+  const date = new Date(EPOCH + (state.day - 1) * 86400000);
+  return DAILY_SCHEDULE[date.getUTCDay()];
+}
 
 const CURR_SIZES = () => SIZES[state.latin ? "latin" : "sudoku"];
 const CURR_DIFFS = (n) => {
@@ -1088,7 +1122,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.9.5";
+const CHROMOKU_VERSION = "v0.9.6";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -2054,11 +2088,16 @@ function loadLevel(n){
 
 function enterDaily(){
   state.mode = "daily"; state.lvl = null; state.practice = false;
-  state.latin = load(LS_LATIN, false); state.dbl = load(LS_DBL, false);
-  const defSize = CURR_SIZES()[0].id;
-  const sizeId = load(LS_SIZE, defSize);
-  const diffId = load(LS_LAST, "easy");
-  loadPuzzle(sizeId, diffId);
+  // Apply today's scheduled config — size, diff, ruleset, mark set are all
+  // determined by the day of the week. Player preference settings (scramble,
+  // saved size/diff) are intentionally ignored for the daily puzzle so
+  // everyone solves the same board.
+  const cfg = dailyConfig();
+  state.latin   = cfg.latin;
+  state.dbl     = cfg.dbl;
+  state.scramble = false;
+  if (cfg.markSet) activePalette = cfg.markSet;
+  loadPuzzle(cfg.sizeId, cfg.diffId);
 }
 
 /* ================= conflicts ================= */
@@ -2284,11 +2323,15 @@ function renderSub(){
     base = "Stage " + cfg.stage + " · step " + cfg.step
          + " · " + gridLabel + " · " + ruleLabel
          + " · " + markLabel + layerLabel;
-  } else {
-    base = (state.practice ? "Practice" : "#" + state.day) + " · "
+  } else if (state.practice) {
+    base = "Practice · "
       + (state.latin ? "Latin " : "") + sObj.label + " " + dObj.label
       + (state.dbl ? " · Double" : "")
       + (state.scramble ? " · Scramble" : "");
+  } else {
+    // Daily: show day name + tier label so the difficulty is immediately legible
+    const dc = dailyConfig();
+    base = dc.label + " · " + dc.tier + " · #" + state.day;
   }
 
   // Streak chip — visible at a glance, not buried in the win modal

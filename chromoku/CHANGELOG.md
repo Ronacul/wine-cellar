@@ -8,6 +8,21 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.9.6] 2026-08-23 — Daily difficulty escalation: Mon (easiest) → Sun (hardest)
+
+- **6×6 Sudoku added:** `s6` size with 2×3 boxes (`boxDims(6)` already handled this). Givens: Easy 20, Medium 15, Hard 11.
+- **`DAILY_SCHEDULE[7]`:** One config per day of week. Each entry specifies `sizeId`, `diffId`, `dbl`, `latin`, `markSet`, `label`, and `tier`. Edit entries to tune without touching engine code.
+  - Mon: 4×4 Hard (Compact)
+  - Tue: 6×6 Easy — Shapes palette (Symbol)
+  - Wed: 9×9 Easy (Grid)
+  - Thu: 4×4 Hard Double (Double)
+  - Fri: 6×6 Hard — Shapes palette (Symbol Hard)
+  - Sat: 9×9 Hard (Expert)
+  - Sun: 10×10 Latin Double (Master)
+- **`dailyConfig()`:** Derives day-of-week from EPOCH + `state.day`, returns the schedule entry.
+- **`enterDaily()`:** Now loads the day's scheduled config (size, diff, ruleset, mark set) instead of the player's last-used settings. Everyone plays the same board.
+- **Sub-header:** Daily mode now shows *"Monday · Compact · #42"* instead of the raw size/diff labels.
+
 ### [v0.9.5] 2026-08-23 — Fix admin bar visibility; move level timer out of header
 
 - **Fix A — Admin bar now visible:** Removed `display:none` from the admin bar's inline style (it was overriding the `.dev-only` CSS rule) and added an explicit `html.dev #adminBar{display:flex}` rule. The green 🛠 ADMIN strip now appears correctly in playtest builds.
