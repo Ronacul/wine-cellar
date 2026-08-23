@@ -305,6 +305,15 @@ details.collapse .collapse-body{padding:12px 0 0}
 .cl-title{color:var(--ink); font-weight:600}
 .cl-desc{color:var(--ink-dim); font-size:12.5px}
 
+/* ---------- toast notification ---------- */
+.toast{position:fixed;bottom:calc(76px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);
+  background:var(--urgent);color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;
+  font-family:"IBM Plex Mono",monospace;z-index:9999;opacity:0;transition:opacity .3s;
+  pointer-events:none;max-width:90%;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.5)}
+.toast.warn{background:#a06020}
+.toast.ok{background:var(--ok)}
+.toast.show{opacity:1;pointer-events:auto}
+
 /* ---------- detail back & qty controls ---------- */
 .back-row{display:flex;align-items:center;gap:8px;margin-bottom:14px}
 .back-row button{background:none;border:none;color:var(--ink-faint);font-family:"IBM Plex Mono",monospace;font-size:13px;cursor:pointer;padding:4px 0}
@@ -429,13 +438,22 @@ function openPhotoDB(){
     req.onerror = ()=> reject(req.error);
   });
 }
-async function savePhoto(id, dataUrl){
-  const db = await openPhotoDB();
-  return new Promise((resolve, reject)=>{
-    const tx = db.transaction(IDB_STORE, "readwrite");
-    tx.objectStore(IDB_STORE).put(dataUrl, id);
-    tx.oncomplete = resolve; tx.onerror = ()=> reject(tx.error);
-  });
+async function savePhoto(id, dataUrl, _retries=2){
+  try {
+    const db = await openPhotoDB();
+    return await new Promise((resolve, reject)=>{
+      const tx = db.transaction(IDB_STORE, "readwrite");
+      tx.objectStore(IDB_STORE).put(dataUrl, id);
+      tx.oncomplete = resolve; tx.onerror = ()=> reject(tx.error);
+    });
+  } catch(e) {
+    if(_retries > 0){
+      _idb = null; /* force reconnect on retry */
+      await new Promise(r => setTimeout(r, 300));
+      return savePhoto(id, dataUrl, _retries - 1);
+    }
+    throw e;
+  }
 }
 async function getPhoto(id){
   const db = await openPhotoDB();
@@ -496,6 +514,18 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7
 const esc = s => (s??"").toString().replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const YEAR = new Date().getFullYear();
 const tbd = v => (v===undefined||v===null||v==="") ? `<span class="tbd">TBD</span>` : esc(v);
+
+/* ================= toast notification ================= */
+let _toastTimer = null;
+function showToast(msg, cls="", ms=4000){
+  let el = document.getElementById("cave-toast");
+  if(!el){ el = document.createElement("div"); el.id="cave-toast"; el.className="toast"; document.body.appendChild(el); }
+  el.textContent = msg;
+  el.className = "toast" + (cls ? " "+cls : "");
+  clearTimeout(_toastTimer);
+  requestAnimationFrame(()=>{ el.classList.add("show"); });
+  _toastTimer = setTimeout(()=>{ el.classList.remove("show"); }, ms);
+}
 
 /* ================= constants ================= */
 const CONDITIONS = ["NM","VF","FN","VG","GD","FR","PR"];
@@ -1951,12 +1981,19 @@ function renderForm(){
       if(editingId){
         const existing = comics.find(x=>x.id===editingId);
         if(existing) Object.assign(existing, data);
+        let photoSaved = true;
         if(pendingImage && pendingImage !== existing._photoUrl){
-          await savePhoto(existing.id, pendingImage).catch(()=>{});
+          try {
+            await savePhoto(existing.id, pendingImage);
+          } catch(pe) {
+            console.error("Photo save failed:", pe);
+            photoSaved = false;
+            showToast("⚠️ Cover photo failed to save — re-open and re-add the photo", "warn", 6000);
+          }
           existing._photoUrl = pendingImage;
           existing.imageDirty = true;
         }
-        pendingImage = null; originalImage = null; /* free memory */
+        if(photoSaved){ pendingImage = null; originalImage = null; } /* only free memory if save succeeded */
         saveComics();
         editingId = null;
         tab = "detail"; detailId = existing.id; render();
@@ -1966,12 +2003,19 @@ function renderForm(){
           added: new Date().toISOString().slice(0,10),
           ...data
         };
+        let photoSaved = true;
         if(pendingImage){
-          await savePhoto(newComic.id, pendingImage).catch(()=>{});
+          try {
+            await savePhoto(newComic.id, pendingImage);
+          } catch(pe) {
+            console.error("Photo save failed:", pe);
+            photoSaved = false;
+            showToast("⚠️ Cover photo failed to save — re-open and re-add the photo", "warn", 6000);
+          }
           newComic._photoUrl = pendingImage;
           newComic.imageDirty = true;
         }
-        pendingImage = null; originalImage = null; /* free memory */
+        if(photoSaved){ pendingImage = null; originalImage = null; } /* only free memory if save succeeded */
         comics.push(newComic);
         saveComics();
         detailId = newComic.id; tab = "detail";
@@ -2451,6 +2495,9 @@ function renderSync(){
       <summary>What's new</summary>
       <div class="collapse-body">
         <ul class="changelog">
+          <li><span class="cl-ver">Aug 23 2026</span>
+            <span class="cl-title">📸 Photo save reliability fix</span><br>
+            <span class="cl-desc">Cover photos now retry on IndexedDB save failure (2 automatic retries). If save still fails, a visible warning toast appears instead of silently losing the photo. Photos kept in memory until confirmed saved — no more disappearing covers after page refresh.</span></li>
           <li><span class="cl-ver">Aug 18 2026</span>
             <span class="cl-title">✂️ Trim to cover shape + grading fix</span><br>
             <span class="cl-desc">New "Trim to cover shape" button crops photos to comic book proportions (2:3). Fixed AI grading fields (marketValue, gradedValue, gradeCandidate) not being saved — run "Update market values" on the Value tab to backfill existing books. Memory leak fixes: smaller images (600px/0.72), blob URL cleanup, canvas freeing. Camera-return navigation fix for iOS.</span></li>
