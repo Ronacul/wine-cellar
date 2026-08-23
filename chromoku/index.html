@@ -405,12 +405,13 @@ h1{
   clip-path:var(--clip); border-radius:3px}
 .swatch.shaped.on{box-shadow:0 0 0 3px var(--bg),0 0 0 6px var(--c)}
 .swatch.shaped.done::before{opacity:.35}
-/* Tutorial hint flash — works on cells and palette swatches */
-.cell.hint-flash, .swatch.hint-flash { animation: hint-flash 0.7s ease-out; }
+/* Tutorial hint flash — 3 pulses, works on cells and palette swatches */
+.cell.hint-flash, .swatch.hint-flash {
+  animation: hint-flash 0.38s ease-in-out 3;
+}
 @keyframes hint-flash {
-  0%   { box-shadow: inset 0 0 0 3px #ffeb3b, 0 0 10px #ffeb3b; }
-  60%  { box-shadow: inset 0 0 0 3px #ffeb3b, 0 0  6px #ffeb3b; }
-  100% { box-shadow: inset 0 0 0 3px transparent, 0 0 0px transparent; }
+  0%, 100% { box-shadow: inset 0 0 0 3px #ffeb3b, 0 0 14px rgba(255,235,59,.8); }
+  50%       { box-shadow: inset 0 0 0 2px transparent, 0 0 0px transparent; }
 }
 /* Scramble mode: Stroop-style interference — colours get random shape
    clip-paths, shapes get random colours. Applied via inline styles in
@@ -1490,11 +1491,11 @@ const TUTORIAL_CONFIGS = [
     title:"Tap a colour, tap a square",
     desc:"Pick a colour in the palette below, then tap the flashing square to place it." },
   // Level 1: 6×6 — rows, columns and boxes with six colours
-  { n:6, boxless:false, layers:1, givens:30, tutorial:true, noTimer:true,
+  { n:6, boxless:false, layers:1, givens:33, tutorial:true, noTimer:true,
     title:"Six colours, same rules",
     desc:"Each row, column and bold box must contain one of each colour — no repeats." },
   // Level 2: 6×6 Latin — rows and columns only (no boxes)
-  { n:6, boxless:true, layers:1, givens:24, tutorial:true, noTimer:true,
+  { n:6, boxless:true, layers:1, givens:28, tutorial:true, noTimer:true,
     title:"Latin: no boxes",
     desc:"No bold boxes this time. Only rows and columns — one of each in each." },
   // Level 3: 4×4 shapes — different mark set
@@ -1506,11 +1507,11 @@ const TUTORIAL_CONFIGS = [
     title:"Double: two grids, one board",
     desc:"The outer ring is one puzzle; the inner centre is another. Fill both." },
   // Level 5: 9×9 — bigger grid
-  { n:9, boxless:false, layers:1, givens:54, tutorial:true, noTimer:true,
+  { n:9, boxless:false, layers:1, givens:65, tutorial:true, noTimer:true,
     title:"Nine colours, 9x9 grid",
     desc:"Bigger grid, same rules. Every row, column and 3x3 box gets one of each." },
   // Level 6: 6×6 double
-  { n:6, boxless:false, layers:2, givens:30, tutorial:true, noTimer:true,
+  { n:6, boxless:false, layers:2, givens:33, tutorial:true, noTimer:true,
     title:"Double on a 6x6 board",
     desc:"Two 6x6 grids overlaid. Fill the outer ring and inner centre independently." }
 ];
@@ -1668,8 +1669,10 @@ function buildLevel(level){
   // Prefer a puzzle that plain logic can finish. A tier-3 board is uniquely
   // solvable but only by guessing, which reads as unfair rather than hard, so
   // try a few alternative seeds before settling for one.
+  // Tutorial levels get more attempts to guarantee an easy tier-1 puzzle.
+  const maxAttempts = isTutorialLevel(level) ? 30 : 6;
   let layers = [], rated = [], tier = 3;
-  for (let attempt = 0; attempt < 6; attempt++){
+  for (let attempt = 0; attempt < maxAttempts; attempt++){
     const cand = [], cr = [];
     for (let L = 0; L < cfg.layers; L++){
       const p = generatePuzzle(levelSeed(level) + attempt * 104729 + L * 7919,
@@ -1990,16 +1993,16 @@ function loadLevel(n){
   if (isTutorialLevel(n)){
     if (state._hintTimer) clearTimeout(state._hintTimer);
     if (state._hintInterval) clearInterval(state._hintInterval);
+    // First hint after 1.8s; repeat every 7s (long enough for the full
+    // 3-pulse cell + 3-pulse swatch sequence to play out before the next round).
+    // Keep repeating even after the first move — the hint tracks the
+    // current best cell so it stays relevant throughout the tutorial.
     state._hintTimer = setTimeout(() => {
-      showTutorialHint();
+      if (!state.done) showTutorialHint();
       state._hintInterval = setInterval(() => {
-        if (state.started || state.done){
-          clearInterval(state._hintInterval);
-          state._hintInterval = null;
-        } else {
-          showTutorialHint();
-        }
-      }, 5000);
+        if (state.done){ clearInterval(state._hintInterval); state._hintInterval = null; }
+        else showTutorialHint();
+      }, 7000);
     }, 1800);
   }
 }
@@ -3918,49 +3921,54 @@ function hintBestCell(layerIdx){
 }
 
 // Flash the most constrained empty cell and the correct palette swatch
-// for each layer. For Double mode: outer ring first, then inner centre.
-// This hint mechanic is reusable for any level type.
+// for each layer. Sequence: 3 pulses on the cell, then 3 pulses on the
+// swatch. For Double mode: outer ring first; inner centre only after outer
+// is completely filled (so the player learns one layer at a time).
+// This mechanic is reusable for any tutorial level type.
 function showTutorialHint(){
   if (!state.lvl || !state.lvl.cfg.tutorial) return;
 
+  const PULSE_MS   = 380;               // duration of one pulse cycle
+  const PULSE_N    = 3;                 // number of pulses per element
+  const CELL_MS    = PULSE_MS * PULSE_N;  // 1140ms for the cell sequence
+  const SWATCH_GAP = 150;              // gap between cell end and swatch start
+  const LAYER_GAP  = 400;             // gap between outer and inner sequences
+
+  function pulse(el, startDelay){
+    if (!el) return;
+    setTimeout(() => {
+      el.classList.remove("hint-flash");
+      void el.offsetWidth;              // force reflow so animation restarts
+      el.classList.add("hint-flash");
+      setTimeout(() => el.classList.remove("hint-flash"), CELL_MS + 50);
+    }, startDelay);
+  }
+
+  let t = 0; // running time cursor
   let flashed = 0;
   for (let li = 0; li < state.layers.length; li++){
+    // Double mode: only hint the inner layer once the outer is fully filled
+    if (li > 0){
+      const outer = state.layers[0];
+      const outerDone = outer.grid.every((v, i) => v !== null || outer.givens[i]);
+      if (!outerDone) continue;
+    }
+
     const layer = state.layers[li];
     const cellIdx = hintBestCell(li);
     if (cellIdx === null) continue; // layer complete
 
     const correctMark = layer.solution[cellIdx];
-
-    // Flash the cell — same element for both layers (they share the DOM cell)
-    const cellEl = document.querySelector('[data-i="' + cellIdx + '"]');
-    if (cellEl){
-      cellEl.classList.remove("hint-flash");
-      // Stagger Double layers slightly so both are visible
-      const delay = li * 500;
-      setTimeout(() => {
-        cellEl.classList.add("hint-flash");
-        setTimeout(() => cellEl.classList.remove("hint-flash"), 700);
-      }, delay);
-    }
-
-    // Flash the matching palette swatch after the cell flashes
+    const cellEl  = document.querySelector('[data-i="' + cellIdx + '"]');
     const swatchEl = document.querySelector('[data-l="' + li + '"][data-c="' + correctMark + '"]');
-    if (swatchEl){
-      const delay = li * 500 + 350;
-      setTimeout(() => {
-        swatchEl.classList.add("hint-flash");
-        setTimeout(() => swatchEl.classList.remove("hint-flash"), 700);
-      }, delay);
-    }
 
+    pulse(cellEl,   t);
+    pulse(swatchEl, t + CELL_MS + SWATCH_GAP);
+
+    // Advance cursor past this layer's full sequence before the next layer
+    t += CELL_MS + SWATCH_GAP + CELL_MS + LAYER_GAP;
     flashed++;
   }
-
-  if (!flashed) return;
-  const msg = state.layers.length > 1
-    ? "💡 Flash = the square to fill. Gold swatch = the mark to use."
-    : "💡 Tap the flashing square — after picking the glowing colour!";
-  toast(msg);
 }
 
 /* ================= ABOUT PAGE ================= */
