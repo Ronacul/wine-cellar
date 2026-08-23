@@ -1071,7 +1071,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.9.1";
+const CHROMOKU_VERSION = "v0.9.2";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -2566,10 +2566,19 @@ function placeColour(L, i, val){
 /* ================= RESET & ADD TIME ================= */
 function confirmReset(){
   pauseTimer();
+  const inLevel = state.mode === "levels";
+  const p = inLevel ? progress() : null;
+  const livesLeft = p ? p.lives : 0;
   openModal(
     '<h2>Reset puzzle?</h2>'
-    + '<p class="lede">Start over from the beginning?</p>'
-    + '<button class="btn" id="mReset">Reset</button>'
+    + (inLevel
+        ? '<p class="lede">This resets the board to its starting givens and costs 1 life.</p>'
+          + '<div class="hearts big">' + heartsHTML({ lives: Math.max(0, livesLeft - 1) }) + '</div>'
+          + (livesLeft <= 0
+              ? '<p class="lede">No lives left — you\'ll lose your last one.</p>'
+              : '')
+        : '<p class="lede">Start over from the beginning?</p>')
+    + '<button class="btn" id="mReset">Reset' + (inLevel ? ' (−1 life)' : '') + '</button>'
     + '<button class="btn ghost" id="mKeep">Keep playing</button>'
   );
   document.getElementById("mReset").onclick = () => { closeModal(); resetPuzzle(); };
@@ -2577,7 +2586,15 @@ function confirmReset(){
 }
 
 function resetPuzzle(){
-  // Clear all player marks, keep givens
+  // In level mode: cost a life (same penalty as running out of time).
+  if (state.mode === "levels"){
+    const p = progress();
+    p.lives = Math.max(0, p.lives - 1);
+    if (p.lives < LIVES_MAX) p.livesAt = p.livesAt || Date.now();
+    saveProgress2(p);
+  }
+
+  // Clear all player marks, keep givens.
   state.layers.forEach(L => {
     for (let i = 0; i < L.grid.length; i++){
       if (!L.givens[i]) L.grid[i] = null;
@@ -2586,13 +2603,29 @@ function resetPuzzle(){
   state.history = [];
   state.mistakes = 0;
   state.bookmark = null;
+
+  // Reset completion/failure state so the board is actually playable.
+  state.done = false;
+  state.elapsed = 0;
+  state.since = null;
+  state.started = false;
+  state.frozenUntil = 0;
+
+  // Strip done/won CSS left over from a previous failure or win.
+  const board = document.getElementById("board");
+  if (board){
+    board.classList.remove("done");
+    board.querySelectorAll(".won").forEach(el => el.classList.remove("won"));
+  }
+
   renderBoard();
   renderPalette();
   paintCompletedUnits();
   paintMark();
   paintUndo();
+  if (state.mode === "levels") renderLevelBar();  // refresh heart display
   saveProgress();
-  resumeTimer();
+  // Timer restarts on first placement (startTimer is called in placeColour).
   toast("Puzzle reset");
 }
 
@@ -2614,7 +2647,7 @@ function resumeTimer(){
 function showAddTimeModal(){
   if (!state.lvl || !state.lvl.cfg) return;
   pauseTimer();
-  let secs = 15;
+  let secs = ADD_SECS;
 
   // Randomly pick one of three mock ad creatives so it feels alive
   const mockAds = [
@@ -2654,12 +2687,18 @@ function showAddTimeModal(){
     if (secs <= 0){
       clearInterval(countdown);
       state.hints.adds++;
-      state.limitMs += 15 * 1000;
+      state.limitMs += ADD_SECS * 1000;
+      // failLevel() sets state.done = true before calling this modal.
+      // Clear it so the puzzle is actually playable again.
+      state.done = false;
+      // Strip "won" CSS classes that renderBoard() may have added while done=true.
+      document.getElementById("board").classList.remove("done");
+      document.querySelectorAll("[data-i]").forEach(el => el.classList.remove("won"));
       updateAddsBadge();
       saveProgress();
       closeModal();
       resumeTimer();
-      toast("⏰ +15s bonus!");
+      toast("⏰ +" + ADD_SECS + "s — keep going!");
     }
   }, 1000);
 }
@@ -3001,13 +3040,15 @@ function failLevel(){
         ? '<p class="lede">No lives left. One returns in <b id="outLivesIn">'
           + fmtTime(nextLifeMs(p)) + "</b>.</p>"
           + (addTimeAvailable
-              ? '<button class="btn" id="mAddTime">⏰ Add ' + ADD_SECS + 's</button>'
-                + '<button class="btn ghost" id="mWatchAd">📺 Watch ad for +30s</button>'
+              ? '<button class="btn" id="mAddTime">⏰ Watch ad for +' + ADD_SECS + 's</button>'
+                + '<p class="lede" style="margin-top:-4px;font-size:11px;color:var(--ink-dim)">'
+                + 'Uses 1 of ' + (HINT_LIMITS.adds - state.hints.adds) + ' remaining add views</p>'
               : "")
           + '<button class="btn ghost" id="mBack">Back to daily</button>'
         : '<button class="btn" id="mRetry">Try again</button>'
           + (addTimeAvailable
-              ? '<button class="btn ghost" id="mAddTime">⏰ Add ' + ADD_SECS + 's</button>'
+              ? '<button class="btn ghost" id="mAddTime">⏰ Watch ad for +' + ADD_SECS + 's'
+                + ' <span style="font-size:11px;opacity:.65">(' + (HINT_LIMITS.adds - state.hints.adds) + ' left)</span></button>'
               : "")
           + '<button class="btn ghost" id="mBack">Back to daily</button>')
   );
@@ -4390,6 +4431,25 @@ function showSettings(){
   openModal(
     "<h2>Settings</h2>"
     + '<p class="lede">Patterns work without relying on colour vision.</p>'
+    // Admin tools at the top so they're easy to find; long-press ⚙ enables admin without opening settings first.
+    + '<div class="toggle-row">'
+    + '<div><div class="toggle-lbl">Admin tools</div>'
+    + '<div class="toggle-desc">Level jump, date pin, progress reset · or long-press ⚙</div></div>'
+    + '<button class="toggle-sw' + (adminMode ? " on" : "") + '" id="togAdmin" aria-label="Admin tools"></button>'
+    + '</div>'
+    + (adminMode
+        ? '<div class="fld">Debug — puzzle date</div>'
+          + '<div class="dbg"><input type="date" id="dbgDate" value="' + dayToISO(state.day) + '">'
+          + '<button id="dbgToday">Today</button></div>'
+          + '<p class="lede" style="margin-top:-8px">Puzzle #' + state.day
+          + (load(LS_DAY, null) !== null ? " · pinned" : " · live") + "</p>"
+          + '<div class="fld">Debug — jump to level</div>'
+          + '<div class="dbg"><input type="number" id="dbgLevel" min="1" max="500" value="'
+          + (state.mode === "levels" && state.lvl ? state.lvl.cfg.level : progress().level)
+          + '"><button id="dbgGo">Go</button>'
+          + '<button id="dbgReset">Reset progress</button></div>'
+          + '<p class="lede" style="margin-top:-8px">Reset clears levels, stars and lives; the daily is not affected.</p>'
+        : "")
     + '<div class="fld">Marks</div><div class="seg">' + palOpts + "</div>"
     + '<div class="fld">Theme</div>'
     + seg([["auto","Auto"],["light","Light"],["dark","Dark"]], theme)
@@ -4404,24 +4464,7 @@ function showSettings(){
     + '<div class="toggle-desc">Your guesses have rounded corners</div></div>'
     + '<button class="toggle-sw' + (load(LS_ROUND, true) ? " on" : "") + '" id="togRound" aria-label="Rounded mark corners"></button>'
     + '</div>'
-    + '<div class="toggle-row">'
-    + '<div><div class="toggle-lbl">Admin tools</div>'
-    + '<div class="toggle-desc">Level jump, date pin, progress reset</div></div>'
-    + '<button class="toggle-sw' + (adminMode ? " on" : "") + '" id="togAdmin" aria-label="Admin tools"></button>'
-    + '</div>'
-    + (adminMode
-        ? '<div class="fld">Debug — puzzle date</div>'
-          + '<div class="dbg"><input type="date" id="dbgDate" value="' + dayToISO(state.day) + '">'
-          + '<button id="dbgToday">Today</button></div>'
-          + '<p class="lede" style="margin-top:-8px">Puzzle #' + state.day
-          + (load(LS_DAY, null) !== null ? " · pinned" : " · live") + "</p>"
-          + '<div class="fld">Debug — jump to level</div>'
-          + '<div class="dbg"><input type="number" id="dbgLevel" min="1" max="500" value="'
-          + progress().level + '"><button id="dbgGo">Go</button>'
-          + '<button id="dbgReset">Reset</button></div>'
-          + '<p class="lede" style="margin-top:-8px">Reset clears levels, stars and lives; the daily is not affected.</p>'
-        : "")
-    + '<button class="btn ghost" id="copyStats">Copy my stats</button>' 
+    + '<button class="btn ghost" id="copyStats">Copy my stats</button>'
     + '<button class="btn" onclick="closeModal()">Done</button>'
   );
 
@@ -4532,6 +4575,12 @@ document.getElementById("btnQuit").onclick = confirmQuit;
     if (_st){ clearTimeout(_st); _st = null; showSettings(); }
   });
   sb.addEventListener("pointerleave", function(){
+    if (_st){ clearTimeout(_st); _st = null; }
+  });
+  // pointercancel fires on iOS/Android when the browser takes over the gesture
+  // (scroll, text selection, context menu). Without this the timeout keeps
+  // running silently and the next pointerdown double-fires.
+  sb.addEventListener("pointercancel", function(){
     if (_st){ clearTimeout(_st); _st = null; }
   });
   sb.addEventListener("contextmenu", function(e){ e.preventDefault(); });
