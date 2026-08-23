@@ -2994,10 +2994,12 @@ async function pushAll(statusEl){
   /* find wines with dirty photos in IndexedDB */
   const dirtyIds = await allPhotoKeys();
   const dirty = wines.filter(w => dirtyIds.includes(w.id) && w.imageDirty !== false);
+  const total = wines.filter(w=>!isDrank(w)).length;
+  statusEl.textContent = `⏳ Pushing ${total} wines` + (dirty.length ? `, ${dirty.length} photo${dirty.length!==1?"s":""} to upload…` : "…");
   let i=0;
   for(const w of dirty){
     i++;
-    statusEl.textContent = `Uploading photo ${i}/${dirty.length}…`;
+    statusEl.textContent = `📤 Uploading photo ${i}/${dirty.length}: ${w.producer||""} ${w.vintage||""}…`;
     const photoData = await getPhoto(w.id);
     if(!photoData) continue;
     const path = `images/${w.id}.jpg`;
@@ -3008,29 +3010,31 @@ async function pushAll(statusEl){
     await deletePhoto(w.id);
     delete w._photoUrl;
   }
-  statusEl.textContent = "Writing wines.json…";
+  statusEl.textContent = `📝 Writing wines.json (${total} wines)…`;
   const clean = wines.map(({_photoUrl, imageDirty, ...rest})=>rest);
   await ghPut("data/wines.json", b64EncodeUnicode(JSON.stringify(clean,null,2)), `Update cellar (${clean.length} wines)`);
   saveWines();
   cfg.lastSync = new Date().toLocaleString(); saveCfg();
   logSync("push", `${clean.length} wines, ${dirty.length} photo${dirty.length!==1?"s":""}`);
-  statusEl.textContent = `✓ Synced ${clean.length} wines at ${cfg.lastSync}`;
+  statusEl.textContent = `✓ Pushed ${clean.length} wines` + (dirty.length ? ` + ${dirty.length} photo${dirty.length!==1?"s":""}` : "") + ` at ${cfg.lastSync}`;
 }
 async function pullAll(statusEl){
   if(!cfg.owner||!cfg.repo) throw new Error("Fill in owner and repo first.");
-  statusEl.textContent = "Fetching wines.json…";
+  statusEl.textContent = "⏳ Fetching wines.json from GitHub…";
   const url = `https://raw.githubusercontent.com/${cfg.owner}/${cfg.repo}/${cfg.branch||"main"}/data/wines.json?t=${Date.now()}`;
   const r = await fetch(url);
   if(!r.ok) throw new Error("Could not read data/wines.json ("+r.status+"). Has the cellar been pushed yet?");
+  statusEl.textContent = "📥 Parsing cellar data…";
   const remote = await r.json();
   if(!Array.isArray(remote)) throw new Error("wines.json is not a list.");
   if(wines.length && !confirm(`Replace the ${wines.length} local wines with ${remote.length} from GitHub?`)){
     statusEl.textContent = "Pull cancelled."; return;
   }
+  statusEl.textContent = `📥 Loading ${remote.length} wines…`;
   wines = remote; saveWines();
   cfg.lastSync = new Date().toLocaleString(); saveCfg();
   logSync("pull", `${wines.length} wines loaded`);
-  statusEl.textContent = `✓ Loaded ${wines.length} wines from GitHub.`;
+  statusEl.textContent = `✓ Pulled ${wines.length} wines from GitHub at ${cfg.lastSync}`;
   render();
 }
 

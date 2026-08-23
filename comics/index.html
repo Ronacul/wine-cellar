@@ -2444,10 +2444,12 @@ async function pushAll(statusEl){
   /* find comics with dirty photos in IndexedDB */
   const dirtyIds = await allPhotoKeys();
   const dirty = comics.filter(c => dirtyIds.includes(c.id) && c.imageDirty !== false);
+  const total = comics.filter(c=>!isGone(c)).length;
+  statusEl.textContent = `⏳ Pushing ${total} comics` + (dirty.length ? `, ${dirty.length} cover${dirty.length!==1?"s":""} to upload…` : "…");
   let i=0;
   for(const c of dirty){
     i++;
-    statusEl.textContent = `Uploading cover ${i}/${dirty.length}…`;
+    statusEl.textContent = `📤 Uploading cover ${i}/${dirty.length}: ${c.title||"comic"} #${c.issueNumber||""}…`;
     const photoData = await getPhoto(c.id);
     if(!photoData) continue;
     const path = `comics/images/${c.id}.jpg`;
@@ -2458,29 +2460,31 @@ async function pushAll(statusEl){
     await deletePhoto(c.id);
     delete c._photoUrl;
   }
-  statusEl.textContent = "Writing comics.json…";
+  statusEl.textContent = `📝 Writing comics.json (${total} comics)…`;
   const clean = comics.map(({_photoUrl, imageDirty, ...rest})=>rest);
   await ghPut("comics/data/comics.json", b64EncodeUnicode(JSON.stringify(clean,null,2)), `Update collection (${clean.length} comics)`);
   saveComics();
   cfg.lastSync = new Date().toLocaleString(); saveCfg();
   logSync("push", `${clean.length} comics, ${dirty.length} cover${dirty.length!==1?"s":""}`);
-  statusEl.textContent = `✓ Synced ${clean.length} comics at ${cfg.lastSync}`;
+  statusEl.textContent = `✓ Pushed ${clean.length} comics` + (dirty.length ? ` + ${dirty.length} cover${dirty.length!==1?"s":""}` : "") + ` at ${cfg.lastSync}`;
 }
 async function pullAll(statusEl){
   if(!cfg.owner||!cfg.repo) throw new Error("Fill in owner and repo first.");
-  statusEl.textContent = "Fetching comics.json…";
+  statusEl.textContent = "⏳ Fetching comics.json from GitHub…";
   const url = `https://raw.githubusercontent.com/${cfg.owner}/${cfg.repo}/${cfg.branch||"main"}/comics/data/comics.json?t=${Date.now()}`;
   const r = await fetch(url);
   if(!r.ok) throw new Error("Could not read comics/data/comics.json ("+r.status+"). Has the collection been pushed yet?");
+  statusEl.textContent = "📥 Parsing collection data…";
   const remote = await r.json();
   if(!Array.isArray(remote)) throw new Error("comics.json is not a list.");
   if(comics.length && !confirm(`Replace the ${comics.length} local comics with ${remote.length} from GitHub?`)){
     statusEl.textContent = "Pull cancelled."; return;
   }
+  statusEl.textContent = `📥 Loading ${remote.length} comics…`;
   comics = remote; saveComics();
   cfg.lastSync = new Date().toLocaleString(); saveCfg();
   logSync("pull", `${comics.length} comics loaded`);
-  statusEl.textContent = `✓ Loaded ${comics.length} comics from GitHub.`;
+  statusEl.textContent = `✓ Pulled ${comics.length} comics from GitHub at ${cfg.lastSync}`;
   render();
 }
 
