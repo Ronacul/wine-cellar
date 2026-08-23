@@ -121,3 +121,118 @@ board size.
 - **Replay / ghost** — watch your solve play back, or race against your best time
 - **Colourblind simulation** — preview how the board looks under different
   colour vision types (deuteranopia, protanopia, tritanopia)
+
+---
+
+## Session log — 2026-08-23
+
+Changes shipped in this session, with notes on how they work and where
+to push them further.
+
+### 1. Palette swatches scale to board width ✅
+
+**What changed:** Swatches now `flex:1` inside a palette container that
+shares the board's sizing (`width:100%; max-width:min(86vw,360px)`,
+bumped to `400px` at `≥520px`). They divide the row evenly instead of
+using a fixed `clamp()` width.
+
+**CSS:**
+- `.palette` gets `align-items:stretch` + board-width constraints
+- `.prow` fills the palette; swatches flex to divide it
+- Double mode just tightens gaps (`clamp(3px,0.8vw,5px)`)
+- Media query bumps `.palette{max-width:400px}` alongside `.board-wrap`
+
+**Still to do:**
+- Eraser (✕) swatch was too big at full flex — now removed entirely
+  (see item 2). If it comes back, give it a smaller fixed size so it
+  doesn't eat colour-swatch space.
+
+### 2. Eraser swatch removed ✅
+
+**What changed:** The ✕ swatch is gone from the palette. Tapping the
+same colour on a cell already clears it, making the eraser redundant.
+
+**Keyboard erase still works:** Backspace / Delete keys toggle
+`state.erase` mode (bulk-clears all unlocked layers on a tapped cell).
+The CSS for `.swatch.erase` and `.swatch.spacer` is still in the file
+as dead code — can be cleaned up later.
+
+**Parking lot idea:** If a visual erase mode indicator is ever needed
+(e.g. for touch-only users who want multi-layer bulk erase), consider a
+small icon in the toolbar area rather than a palette swatch.
+
+### 3. 9×9 and 16×16 split into two swatch rows ✅
+
+**What changed:** For `n > 4`, swatches split into 2 rows via JS
+(`nRows = 2`). Each row fills the board width, so individual swatches
+are ~2× bigger than the old single-row layout.
+
+**Row splits:**
+- 9×9: 5 + 4 (first row slightly wider swatches)
+- 16×16: 8 + 8 (even split)
+- 4×4: stays single row (4 swatches)
+- Double mode: 1 row per layer regardless of size
+
+**Still to do:**
+- On uneven splits (5+4), the second row's swatches are slightly wider.
+  Could cap with `max-width` matching the first row, but the user hasn't
+  flagged this as a problem.
+
+### 4. Scramble fidelity on share badges ✅
+
+**What changed:** `renderShareBadge()` now applies the same Stroop
+interference that was on screen:
+- Classic colours + scramble: real colour clipped to a decoy shape
+  (via `scrambleDecoy()` → `SHAPES[fakeIdx].clip`)
+- Shapes + scramble: real shape filled with a decoy colour
+  (via `scrambleDecoy()` → `HUES[fakeIdx].hex`)
+- Patterns are unaffected (scramble doesn't apply to ink mode)
+
+The badge subtitle also includes " · Scramble" when active.
+
+**Uses existing functions:** `scrambleDecoy(i, v, n)` and
+`drawClipPath(ctx, clip, x, y, sz)` — no new helpers needed.
+
+### 5. Donut marks always show holes (prior commit, same session) ✅
+
+**What changed:** `.board.dbl .fill` gets the mask (was
+`.board.dbl .cell.has-dot .fill`), so donut holes are always visible
+on Double boards — not just when an inner mark is placed. Inner marks
+at `inset:26%` fit snugly inside the holes.
+
+Swatch donuts use `mask-size:46% 46%` instead of `padding:22%` to
+avoid CSS %-of-parent inflation in the prow.
+
+### 6. Mechanic explainer pages (prior commit, same session) ✅
+
+Modals shown the first time a new mechanic appears (Double, Latin,
+Scramble, Rotated boxes). Tracked in localStorage
+(`chromoku.seen-mech.v1`). Chained via `showExplainers(ids, next)`.
+
+### 7. Quit button during puzzle (prior commit, same session) ✅
+
+Close/quit button appears after the first cell is placed (tracks
+`state.started`). Saves progress and returns to the daily screen.
+
+### 8. Admin level jump (prior commit, same session) ✅
+
+Persistent toggle in Settings to jump to any level number in Levels
+mode.
+
+---
+
+## Further integration ideas
+
+- **Palette row count could be configurable** — some players might
+  prefer 3 rows of 3 for 9×9, or a grid layout for 16×16
+- **Swatch shapes on badges** — the badge already handles shapes and
+  scramble; could add shape outlines to non-scramble shape-mode badges
+  for extra fidelity
+- **Deselect on second tap** — currently tapping a selected swatch
+  deselects it (sets `state.sel = null`). With no eraser, this is the
+  only way to "put down" a colour without placing it. Works fine, but
+  could add a brief toast: "Tap a cell to place, or tap the colour
+  again to deselect"
+- **Eraser as toolbar icon** — if the multi-layer bulk-erase workflow
+  is missed, a small eraser icon in the header bar (next to quit)
+  would be less intrusive than a full swatch
