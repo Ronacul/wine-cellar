@@ -314,6 +314,19 @@ details.collapse .collapse-body{padding:12px 0 0}
 .toast.ok{background:var(--ok)}
 .toast.show{opacity:1;pointer-events:auto}
 
+/* ---------- bulk photo wizard ---------- */
+.bulk-photo-overlay{position:fixed;inset:0;z-index:250;background:var(--bg);display:flex;flex-direction:column;overflow:hidden;padding-bottom:env(safe-area-inset-bottom)}
+.bulk-photo-header{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-shrink:0}
+.bulk-photo-header h3{font-family:"Bangers",cursive;font-size:22px;letter-spacing:.03em;color:var(--accent);margin:0;flex:1}
+.bulk-photo-progress{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-dim)}
+.bulk-photo-body{flex:1;overflow-y:auto;padding:16px 14px}
+.bulk-photo-card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:12px}
+.bulk-photo-card .title{font-family:"Bangers",cursive;font-size:18px;color:var(--ink);letter-spacing:.02em}
+.bulk-photo-card .meta{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-dim);margin-top:4px}
+.bulk-photo-preview{width:120px;height:180px;object-fit:cover;border-radius:6px;border:1px solid var(--line);margin:10px auto;display:block}
+.bulk-photo-actions{padding:12px 14px;border-top:1px solid var(--line);display:flex;gap:8px;flex-shrink:0}
+.bulk-photo-actions button{flex:1}
+
 /* ---------- detail back & qty controls ---------- */
 .back-row{display:flex;align-items:center;gap:8px;margin-bottom:14px}
 .back-row button{background:none;border:none;color:var(--ink-faint);font-family:"IBM Plex Mono",monospace;font-size:13px;cursor:pointer;padding:4px 0}
@@ -2470,6 +2483,123 @@ async function pullAll(statusEl){
   render();
 }
 
+/* ================= bulk photo wizard ================= */
+function openBulkPhotoWizard(missing){
+  let idx = 0, saved = 0;
+
+  const overlay = document.createElement("div");
+  overlay.className = "bulk-photo-overlay";
+  document.body.appendChild(overlay);
+
+  function renderCurrent(){
+    if(idx >= missing.length){
+      overlay.innerHTML = `
+        <div class="bulk-photo-header"><h3>📸 Done!</h3></div>
+        <div class="bulk-photo-body" style="display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px">
+          <div style="font-size:48px">✅</div>
+          <div style="font-size:16px;color:var(--ink);text-align:center">Added covers to ${saved} comic${saved!==1?"s":""}.</div>
+          <div style="font-size:12px;color:var(--ink-dim)">Push to GitHub to back them up.</div>
+        </div>
+        <div class="bulk-photo-actions">
+          <button class="btn btn-primary" id="bp-done">Done</button>
+        </div>`;
+      overlay.querySelector("#bp-done").onclick = () => { overlay.remove(); render(); };
+      return;
+    }
+    const c = missing[idx];
+    const pub = c.publisher || "";
+    const pubColour = ({"Marvel":"#e04040","DC":"#3080d0","Image":"#e08030"})[pub] || "var(--ink)";
+    overlay.innerHTML = `
+      <div class="bulk-photo-header">
+        <h3>📸 Add covers</h3>
+        <span class="bulk-photo-progress">${idx+1} / ${missing.length}</span>
+      </div>
+      <div class="bulk-photo-body">
+        <div class="bulk-photo-card">
+          <div class="title" style="color:${pubColour}">${esc(c.title||"Unknown")}${c.issueNumber ? ` <span style="color:var(--accent)">#${esc(c.issueNumber)}</span>` : ""}</div>
+          <div class="meta">${esc([pub, c.year, c.era, c.condition].filter(Boolean).join(" · "))}</div>
+          ${c.keyStatus ? `<div style="margin-top:6px;font-size:12px;color:var(--warn)">🔑 ${esc(c.keyStatus)}</div>` : ""}
+        </div>
+        <img id="bp-preview" class="bulk-photo-preview" style="display:none" alt="">
+        <div style="text-align:center;margin:12px 0">
+          <label class="btn btn-primary" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;margin:0">
+            📷 Take cover photo
+            <input type="file" id="bp-cam" accept="image/*" capture="environment" style="display:none">
+          </label>
+        </div>
+        <div style="text-align:center">
+          <label class="btn btn-ghost" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;margin:0;font-size:13px">
+            🖼 Choose from gallery
+            <input type="file" id="bp-gal" accept="image/*" style="display:none">
+          </label>
+        </div>
+        <div class="sync-status" id="bp-status" style="display:none;margin-top:10px;font-size:12px"></div>
+      </div>
+      <div class="bulk-photo-actions">
+        <button class="btn btn-ghost" id="bp-skip">Skip →</button>
+        <button class="btn btn-ghost" id="bp-crop" style="display:none">✂️ Crop</button>
+        <button class="btn btn-primary" id="bp-save" style="display:none">✓ Save & next</button>
+        <button class="btn btn-ghost" id="bp-close" style="flex:0 0 auto;padding:11px 14px">✕</button>
+      </div>`;
+
+    let pendingData = null;
+
+    const handleFile = async (file) => {
+      if(!file) return;
+      const bpst = overlay.querySelector("#bp-status");
+      bpst.style.display = "block"; bpst.textContent = "Processing…";
+      try {
+        pendingData = await resizeImage(file);
+        const pv = overlay.querySelector("#bp-preview");
+        pv.src = pendingData; pv.style.display = "block";
+        overlay.querySelector("#bp-save").style.display = "";
+        overlay.querySelector("#bp-crop").style.display = "";
+        bpst.style.display = "none";
+      } catch(e){
+        bpst.textContent = "✗ Could not load photo.";
+      }
+    };
+
+    overlay.querySelector("#bp-cam").onchange = (e) => handleFile(e.target.files[0]);
+    overlay.querySelector("#bp-gal").onchange = (e) => handleFile(e.target.files[0]);
+
+    overlay.querySelector("#bp-crop").onclick = () => {
+      if(!pendingData) return;
+      openCropEditor(pendingData, (result) => {
+        pendingData = result;
+        overlay.querySelector("#bp-preview").src = result;
+      });
+    };
+
+    overlay.querySelector("#bp-save").onclick = async () => {
+      if(!pendingData) return;
+      const bpst = overlay.querySelector("#bp-status");
+      bpst.style.display = "block"; bpst.textContent = "Saving…";
+      try {
+        await savePhoto(c.id, pendingData);
+        c._photoUrl = pendingData;
+        c.imageDirty = true;
+        saveComics();
+        saved++;
+        bpst.style.display = "none";
+        pendingData = null;
+        idx++;
+        renderCurrent();
+      } catch(e){
+        bpst.textContent = "✗ Save failed — try again.";
+      }
+    };
+
+    overlay.querySelector("#bp-skip").onclick = () => { pendingData = null; idx++; renderCurrent(); };
+    overlay.querySelector("#bp-close").onclick = () => {
+      overlay.remove();
+      if(saved > 0) render();
+    };
+  }
+
+  renderCurrent();
+}
+
 function renderSync(){
   const notSet = `<span class="tbd">not set</span>`;
   const lastSync = syncHistory.length ? syncHistory[0] : null;
@@ -2492,6 +2622,11 @@ function renderSync(){
     <div class="note">Push uploads new cover photos and writes <span class="mono">comics/data/comics.json</span> — overwrites the repo with what's on this device.</div>
 
     <hr class="section-rule">
+    <button class="btn btn-ghost" id="bulk-photo-btn" style="border-color:var(--ok);color:var(--ok)">📸 Add missing covers</button>
+    <div class="note" id="bulk-photo-note">Quickly photograph comics that don't have cover art. Camera opens for each one in sequence.</div>
+    <div class="sync-status" id="bulk-photo-st" style="display:none"></div>
+
+    <hr class="section-rule">
     <button class="btn btn-ghost" id="trim-all-btn" style="border-color:var(--accent);color:var(--accent)">✂️ Trim all existing photos</button>
     <div class="note">Crops all 100+ existing cover photos to standard comic proportions (2:3). One-time batch operation — covers stored on GitHub will be updated on next Push. You can stop anytime.</div>
     <div class="sync-status" id="trim-all-st" style="display:none"></div>
@@ -2511,6 +2646,9 @@ function renderSync(){
       <summary>What's new</summary>
       <div class="collapse-body">
         <ul class="changelog">
+          <li><span class="cl-ver">Aug 23 2026</span>
+            <span class="cl-title">📸 Add missing covers + sync status</span><br>
+            <span class="cl-desc">New "Add missing covers" wizard on Sync page — shows comics without cover art and lets you photograph them in sequence with crop option. Sync buttons now show ⏳ progress and disable during push/pull to prevent double-taps.</span></li>
           <li><span class="cl-ver">Aug 23 2026</span>
             <span class="cl-title">📸 Photo save + crop editor fixes</span><br>
             <span class="cl-desc">Cover photos now retry on IndexedDB save failure (2 automatic retries). Visible toast warning on failure instead of silent data loss. Photos kept in memory until save confirmed. Fixed "Crop cover" button showing blank editor — now loads photo correctly from GitHub. Crop editor closes cleanly if photo can't load. Safe-area padding for bottom controls on phones with home bars.</span></li>
@@ -2556,13 +2694,29 @@ function renderSync(){
     cfg.gkey=document.getElementById("c-gkey").value.trim();
     saveCfg(); st.textContent="Settings saved."; renderSync();
   };
-  document.getElementById("push").onclick = async ()=>{
+  const pushBtn = document.getElementById("push");
+  const pullBtn = document.getElementById("pull");
+  function syncBusy(busy){
+    pushBtn.disabled = pullBtn.disabled = busy;
+    if(busy){
+      pushBtn.style.opacity = pullBtn.style.opacity = "0.45";
+      pushBtn.style.pointerEvents = pullBtn.style.pointerEvents = "none";
+    } else {
+      pushBtn.style.opacity = pullBtn.style.opacity = "";
+      pushBtn.style.pointerEvents = pullBtn.style.pointerEvents = "";
+    }
+  }
+  pushBtn.onclick = async ()=>{
     document.getElementById("savecfg").click();
+    syncBusy(true); st.textContent = "⏳ Pushing…";
     try{ await pushAll(st); } catch(e){ st.textContent = "✗ " + e.message; }
+    syncBusy(false);
   };
-  document.getElementById("pull").onclick = async ()=>{
+  pullBtn.onclick = async ()=>{
     document.getElementById("savecfg").click();
+    syncBusy(true); st.textContent = "⏳ Pulling…";
     try{ await pullAll(st); } catch(e){ st.textContent = "✗ " + e.message; }
+    syncBusy(false);
   };
 
   /* batch trim all photos — with preview first */
@@ -2736,6 +2890,19 @@ function renderSync(){
     if(!recheckAbort) rst.textContent = `✓ Done. Updated ${updated} of ${comics.filter(c=>!isGone(c)).length} books.`;
     btn.textContent = "✨ Re-check all values (AI)";
   };
+
+  /* bulk add missing covers */
+  (async ()=>{
+    const photoKeys = await allPhotoKeys().catch(()=>[]);
+    const missing = comics.filter(c => !isGone(c) && !photoKeys.includes(c.id) && !c._photoUrl);
+    const noteEl = document.getElementById("bulk-photo-note");
+    if(noteEl) noteEl.textContent = missing.length
+      ? `${missing.length} comic${missing.length!==1?"s":""} without cover art. Camera opens for each one in sequence.`
+      : "All comics have cover photos. 🎉";
+    const bpBtn = document.getElementById("bulk-photo-btn");
+    if(!missing.length){ bpBtn.disabled = true; bpBtn.style.opacity = "0.45"; return; }
+    bpBtn.onclick = () => openBulkPhotoWizard(missing);
+  })();
 }
 
 /* ================= navigation ================= */
