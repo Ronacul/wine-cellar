@@ -3173,13 +3173,29 @@ function renderSync(){
     cfg.gkey=document.getElementById("c-gkey").value.trim();
     saveCfg(); st.textContent="Settings saved."; renderSync();
   };
-  document.getElementById("push").onclick = async ()=>{
+  const pushBtn = document.getElementById("push");
+  const pullBtn = document.getElementById("pull");
+  function syncBusy(busy){
+    pushBtn.disabled = pullBtn.disabled = busy;
+    if(busy){
+      pushBtn.style.opacity = pullBtn.style.opacity = "0.45";
+      pushBtn.style.pointerEvents = pullBtn.style.pointerEvents = "none";
+    } else {
+      pushBtn.style.opacity = pullBtn.style.opacity = "";
+      pushBtn.style.pointerEvents = pullBtn.style.pointerEvents = "";
+    }
+  }
+  pushBtn.onclick = async ()=>{
     document.getElementById("savecfg").click();
-    try{ await pushAll(document.getElementById("st")); } catch(e){ document.getElementById("st").textContent = "X " + e.message; }
+    syncBusy(true); st.textContent = "⏳ Pushing…";
+    try{ await pushAll(st); } catch(e){ st.textContent = "✗ " + e.message; }
+    syncBusy(false);
   };
-  document.getElementById("pull").onclick = async ()=>{
+  pullBtn.onclick = async ()=>{
     document.getElementById("savecfg").click();
-    try{ await pullAll(document.getElementById("st")); } catch(e){ document.getElementById("st").textContent = "X " + e.message; }
+    syncBusy(true); st.textContent = "⏳ Pulling…";
+    try{ await pullAll(st); } catch(e){ st.textContent = "✗ " + e.message; }
+    syncBusy(false);
   };
   /* bulk price re-check */
   let recheckAbort = false;
