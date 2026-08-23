@@ -8,6 +8,11 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.9.5] 2026-08-23 — Fix admin bar visibility; move level timer out of header
+
+- **Fix A — Admin bar now visible:** Removed `display:none` from the admin bar's inline style (it was overriding the `.dev-only` CSS rule) and added an explicit `html.dev #adminBar{display:flex}` rule. The green 🛠 ADMIN strip now appears correctly in playtest builds.
+- **Fix B — Timer moved to level bar:** In level mode the countdown timer now lives inside the level bar (right side, next to hearts) instead of the main header. This frees the header's right column in landscape orientation, so the ⚙ settings button is no longer clipped off-screen. The header timer is hidden while in level mode; it reappears in daily/practice mode. `pauseTimer()` and `resumeTimer()` also update the level-bar timer's frozen state.
+
 ### [v0.9.4] 2026-08-23 — Admin bar always visible on playtest build
 
 - **Admin bar:** A green 🛠 ADMIN strip now appears between the header and the game board whenever admin mode is active (i.e. always on playtest). Controls directly on screen: level jump input + Go, date input + Today, Reset progress, Daily. No more hunting in Settings.

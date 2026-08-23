@@ -124,7 +124,8 @@ h1{
   font-family:var(--mono); font-size:9.5px; color:var(--ink-faint); white-space:nowrap;
   text-transform:uppercase; letter-spacing:.06em; margin-top:2px;
 }
-.hearts{display:flex; gap:2px; font-size:13px; color:var(--ink-faint)}
+.hearts{display:flex; gap:2px; font-size:13px; color:var(--ink-faint); align-items:center}
+.hearts #lvlTimer{margin-left:6px; font-size:17px; min-width:48px; text-align:right}
 .hearts .on{color:var(--error)}
 .hearts.big{justify-content:center; font-size:26px; gap:5px; margin-bottom:16px}
 /* Countdown to next heart; hidden when full via empty textContent. */
@@ -467,6 +468,7 @@ h1{
 /* Development tools, hidden unless ?dev=1 */
 .dev-only{display:none}
 html.dev .dev-only{display:grid}
+html.dev #adminBar{display:flex}
 .dbg input{
   flex:1; font-family:var(--mono); font-size:12px; padding:8px 10px; border-radius:8px;
   border:1px solid var(--line-2); background:var(--panel2); color:var(--ink);
@@ -648,7 +650,7 @@ html.dev .dev-only{display:grid}
 </header>
 
 <!-- Admin bar — visible only in dev/admin mode (html.dev class), never in release -->
-<div class="dev-only" id="adminBar" style="background:#1a3a1a;border-bottom:1px solid #3a6a3a;padding:6px 12px;display:none;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;color:#9fdf9f;flex-wrap:wrap">
+<div class="dev-only" id="adminBar" style="background:#1a3a1a;border-bottom:1px solid #3a6a3a;padding:6px 12px;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;color:#9fdf9f;flex-wrap:wrap">
   <span style="font-weight:700;color:#6fcf6f;letter-spacing:.05em">🛠 ADMIN</span>
   <label style="display:flex;align-items:center;gap:4px">Level
     <input type="number" id="adminLevel" min="1" max="500" style="width:52px;background:#0d1f0d;border:1px solid #3a6a3a;border-radius:4px;color:#9fdf9f;font-family:var(--mono);font-size:11px;padding:2px 4px" value="1">
@@ -1086,7 +1088,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.9.4";
+const CHROMOKU_VERSION = "v0.9.5";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -1853,25 +1855,31 @@ setInterval(tickTimer, 250);
 function tickTimer(){
   updateRegenChip();
   const el = document.getElementById("timer");
+  const lvlEl = document.getElementById("lvlTimer");
   const frozen = state.frozenUntil > Date.now();
   if (state.mode !== "levels"){
-    el.textContent = fmtTime(elapsedMs());
-    el.className = "timer" + (frozen ? " frozen" : "");
+    // In daily/practice mode: show header timer, no level-bar timer
+    if (el) { el.style.display = ""; el.textContent = fmtTime(elapsedMs()); el.className = "timer" + (frozen ? " frozen" : ""); }
     return;
   }
 
-  // Tutorial levels have no timer — hide the display and bar
+  // In level mode: hide header timer, drive level-bar timer instead
+  if (el) el.style.display = "none";
+
+  // Tutorial levels have no timer — hide level-bar timer and bar
   if (state.lvl && state.lvl.cfg.noTimer){
-    el.textContent = "";
-    el.className = "timer";
+    if (lvlEl) { lvlEl.textContent = ""; lvlEl.className = "timer"; }
     const bar = document.getElementById("tbar");
     if (bar) bar.style.width = "0";
     return;
   }
 
   const left = Math.max(0, state.limitMs - elapsedMs());
-  el.textContent = fmtTime(left);
-  el.className = "timer lvl" + (frozen ? " frozen" : left < 10000 ? " danger" : left < 30000 ? " warn" : "");
+  const timerClass = "timer lvl" + (frozen ? " frozen" : left < 10000 ? " danger" : left < 30000 ? " warn" : "");
+  const timerText = fmtTime(left);
+  if (lvlEl) { lvlEl.textContent = timerText; lvlEl.className = timerClass; }
+  // Keep el in sync too (hidden, but used by resumeTimer frozen-class check)
+  if (el) { el.textContent = timerText; el.className = timerClass; }
 
   const bar = document.getElementById("tbar");
   if (bar){
@@ -2113,10 +2121,9 @@ function render(){
   // otherwise only once the player has started and the puzzle isn't done.
   const qb = document.getElementById("btnQuit");
   if (qb) qb.style.display = (isTutNow || ((state.started || state.elapsed > 0) && !state.done)) ? "" : "none";
-  // In tutorial, hide elements that aren't relevant. Timer stays visible — it
-  // shows elapsed time (no penalty) and sits in the single header row we keep.
+  // Header timer: hide in level mode (timer lives in the level bar there).
   const timerEl = document.getElementById("timer");
-  if (timerEl) timerEl.style.display = "";
+  if (timerEl) timerEl.style.display = (state.mode === "levels") ? "none" : "";
   const btnMark = document.getElementById("btnMark");
   if (btnMark) btnMark.style.display = isTutNow ? "none" : "";
   const btnSettings = document.getElementById("btnSettings");
@@ -2233,7 +2240,8 @@ function renderLevelBar(){
     + (c.boss ? " · boss" : "") + "</span>"
     + renderStagePath(lv.cfg) + "</div>"
     + '<div class="hearts">' + heartsHTML(p)
-    + '<span class="regen" id="regen"></span></div>'
+    + '<span class="regen" id="regen"></span>'
+    + '<span class="timer lvl" id="lvlTimer"></span></div>'
     + "</div>";
   const tw = document.getElementById("tbarwrap");
   if (tw) tw.style.display = "";
@@ -2655,15 +2663,19 @@ function pauseTimer(){
   if (!state.timerInterval) return;
   clearInterval(state.timerInterval);
   state.timerInterval = null;
-  const timerEl = document.getElementById("timer");
-  if (timerEl) timerEl.classList.add("frozen");
+  for (const id of ["timer", "lvlTimer"]){
+    const el = document.getElementById(id);
+    if (el) el.classList.add("frozen");
+  }
 }
 
 function resumeTimer(){
   if (state.timerInterval || state.done) return;
   state.timerInterval = setInterval(tickTimer, 250);
-  const timerEl = document.getElementById("timer");
-  if (timerEl) timerEl.classList.remove("frozen");
+  for (const id of ["timer", "lvlTimer"]){
+    const el = document.getElementById(id);
+    if (el) el.classList.remove("frozen");
+  }
 }
 
 function showAddTimeModal(){
