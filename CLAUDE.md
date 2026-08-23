@@ -285,8 +285,9 @@ Chromoku lives in **this repo** at `chromoku/index.html`. There is no separate
 here in `wine-cellar/chromoku/`.
 
 - Game: `chromoku/index.html` (single-file SPA, vanilla JS)
+- **Live URL**: https://ronacul.github.io/wine-cellar/chromoku/
 - Design doc: `chromoku/CHROMOKU.md`
 - Mark picker tool: `chromoku/MARK_PICKER.md`
 - Tutorial: `chromoku/TUTORIAL.md`
 
-Edit locally at `G:\My Drive\Claude Stuff\wine-cellar\chromoku\index.html`, commit and push to `Ronacul/wine-cellar`.
+**Workflow**: Edit `chromoku/index.html` locally → commit → push to `Ronacul/wine-cellar` main → GitHub Pages auto-deploys in ~1 min → test at the live URL above. Always push at the end of every session so phone/other sessions can play the latest version.
