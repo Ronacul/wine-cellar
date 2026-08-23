@@ -405,10 +405,11 @@ h1{
   clip-path:var(--clip); border-radius:3px}
 .swatch.shaped.on{box-shadow:0 0 0 3px var(--bg),0 0 0 6px var(--c)}
 .swatch.shaped.done::before{opacity:.35}
-/* Tutorial hint flash */
-.cell.hint-flash { animation: hint-flash 0.6s ease-out; }
+/* Tutorial hint flash — works on cells and palette swatches */
+.cell.hint-flash, .swatch.hint-flash { animation: hint-flash 0.7s ease-out; }
 @keyframes hint-flash {
-  0% { box-shadow: inset 0 0 0 3px #ffeb3b, 0 0 8px #ffeb3b; }
+  0%   { box-shadow: inset 0 0 0 3px #ffeb3b, 0 0 10px #ffeb3b; }
+  60%  { box-shadow: inset 0 0 0 3px #ffeb3b, 0 0  6px #ffeb3b; }
   100% { box-shadow: inset 0 0 0 3px transparent, 0 0 0px transparent; }
 }
 /* Scramble mode: Stroop-style interference — colours get random shape
@@ -1484,34 +1485,34 @@ const LEVELS_PER_WORLD = LEVELS_PER_STAGE * STAGES_PER_WORLD;
 /* ================= TUTORIAL SYSTEM ================= */
 // 7-level guided onboarding, highly seeded, with interactive hints
 const TUTORIAL_CONFIGS = [
-  // Level 0: Intro — tap colour, tap square
-  { n:4, boxless:false, layers:1, givens:12, tutorial:true, noTimer:true,
+  // Level 0: Intro — 4×4, tap a colour, tap a square
+  { n:4, boxless:false, layers:1, givens:14, tutorial:true, noTimer:true,
     title:"Tap a colour, tap a square",
-    desc:"Pick any colour in the palette below, then tap an empty square to place it." },
-  // Level 1: Rows — fill a complete row
-  { n:4, boxless:false, layers:1, givens:11, tutorial:true, noTimer:true,
-    title:"Every row uses all four",
-    desc:"Each row must contain one of each colour — no repeats." },
-  // Level 2: Columns — add column constraint
-  { n:4, boxless:false, layers:1, givens:11, tutorial:true, noTimer:true,
-    title:"Every column, too",
-    desc:"Columns follow the same rule: one of each colour, no repeats." },
-  // Level 3: Boxes — add 2×2 box constraint
-  { n:4, boxless:false, layers:1, givens:10, tutorial:true, noTimer:true,
-    title:"Every 2×2 box",
-    desc:"Each bold 2×2 box must also have one of each. Rows + columns + boxes." },
-  // Level 4: Shapes — introduce non-colour marks
-  { n:4, boxless:false, layers:1, givens:12, tutorial:true, noTimer:true,
-    title:"Colours are just one option",
-    desc:"Marks can be shapes too — same rules apply. Your mark choice rotates each level.", markSet:"shapes" },
-  // Level 5: Double outer — solve outer layer first
-  { n:4, boxless:false, layers:2, givens:12, tutorial:true, noTimer:true,
+    desc:"Pick a colour in the palette below, then tap the flashing square to place it." },
+  // Level 1: 6×6 — rows, columns and boxes with six colours
+  { n:6, boxless:false, layers:1, givens:30, tutorial:true, noTimer:true,
+    title:"Six colours, same rules",
+    desc:"Each row, column and bold box must contain one of each colour — no repeats." },
+  // Level 2: 6×6 Latin — rows and columns only (no boxes)
+  { n:6, boxless:true, layers:1, givens:24, tutorial:true, noTimer:true,
+    title:"Latin: no boxes",
+    desc:"No bold boxes this time. Only rows and columns — one of each in each." },
+  // Level 3: 4×4 shapes — different mark set
+  { n:4, boxless:false, layers:1, givens:14, tutorial:true, noTimer:true,
+    title:"Marks can be shapes too",
+    desc:"Same rules, different marks. Shapes work exactly like colours.", markSet:"shapes" },
+  // Level 4: 4×4 double — two layers, outer then inner
+  { n:4, boxless:false, layers:2, givens:14, tutorial:true, noTimer:true,
     title:"Double: two grids, one board",
-    desc:"Two grids share the board. The outer ring and inner centre are separate puzzles." },
-  // Level 6: Double both — solve both layers
-  { n:4, boxless:false, layers:2, givens:12, tutorial:true, noTimer:true,
-    title:"Solve both layers",
-    desc:"Fill both layers — the outer ring and the inner centre. Same rules for each." }
+    desc:"The outer ring is one puzzle; the inner centre is another. Fill both." },
+  // Level 5: 9×9 — bigger grid
+  { n:9, boxless:false, layers:1, givens:54, tutorial:true, noTimer:true,
+    title:"Nine colours, 9x9 grid",
+    desc:"Bigger grid, same rules. Every row, column and 3x3 box gets one of each." },
+  // Level 6: 6×6 double
+  { n:6, boxless:false, layers:2, givens:30, tutorial:true, noTimer:true,
+    title:"Double on a 6x6 board",
+    desc:"Two 6x6 grids overlaid. Fill the outer ring and inner centre independently." }
 ];
 
 const LS_TUTORIAL = "chromoku.tutorial.v1";
@@ -3887,31 +3888,78 @@ function showHelp(){
 }
 
 /* ================= TUTORIAL HINTS ================= */
+// Returns the index of the most-constrained empty cell in a layer —
+// the cell where the most peers are already filled, so the correct mark
+// is easiest to deduce. Returns null if the layer is complete.
+function hintBestCell(layerIdx){
+  const layer = state.layers[layerIdx];
+  const n = state.n;
+  const rotate = !!(state.lvl && state.lvl.cfg.boxRotate);
+  const { bw, bh } = boxDims(n, rotate);
+  let bestCell = null, bestScore = -1;
+  for (let i = 0; i < layer.grid.length; i++){
+    if (layer.grid[i] !== null || layer.givens[i]) continue;
+    const row = Math.floor(i / n), col = i % n;
+    const used = new Set();
+    // Row
+    for (let c = 0; c < n; c++){ const v = layer.grid[row * n + c]; if (v !== null) used.add(v); }
+    // Column
+    for (let r = 0; r < n; r++){ const v = layer.grid[r * n + col]; if (v !== null) used.add(v); }
+    // Box (Sudoku only)
+    if (!state.latin){
+      const br = Math.floor(row / bh) * bh, bc = Math.floor(col / bw) * bw;
+      for (let r = br; r < br + bh; r++) for (let c = bc; c < bc + bw; c++){
+        const v = layer.grid[r * n + c]; if (v !== null) used.add(v);
+      }
+    }
+    if (used.size > bestScore){ bestScore = used.size; bestCell = i; }
+  }
+  return bestCell;
+}
+
+// Flash the most constrained empty cell and the correct palette swatch
+// for each layer. For Double mode: outer ring first, then inner centre.
+// This hint mechanic is reusable for any level type.
 function showTutorialHint(){
   if (!state.lvl || !state.lvl.cfg.tutorial) return;
 
-  // Flash the first empty cell from each layer
   let flashed = 0;
   for (let li = 0; li < state.layers.length; li++){
     const layer = state.layers[li];
-    for (let i = 0; i < layer.grid.length; i++){
-      if (layer.grid[i] === null && !layer.givens[i]){
-        const cell = document.querySelector(`[data-layer="${li}"][data-i="${i}"]`)
-                  || (li === 0 ? document.querySelector(`[data-i="${i}"]`) : null);
-        if (cell){
-          cell.classList.add("hint-flash");
-          setTimeout(() => cell.classList.remove("hint-flash"), 600);
-          flashed++;
-        }
-        break; // one cell per layer
-      }
+    const cellIdx = hintBestCell(li);
+    if (cellIdx === null) continue; // layer complete
+
+    const correctMark = layer.solution[cellIdx];
+
+    // Flash the cell — same element for both layers (they share the DOM cell)
+    const cellEl = document.querySelector('[data-i="' + cellIdx + '"]');
+    if (cellEl){
+      cellEl.classList.remove("hint-flash");
+      // Stagger Double layers slightly so both are visible
+      const delay = li * 500;
+      setTimeout(() => {
+        cellEl.classList.add("hint-flash");
+        setTimeout(() => cellEl.classList.remove("hint-flash"), 700);
+      }, delay);
     }
+
+    // Flash the matching palette swatch after the cell flashes
+    const swatchEl = document.querySelector('[data-l="' + li + '"][data-c="' + correctMark + '"]');
+    if (swatchEl){
+      const delay = li * 500 + 350;
+      setTimeout(() => {
+        swatchEl.classList.add("hint-flash");
+        setTimeout(() => swatchEl.classList.remove("hint-flash"), 700);
+      }, delay);
+    }
+
+    flashed++;
   }
 
-  if (!flashed) return; // Puzzle complete
+  if (!flashed) return;
   const msg = state.layers.length > 1
-    ? "💡 Try placing marks in both grids!"
-    : "💡 Try placing a mark in an empty square!";
+    ? "💡 Flash = the square to fill. Gold swatch = the mark to use."
+    : "💡 Tap the flashing square — after picking the glowing colour!";
   toast(msg);
 }
 
