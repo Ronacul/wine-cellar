@@ -2091,13 +2091,18 @@ function render(){
   // otherwise only once the player has started and the puzzle isn't done.
   const qb = document.getElementById("btnQuit");
   if (qb) qb.style.display = (isTutNow || ((state.started || state.elapsed > 0) && !state.done)) ? "" : "none";
-  // In tutorial, hide elements that crowd the header and aren't relevant.
+  // In tutorial, hide elements that aren't relevant. Timer stays visible — it
+  // shows elapsed time (no penalty) and sits in the single header row we keep.
   const timerEl = document.getElementById("timer");
-  if (timerEl) timerEl.style.display = isTutNow ? "none" : "";
+  if (timerEl) timerEl.style.display = "";
   const btnMark = document.getElementById("btnMark");
   if (btnMark) btnMark.style.display = isTutNow ? "none" : "";
   const btnSettings = document.getElementById("btnSettings");
   if (btnSettings) btnSettings.style.display = isTutNow ? "none" : "";
+  // Hide h1 "Chromoku" during active play — the levelbar or #sub already carry
+  // identity; the big title is wasted vertical space on mobile.
+  const h1El = document.querySelector("header h1");
+  if (h1El) h1El.style.display = (state.mode === "levels") ? "none" : "";
   // Banner ad mockup — visible in level mode, but not during tutorial
   const ab = document.getElementById("adBanner");
   if (ab) ab.style.display = (state.mode === "levels" && !isTutNow) ? "" : "none";
@@ -2171,8 +2176,18 @@ function renderLevelBar(){
   if (isTutorialLevel(c.level)){
     // Replace diffs with an invisible stub (keeps the id alive for future calls)
     document.getElementById("diffs").outerHTML = '<div class="diffs" id="diffs" style="display:none"></div>';
+    // tbarwrap: from tutorial 4 (index ≥ 3) show as step-progress fill (N/7 done).
+    // Earlier tutorials hide it to keep the UI minimal.
     const tw = document.getElementById("tbarwrap");
-    if (tw) tw.style.display = "none";
+    const tb = document.getElementById("tbar");
+    if (c.level >= 3 && tw && tb){
+      tw.style.display = "";
+      const frac = c.level / TUTORIAL_CONFIGS.length;
+      tb.style.width = (frac * 100).toFixed(1) + "%";
+      tb.className = "tbar-fill"; // always green (no warn/danger in tutorial)
+    } else if (tw){
+      tw.style.display = "none";
+    }
     // Axis toggles irrelevant in tutorial
     for (const id of ["latinToggle","dblToggle","scrambleToggle","lvlToggle"]){
       const b = document.getElementById(id);
@@ -2181,6 +2196,7 @@ function renderLevelBar(){
     // Quit just returns to daily — no life penalty in tutorial
     const qb = document.getElementById("btnQuit");
     if (qb){ qb.style.display = ""; qb.onclick = () => enterDaily(); }
+    renderPowerups(); // shows 🔦 bar for tutorial 4+ (renderPowerups guards level < 3)
     return;
   }
   const rotTag = c.boxRotate ? " ⤾" : "";   // rotated-box marker
@@ -3472,8 +3488,21 @@ function totalHints(){ return state.hints.reveals + state.hints.freezes + state.
 function renderPowerups(){
   const el = document.getElementById("powerups");
   if (!el) return;
-  if (state.mode !== "levels" || state.done){
+  const isTutNow = state.mode === "levels" && state.lvl && state.lvl.cfg.tutorial;
+  const tutLvl   = isTutNow ? (state.lvl.cfg.level || 0) : -1;
+  // Tutorial levels 0-3: no powerup bar. Tutorial 4+ (index ≥ 3): show 🔦 only.
+  // Non-tutorial levels: show full bar.
+  if (state.mode !== "levels" || state.done || (isTutNow && tutLvl < 3)){
     el.style.display = "none"; return;
+  }
+  if (isTutNow){
+    // Tutorial powerup bar: just the flash hint button (free in tutorial, no pool gate).
+    el.style.display = "";
+    el.innerHTML = '<button class="pu" id="puFlash" title="Flash hint — shows which cell and colour">'
+      + '<span class="pu-icon">🔦</span></button>';
+    const pFl = document.getElementById("puFlash");
+    if (pFl) pFl.onclick = () => flashHint(true);
+    return;
   }
   el.style.display = "";
   const revLeft = HINT_LIMITS.reveals - state.hints.reveals;
@@ -4015,10 +4044,14 @@ function hintBestCell(layerIdx){
 // Does NOT fill the cell — just shows you where to look. No star penalty.
 function flashHint(isManual){
   if (!state.lvl) return;
+  const isTutManual = isManual && state.lvl && state.lvl.cfg.tutorial;
   if (isManual){
     if (state.done) return;
-    if (state.hints.flashes >= HINT_LIMITS.flashes){ toast("No flash hints left"); return; }
-    if (state.mode === "levels" && poolRemaining() <= 0){ toast("Power-up pool empty — recharges over time"); return; }
+    // Tutorial: 🔦 taps are free — no pool or charge check. They're a learning aid.
+    if (!isTutManual){
+      if (state.hints.flashes >= HINT_LIMITS.flashes){ toast("No flash hints left"); return; }
+      if (state.mode === "levels" && poolRemaining() <= 0){ toast("Power-up pool empty — recharges over time"); return; }
+    }
   }
 
   const PULSE_MS   = 380;               // duration of one pulse cycle
@@ -4065,7 +4098,7 @@ function flashHint(isManual){
   const doDemo = !isManual
     && !state._tutPowerupDemo
     && state.lvl && state.lvl.cfg.tutorial
-    && (state.lvl.cfg.level || 0) >= 2
+    && (state.lvl.cfg.level || 0) >= 3
     && (state._tutHintCount || 0) >= 3;
   if (doDemo) state._tutPowerupDemo = true;
 
@@ -4089,35 +4122,34 @@ function flashHint(isManual){
 
   if (!hintLayers.length) return; // nothing to hint
 
-  // Demo: flash the 🔦 button, then offset the cell+swatch flash so the player
-  // sees: button blinks → cell blinks → swatch blinks.
+  // Demo: flash the 🔦 button first so the player sees the power-up, then
+  // the normal swatch→cell sequence follows after the button finishes.
   let startOffset = 0;
   if (doDemo){
     const btn = document.getElementById("puFlash");
     if (btn){
       pulseRing(btn, 0);
-      startOffset = CELL_MS + SWATCH_GAP; // push cell/swatch after button finishes
+      startOffset = CELL_MS + SWATCH_GAP; // push swatch/cell after button finishes
     }
   }
 
-  // Interleave: all cell flashes first (donut, hole), then all swatch flashes (donut, hole).
-  // This gives the pattern: donut-cell → hole-cell → donut-swatch → hole-swatch
-  // so no two of the same kind appear consecutively.
-  let t = startOffset;
-  for (const { li, cellEl } of hintLayers){
-    if (li === 0) pulseRing(cellEl, t);
-    else          pulseDot(cellEl, t);
-    t += CELL_MS + SWATCH_GAP; // stagger each cell flash
-  }
-  // All swatches follow after the last cell flash finishes
-  let ts = t;
+  // Swatch first, then cell: player sees which colour → then where to place it.
+  // Pattern: donut-swatch → hole-swatch → donut-cell → hole-cell
+  let ts = startOffset;
   for (const { swatchEl } of hintLayers){
     pulseRing(swatchEl, ts);
     ts += CELL_MS + SWATCH_GAP;
   }
+  // All cells follow after the last swatch finishes
+  let t = ts;
+  for (const { li, cellEl } of hintLayers){
+    if (li === 0) pulseRing(cellEl, t);
+    else          pulseDot(cellEl, t);
+    t += CELL_MS + SWATCH_GAP;
+  }
 
-  // Consume resources for manual (non-tutorial) use
-  if (isManual && state.mode === "levels"){
+  // Consume resources for manual use — but not in tutorial (🔦 is free there).
+  if (isManual && state.mode === "levels" && !isTutManual){
     state.hints.flashes++;
     usePoolCharge();
     const left = HINT_LIMITS.flashes - state.hints.flashes;
