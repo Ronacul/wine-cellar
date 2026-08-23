@@ -248,12 +248,39 @@ h1{
   white-space:pre-wrap; margin-bottom:8px;
 }
 
+/* ================= ad banner mockup ================= */
+.ad-banner{
+  width:100%; max-width:400px; display:flex; align-items:center; gap:8px;
+  background:var(--panel2); border-radius:10px; padding:8px 12px;
+  font-size:12px; border:1px solid var(--line);
+}
+.ad-label{
+  font-family:var(--mono); font-size:9px; font-weight:700; letter-spacing:.06em;
+  text-transform:uppercase; color:var(--ink-faint); border:1px solid var(--line);
+  border-radius:4px; padding:2px 5px; white-space:nowrap; flex:0 0 auto;
+}
+.ad-copy{flex:1; color:var(--ink-dim); line-height:1.3}
+.ad-cta{
+  font-size:11px; font-weight:700; color:var(--ink);
+  background:var(--panel); border-radius:7px; padding:5px 10px;
+  white-space:nowrap; flex:0 0 auto; border:1px solid var(--line);
+}
+
 /* ================= board ================= */
 .play{
   flex:1; width:100%; display:flex; flex-direction:column;
-  align-items:center; justify-content:center; gap:26px;
+  align-items:center; justify-content:center; gap:clamp(10px,3.5vw,22px);
 }
-.board-wrap{width:100%; max-width:min(86vw,360px)}
+.board-wrap{width:100%; max-width:min(84vw,340px)}
+
+/* Tighten header and layout on short screens (e.g. iPhone SE) */
+@media (max-height:680px){
+  .app{ padding-top:calc(var(--safe-t) + 4px); padding-bottom:calc(var(--safe-b) + 6px) }
+  header{ padding-bottom:6px; margin-bottom:8px }
+  .play{ gap:clamp(6px,2.5vw,14px) }
+  .board-wrap{ max-width:min(80vw,300px) }
+  .pal-pad{ padding-bottom:10px }
+}
 /* Gap between boxes is 3x the gap inside them — that ratio is the only thing
    making the four 2x2 boxes legible, so it has to stay exaggerated. */
 .board{
@@ -613,6 +640,12 @@ html.dev .dev-only{display:grid}
   <div class="powerups" id="powerups" style="display:none"></div>
   <div class="board-wrap"><div class="board" id="board"></div></div>
   <div class="palette pal-pad" id="palette"></div>
+  <!-- Ad banner mockup — shown only in level mode, hidden in daily -->
+  <div class="ad-banner" id="adBanner" style="display:none">
+    <span class="ad-label">Ad</span>
+    <span class="ad-copy">🎮 Try <b>PuzzleVault</b> — 500+ brain games</span>
+    <span class="ad-cta">Free →</span>
+  </div>
 </div>
 
 <div class="vignette" id="vignette"></div>
@@ -1915,7 +1948,9 @@ function loadLevel(n){
   state.history = []; state.bookmark = null;
   state.hints = { reveals:0, freezes:0, adds:0 }; state.frozenUntil = 0;
 
-  saveProgress2(Object.assign(p, { level:n }));
+  // Don't overwrite the player's highest-level progress when replaying tutorial.
+  // Tutorial replay uses levels 0–6; we only advance, never regress.
+  saveProgress2(Object.assign(p, { level: isTutorialLevel(n) ? p.level : n }));
   render();
   tickTimer();
   paintUndo(); paintMark();
@@ -1979,6 +2014,9 @@ function render(){
   // hidden on the welcome/help screen or once the puzzle is solved.
   const qb = document.getElementById("btnQuit");
   if (qb) qb.style.display = (state.started || state.elapsed > 0) && !state.done ? "" : "none";
+  // Banner ad mockup — visible only in level mode
+  const ab = document.getElementById("adBanner");
+  if (ab) ab.style.display = state.mode === "levels" ? "" : "none";
 }
 
 const heartsHTML = p => Array.from({ length:LIVES_MAX }, (_, i) =>
@@ -2437,15 +2475,42 @@ function showAddTimeModal(){
   if (!state.lvl || !state.lvl.cfg) return;
   pauseTimer();
   let secs = 15;
-  const modalEl = openModal(
-    '<h2>⏰ Adding time...</h2>'
-    + '<div id="addCountdown" style="font-size:64px; font-weight:700; text-align:center; margin:40px 0; color:var(--ink)">' + secs + '</div>'
+
+  // Randomly pick one of three mock ad creatives so it feels alive
+  const mockAds = [
+    { bg:"#1a1a2e", accent:"#e94560", icon:"🎮", brand:"GameZone Plus",
+      line1:"Level up your gaming", line2:"Download free →" },
+    { bg:"#0f3460", accent:"#16213e", icon:"☕", brand:"Morning Brew",
+      line1:"News that doesn't suck", line2:"Join 4M+ readers →" },
+    { bg:"#2d6a4f", accent:"#52b788", icon:"🌿", brand:"Nature Box",
+      line1:"Snacks you'll actually love", line2:"Try your first box →" },
+  ];
+  const ad = mockAds[Math.floor(Math.random() * mockAds.length)];
+
+  openModal(
+    '<p style="font-size:10px;color:var(--ink-faint);text-align:right;margin-bottom:6px;letter-spacing:.05em;text-transform:uppercase">Sponsored</p>'
+    + '<div style="border-radius:14px;overflow:hidden;background:' + ad.bg + ';margin-bottom:16px">'
+    +   '<div style="padding:28px 20px 20px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center">'
+    +     '<div style="font-size:44px">' + ad.icon + '</div>'
+    +     '<div style="font-size:13px;font-weight:700;color:#fff;letter-spacing:.04em;text-transform:uppercase">' + ad.brand + '</div>'
+    +     '<div style="font-size:15px;font-weight:600;color:#fff">' + ad.line1 + '</div>'
+    +     '<div style="font-size:13px;color:rgba(255,255,255,.65)">' + ad.line2 + '</div>'
+    +   '</div>'
+    +   '<div style="background:rgba(0,0,0,.25);padding:8px 16px;display:flex;align-items:center;justify-content:space-between">'
+    +     '<span style="font-size:10px;color:rgba(255,255,255,.45);font-family:var(--mono);letter-spacing:.04em">Ad · chromoku.app</span>'
+    +     '<span style="font-size:10px;color:rgba(255,255,255,.45);font-family:var(--mono)">ⓘ</span>'
+    +   '</div>'
+    + '</div>'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px">'
+    +   '<div style="font-size:12px;color:var(--ink-dim)">Watch to earn <b>+15s</b></div>'
+    +   '<div id="addCountdown" style="font-size:22px;font-weight:800;font-family:var(--mono);color:var(--ink);min-width:36px;text-align:right">' + secs + 's</div>'
+    + '</div>'
   );
 
   const countdown = setInterval(() => {
     secs--;
     const el = document.getElementById("addCountdown");
-    if (el) el.textContent = secs;
+    if (el) el.textContent = secs + 's';
     if (secs <= 0){
       clearInterval(countdown);
       state.hints.adds++;
@@ -3687,26 +3752,20 @@ function showHelp(){
     + '<p class="lede">' + swatches + "<br><br>One new puzzle every day, at three difficulties. "
     + "Repeats shake at you, but never block you.</p>"
     + '<div style="display:grid; gap:8px; margin-top:12px">'
-    + '<div style="font-size:12px; color:var(--ink-dim); font-weight:600">Mechanics tutorials</div>'
-    + '<button class="btn ghost" id="tutLatin" style="justify-self:start; font-size:11px">Latin</button>'
-    + '<button class="btn ghost" id="tutDouble" style="justify-self:start; font-size:11px">Double</button>'
+    + '<div style="font-size:12px; color:var(--ink-dim); font-weight:600">Tutorials</div>'
+    + '<button class="btn ghost" id="tutReplay" style="justify-self:start; font-size:11px">📚 Full tutorial (restart)</button>'
+    + '<button class="btn ghost" id="tutLatin" style="justify-self:start; font-size:11px">Latin rules</button>'
+    + '<button class="btn ghost" id="tutDouble" style="justify-self:start; font-size:11px">Double layer</button>'
     + '<button class="btn ghost" id="tutScramble" style="justify-self:start; font-size:11px">Scramble</button>'
     + '</div>'
     + '<button class="btn" onclick="closeModal()">Play</button>'
   );
 
   // Tutorial buttons
+  document.getElementById("tutReplay").onclick = () => { closeModal(); state.mode = "levels"; loadLevel(0); };
   document.getElementById("tutLatin").onclick = () => { closeModal(); showExplainers(["latin"], () => showHelp()); };
   document.getElementById("tutDouble").onclick = () => { closeModal(); showExplainers(["double"], () => showHelp()); };
   document.getElementById("tutScramble").onclick = () => { closeModal(); showExplainers(["scramble"], () => showHelp()); };
-
-  // Add "Replay tutorial" button
-  const m = document.getElementById("modal");
-  const tutBtn = document.createElement("button");
-  tutBtn.className = "btn ghost";
-  tutBtn.textContent = "📚 Replay tutorial";
-  tutBtn.onclick = () => { closeModal(); state.mode = "levels"; loadLevel(0); };
-  m.appendChild(tutBtn);
 
   save(LS_HELP, true);
 }
