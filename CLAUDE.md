@@ -285,9 +285,26 @@ Chromoku lives in **this repo** at `chromoku/index.html`. There is no separate
 here in `wine-cellar/chromoku/`.
 
 - Game: `chromoku/index.html` (single-file SPA, vanilla JS)
-- **Live URL**: https://ronacul.github.io/wine-cellar/chromoku/
 - Design doc: `chromoku/CHROMOKU.md`
 - Mark picker tool: `chromoku/MARK_PICKER.md`
 - Tutorial: `chromoku/TUTORIAL.md`
 
-**Workflow**: Edit `chromoku/index.html` locally → commit → push to `Ronacul/wine-cellar` main → GitHub Pages auto-deploys in ~1 min → test at the live URL above. Always push at the end of every session so phone/other sessions can play the latest version.
+### Chromoku links
+
+| Link | Branch | Purpose |
+|---|---|---|
+| 🎮 **https://ronacul.github.io/wine-cellar/chromoku/** | `main` | **Olaytest / playtest** — always the live testable version |
+
+GitHub Pages serves only `main`, so `main` IS the playtest link. There is no second link yet (Cloudflare Pages is a future step for a separate stable/prod URL).
+
+### Chromoku push workflow
+
+Claude always develops on a task branch (`claude/chromoku-*`). To get changes live:
+
+- **"Push to olaytest"** or **"Push to main"** → Claude merges the task branch into `main` and pushes. GitHub Pages updates in ~1 min.
+- Task branches are invisible to you (not served anywhere) — always ask Claude to push to main when you want to test.
+- Claude must include both links in every Chromoku response:
+  - 🔧 **Branch** (current dev, not yet live): `https://github.com/Ronacul/wine-cellar/blob/BRANCH/chromoku/index.html`
+  - 🎮 **Olaytest** (live now): `https://ronacul.github.io/wine-cellar/chromoku/`
+
+Always push at the end of every Chromoku session so phone/other devices can play the latest version.
