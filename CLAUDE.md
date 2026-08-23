@@ -307,7 +307,7 @@ Two persistent branches always exist — **never collapse them**:
 Claude always develops on a task branch (`claude/chromoku-*`):
 
 1. **Develop** on task branch (invisible, not served anywhere)
-2. **"Push to playtest"** → Claude merges task branch → `main`. Banner stays. GitHub Pages updates in ~1 min. Bump `CHROMOKU_VERSION` PATCH or MINOR. Add a CHANGELOG.md entry.
+2. **"Push to playtest"** → Claude merges task branch → `main`. Banner stays. GitHub Pages updates in ~1 min. Bump `CHROMOKU_VERSION` PATCH or MINOR. Add a CHANGELOG.md entry. The banner auto-displays the version (JS stamps it on load) — no separate banner edit needed.
 3. **User tests** at the playtest URL
 4. **"Push to release"** (or "push to mainline") → Claude merges `main` → `release`, removes the banner line in that commit, tags `chromoku-vX.Y.Z`, pushes. Moves CHANGELOG entry from Playtest → Released section.
 
