@@ -44,7 +44,7 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--ink)}
 .app{
-  min-height:100vh; width:100%;
+  min-height:100vh; width:100%; max-width:100vw; overflow-x:hidden;
   background:var(--bg); color:var(--ink); font-family:var(--sans);
   -webkit-font-smoothing:antialiased; -webkit-tap-highlight-color:transparent;
   display:flex; flex-direction:column; align-items:center;
@@ -54,9 +54,10 @@ button{font-family:inherit;color:inherit;background:none;border:none;cursor:poin
 
 /* ================= header ================= */
 header{
-  width:100%; max-width:460px; display:grid;
-  grid-template-columns:1fr auto 1fr; align-items:center; gap:8px;
+  width:100%; max-width:min(460px,100%); display:grid;
+  grid-template-columns:1fr auto 1fr; align-items:center; gap:4px;
   padding-bottom:10px; border-bottom:1px solid var(--line); margin-bottom:14px;
+  box-sizing:border-box;
 }
 .hdr-l{display:flex;gap:2px}
 .hdr-r{display:flex;gap:2px;justify-content:flex-end;align-items:center}
@@ -607,7 +608,7 @@ html.dev .dev-only{display:grid}
   <div class="hdr-l">
     <button class="icon-btn logo-btn" id="btnLogo" title="How to play" aria-label="Help" style="width:40px;height:40px;padding:0;border-radius:10px;overflow:hidden;background:#050505;flex-shrink:0"></button>
     <button class="icon-btn" id="btnUndo" title="Undo last move" aria-label="Undo" disabled>↶</button>
-    <button class="icon-btn" id="btnStats" title="Your statistics" aria-label="Statistics">▤</button>
+    <button class="icon-btn" id="btnStats" title="Help &amp; stats" aria-label="Help and stats" style="font-size:17px;font-weight:700">?</button>
   </div>
   <div>
     <h1>Chromoku</h1>
@@ -3775,25 +3776,29 @@ function showHelp(){
 function showTutorialHint(){
   if (!state.lvl || !state.lvl.cfg.tutorial) return;
 
-  // Find first empty cell
-  let emptyCell = null;
-  for (let i = 0; i < state.layers[0].grid.length; i++){
-    if (state.layers[0].grid[i] === null && !state.layers[0].givens[i]){
-      emptyCell = i;
-      break;
+  // Flash the first empty cell from each layer
+  let flashed = 0;
+  for (let li = 0; li < state.layers.length; li++){
+    const layer = state.layers[li];
+    for (let i = 0; i < layer.grid.length; i++){
+      if (layer.grid[i] === null && !layer.givens[i]){
+        const cell = document.querySelector(`[data-layer="${li}"][data-i="${i}"]`)
+                  || (li === 0 ? document.querySelector(`[data-i="${i}"]`) : null);
+        if (cell){
+          cell.classList.add("hint-flash");
+          setTimeout(() => cell.classList.remove("hint-flash"), 600);
+          flashed++;
+        }
+        break; // one cell per layer
+      }
     }
   }
 
-  if (emptyCell === null) return;  // Puzzle complete
-
-  // Flash the empty cell
-  const cell = document.querySelector(`[data-i="${emptyCell}"]`);
-  if (cell){
-    cell.classList.add("hint-flash");
-    setTimeout(() => cell.classList.remove("hint-flash"), 600);
-  }
-
-  toast("💡 Try placing a mark in an empty square!");
+  if (!flashed) return; // Puzzle complete
+  const msg = state.layers.length > 1
+    ? "💡 Try placing marks in both grids!"
+    : "💡 Try placing a mark in an empty square!";
+  toast(msg);
 }
 
 /* ================= ABOUT PAGE ================= */
@@ -3833,7 +3838,7 @@ function showAbout(){
 
 function showStats(){
   const st = load(LS_STATS, blankStats());
-  // Show best times grouped by size × difficulty
+  // Best times by size × difficulty
   let rows = "";
   for (const s of CURR_SIZES()){
     for (const d of CURR_DIFFS(s.n)){
@@ -3843,19 +3848,45 @@ function showStats(){
         + (b ? fmtTime(b * 1000) : "—") + "</span></div>";
     }
   }
+
+  // Tutorial level titles for the progress list
+  const tutTitles = TUTORIAL_CONFIGS.map((c, i) => c.title || ("Level " + i));
+
   openModal(
-    "<h2>Statistics</h2>"
-    + '<p class="lede">Puzzles you have finished.</p>'
-    + '<div class="stats">'
+    "<h2>Help &amp; Stats</h2>"
+
+    // ── Tutorial section ──
+    + '<div style="background:var(--panel2);border-radius:12px;padding:14px 16px;margin-bottom:16px">'
+    + '<div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:10px">📚 7-Level Tutorial</div>'
+    + '<div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px">'
+    + tutTitles.map((t, i) =>
+        '<div style="font-size:12px;color:var(--ink-dim);display:flex;gap:8px;align-items:center">'
+        + '<span style="font-family:var(--mono);font-size:10px;color:var(--ink-faint);min-width:16px">' + (i + 1) + '</span>'
+        + '<span>' + t + (i >= 5 ? ' <span style="font-size:10px;color:var(--ink-faint)">(Double)</span>' : '') + '</span>'
+        + '</div>'
+      ).join("")
+    + '</div>'
+    + '<button class="btn" id="mTutStart">▶ Start tutorial from level 1</button>'
+    + '</div>'
+
+    // ── Stats section ──
+    + '<div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:8px">Your stats</div>'
+    + '<div class="stats" style="margin-bottom:12px">'
     + '<div class="stat"><div class="n">' + st.played + '</div><div class="l">Solved</div></div>'
     + '<div class="stat"><div class="n">' + st.streak + '</div><div class="l">Streak</div></div>'
-    + '<div class="stat"><div class="n">' + st.maxStreak + '</div><div class="l">Best streak</div></div>'
+    + '<div class="stat"><div class="n">' + st.maxStreak + '</div><div class="l">Best</div></div>'
     + "</div>"
     + '<div class="times"><div class="l" style="font-size:9.5px;color:var(--ink-faint);'
     + 'text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">Best times</div>'
     + rows + "</div>"
-    + '<button class="btn" onclick="closeModal()">Close</button>'
+    + '<button class="btn ghost" onclick="closeModal()" style="margin-top:8px">Close</button>'
   );
+
+  document.getElementById("mTutStart").onclick = () => {
+    closeModal();
+    state.mode = "levels";
+    loadLevel(0);
+  };
 }
 
 // The finished board as one grid with every layer nested in place, rather than
