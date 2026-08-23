@@ -45,6 +45,21 @@ Background size is set globally via `const TILE = "12px 12px"`.
 
 ---
 
+## Parking lot — mark type concepts (image-based)
+
+### Dominos
+Each mark is a domino tile image (e.g. 1:5, 6:0, 4:2). The pip sum could encode the mark identity, or the tile is just visual. A 6×6 puzzle could use 6 distinct dominos. Difficulty question: does the solver need to interpret the pip values, or just match the tile shape? Matching shapes is equivalent to colour Sudoku; pip-sum rules would be a new mechanic.
+
+### Playing cards
+Each mark is a card image (suit+rank subset). Natural for 4×4 (4 suits) or more. Same question: visual match vs. numeric/suit rules.
+
+### Roman numerals / tile shapes
+Tile shapes that resemble numbers (I, V, X, L, etc.) could be clip-path shapes rather than images — keeping it a pure CSS/SVG mark set compatible with the current SHAPES approach. Lower implementation cost than real images.
+
+**General note:** Image-based marks need a raster pipeline (sprite sheet or base64 embeds); clip-path/SVG shapes fit the existing system without changes to the render engine.
+
+---
+
 ## Parking lot — future mark sets
 
 ### Special / Seasonal Palettes

@@ -577,8 +577,7 @@ html.dev .dev-only{display:grid}
 <div class="app">
 <header>
   <div class="hdr-l">
-    <button class="icon-btn" id="btnHelp" title="How to play" aria-label="How to play">?</button>
-    <button class="icon-btn" id="btnAbout" title="About Chromoku" aria-label="About Chromoku">ℹ</button>
+    <button class="icon-btn logo-btn" id="btnLogo" title="How to play" aria-label="Help" style="width:40px;height:40px;padding:0;border-radius:10px;overflow:hidden;background:#050505;flex-shrink:0"></button>
     <button class="icon-btn" id="btnUndo" title="Undo last move" aria-label="Undo" disabled>↶</button>
     <button class="icon-btn" id="btnStats" title="Your statistics" aria-label="Statistics">▤</button>
   </div>
@@ -752,6 +751,58 @@ const WEAVES = [
      + "radial-gradient(var(--ink) 1.5px,transparent 2px)",
     bgS:"8px 8px", bgP:"0 0,4px 4px" },
 ];
+
+// ── Quilt logo ─────────────────────────────────────────────────────────────
+// 10 colours hand-picked from the owner's physical quilt (Aug 2026).
+// The 10×10 Double-grid layout replicates the quilt pattern cell-by-cell.
+// Each cell: [outer_idx, inner_idx] into QUILT_PAL.
+const QUILT_PAL = [
+  "#c10020", // 0 Red
+  "#ffb300", // 1 Amber
+  "#f6768e", // 2 Salmon/Pink
+  "#040404", // 3 Black
+  "#0d2a5c", // 4 Dark Navy
+  "#18c49e", // 5 Bright Teal
+  "#0c97e2", // 6 Cerulean Blue
+  "#216b57", // 7 Dark Forest Green
+  "#d7c1e8", // 8 Light Lavender
+  "#9f1d8a", // 9 Deep Purple
+];
+const LOGO_GRID = [
+  [[3,3],[5,7],[6,4],[7,1],[8,0],[0,9],[4,2],[9,5],[1,6],[2,8]],
+  [[4,1],[6,6],[0,7],[8,4],[7,3],[9,0],[0,5],[5,2],[3,8],[1,9]],
+  [[0,2],[4,3],[8,8],[1,7],[9,4],[7,6],[5,0],[2,1],[6,9],[3,5]],
+  [[2,0],[0,1],[4,6],[9,9],[3,7],[5,4],[7,8],[1,3],[8,5],[6,2]],
+  [[7,9],[1,0],[0,3],[4,8],[5,5],[6,7],[2,4],[3,6],[9,8],[8,1]],
+  [[1,4],[7,5],[3,0],[0,6],[4,9],[2,2],[8,7],[6,8],[5,1],[9,3]],
+  [[9,7],[3,4],[7,2],[6,0],[0,8],[4,5],[1,1],[8,9],[2,3],[5,6]],
+  [[6,5],[8,2],[9,1],[5,3],[2,6],[1,8],[3,9],[7,7],[4,4],[0,0]],
+  [[8,6],[9,8],[5,9],[2,5],[1,2],[3,1],[6,3],[4,0],[0,7],[7,4]],
+  [[5,8],[2,9],[1,5],[3,2],[6,1],[8,3],[9,6],[0,4],[7,0],[4,7]],
+];
+// Generate logo SVG — n×n crop of the quilt grid at px×px pixels.
+function makeLogo(px, n){
+  n = n || 10;
+  var st = px/n, pad = st*0.07, cell = st-pad*2, ip = st*0.22;
+  var rx = Math.max(0.6, st*0.1);
+  var s = '<svg width="'+px+'" height="'+px+'" viewBox="0 0 '+px+' '+px+'"'
+        + ' xmlns="http://www.w3.org/2000/svg" aria-hidden="true">';
+  s += '<rect width="'+px+'" height="'+px+'" fill="#050505"/>';
+  for (var r=0; r<n; r++){
+    for (var c=0; c<n; c++){
+      var oi=LOGO_GRID[r][c][0], ii=LOGO_GRID[r][c][1];
+      var x=(c*st+pad).toFixed(2), y=(r*st+pad).toFixed(2);
+      var cs=cell.toFixed(2), is=(cell-ip*2).toFixed(2);
+      var xi=(c*st+pad+ip).toFixed(2), yi=(r*st+pad+ip).toFixed(2);
+      s += '<rect x="'+x+'" y="'+y+'" width="'+cs+'" height="'+cs
+         + '" fill="'+QUILT_PAL[oi]+'" rx="'+rx.toFixed(2)+'"/>';
+      s += '<rect x="'+xi+'" y="'+yi+'" width="'+is+'" height="'+is
+         + '" fill="'+QUILT_PAL[ii]+'" rx="'+(rx*0.4).toFixed(2)+'"/>';
+    }
+  }
+  return s + '</svg>';
+}
+// ───────────────────────────────────────────────────────────────────────────
 
 // Every set varies along exactly ONE dimension — all colours, all shapes, or
 // all patterns. Crossing two dimensions (a red triangle beside a blue triangle
@@ -3611,8 +3662,15 @@ function showHelp(){
     return '<span style="' + base + 'background:' + x.hex
       + (x.clip ? ";clip-path:" + x.clip : "") + '"></span>';
   }).join(" ");
+  const logoSvg = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">'
+    + '<div style="border-radius:12px;overflow:hidden;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.4)">'
+    + makeLogo(72, 10) + '</div>'
+    + '<div><div style="font-size:20px;font-weight:800;letter-spacing:-.03em;line-height:1">Chromoku</div>'
+    + '<div style="font-size:11px;color:var(--ink-dim);margin-top:3px">A daily colour-logic puzzle</div></div>'
+    + '</div>';
   openModal(
-    "<h2>How to play</h2>"
+    logoSvg
+    + "<h2>How to play</h2>"
     + '<p class="lede">Fill the grid so no ' + noun + ' repeats. That is the whole game.</p>'
     + "<ul>"
     + '<li><span class="bullet"></span><span>Every <b>row</b> uses all four ' + plural + ' — once each.</span></li>'
@@ -3975,8 +4033,22 @@ function showSettings(){
 
 /* ================= init ================= */
 
-document.getElementById("btnHelp").onclick  = showHelp;
-document.getElementById("btnAbout").onclick = showAbout;
+// ── Logo button — short press = help, long press (≥500ms) = about/admin ──
+(function(){
+  var btn = document.getElementById("btnLogo");
+  btn.innerHTML = makeLogo(40, 10);
+  var _t = null;
+  btn.addEventListener("pointerdown", function(){
+    _t = setTimeout(function(){ _t = null; showAbout(); }, 500);
+  });
+  btn.addEventListener("pointerup", function(){
+    if (_t){ clearTimeout(_t); _t = null; showHelp(); }
+  });
+  btn.addEventListener("pointerleave", function(){
+    if (_t){ clearTimeout(_t); _t = null; }
+  });
+  btn.addEventListener("contextmenu", function(e){ e.preventDefault(); });
+})();
 document.getElementById("btnUndo").onclick  = undo;
 document.getElementById("btnStats").onclick = showStats;
 document.getElementById("btnHint").onclick  = showHintModal;
