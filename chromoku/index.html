@@ -2005,17 +2005,16 @@ function loadLevel(n){
   if (isTutorialLevel(n)){
     if (state._hintTimer) clearTimeout(state._hintTimer);
     if (state._hintInterval) clearInterval(state._hintInterval);
-    // First hint after 1.8s; repeat every 7s (long enough for the full
-    // 3-pulse cell + 3-pulse swatch sequence to play out before the next round).
-    // Keep repeating even after the first move — the hint tracks the
-    // current best cell so it stays relevant throughout the tutorial.
+    // First hint after 1.5s; repeat every 4.5s.
+    // Each sequence: 3-pulse cell (~1.14s) + gap + 3-pulse swatch (~1.14s) = ~2.5s,
+    // leaving ~2s of breathing room before the next cycle.
     state._hintTimer = setTimeout(() => {
       if (!state.done) showTutorialHint();
       state._hintInterval = setInterval(() => {
         if (state.done){ clearInterval(state._hintInterval); state._hintInterval = null; }
         else showTutorialHint();
-      }, 7000);
-    }, 1800);
+      }, 4500);
+    }, 1500);
   }
 }
 
@@ -2073,17 +2072,14 @@ function render(){
   paintCompletedUnits();
   applySharp();
   renderChallengeBar();
-  // Tutorial instruction tip — shown only during tutorial levels
+  // Tutorial tip is hidden — instruction text is shown in the main header #sub
   const tip = document.getElementById("tutTip");
-  if (tip){
-    const isTut = state.mode === "levels" && state.lvl && state.lvl.cfg.tutorial;
-    tip.style.display = isTut ? "" : "none";
-    if (isTut) tip.textContent = state.lvl.cfg.desc || state.lvl.cfg.title;
-  }
-  // Show the ✕ quit button whenever the player is inside a puzzle —
-  // hidden on the welcome/help screen or once the puzzle is solved.
+  if (tip) tip.style.display = "none";
+  // Show the ✕ quit button: always during tutorial (acts as back-to-daily),
+  // otherwise only once the player has started and the puzzle isn't done.
   const qb = document.getElementById("btnQuit");
-  if (qb) qb.style.display = (state.started || state.elapsed > 0) && !state.done ? "" : "none";
+  const isTutNow = state.mode === "levels" && state.lvl && state.lvl.cfg.tutorial;
+  if (qb) qb.style.display = (isTutNow || ((state.started || state.elapsed > 0) && !state.done)) ? "" : "none";
   // Banner ad mockup — visible in level mode, but not during tutorial
   const ab = document.getElementById("adBanner");
   const isTut = state.mode === "levels" && state.lvl && state.lvl.cfg.tutorial;
@@ -2154,28 +2150,20 @@ function renderLevelBar(){
   const stars = p.stars[String(lv.cfg.level)] || 0;
   const c = lv.cfg;
 
-  // Tutorial levels get a stripped-down bar — no hearts, no stage path, no timer bar
+  // Tutorial: collapse the sub-header entirely — step info goes into #sub
   if (isTutorialLevel(c.level)){
-    const dots = TUTORIAL_CONFIGS.map((_, i) =>
-      '<span style="font-size:10px;color:' + (i <= c.level ? "var(--gold)" : "var(--ink-faint)") + '">●</span>'
-    ).join(" ");
-    document.getElementById("diffs").outerHTML =
-      '<div class="levelbar" id="diffs">'
-      + '<div class="lvl-l"><button class="icon-btn" id="lvBack" aria-label="Back">←</button></div>'
-      + '<div class="lvl-c" style="gap:2px"><b>Tutorial</b>'
-      + '<span class="lvl-sub">Step ' + (c.level + 1) + ' of ' + TUTORIAL_CONFIGS.length + '</span>'
-      + '<div style="display:flex;gap:4px;justify-content:center;margin-top:2px">' + dots + '</div>'
-      + '</div>'
-      + '<div></div>'
-      + '</div>';
+    // Replace diffs with an invisible stub (keeps the id alive for future calls)
+    document.getElementById("diffs").outerHTML = '<div class="diffs" id="diffs" style="display:none"></div>';
     const tw = document.getElementById("tbarwrap");
     if (tw) tw.style.display = "none";
-    document.getElementById("lvBack").onclick = confirmQuitLevel;
     // Axis toggles irrelevant in tutorial
     for (const id of ["latinToggle","dblToggle","scrambleToggle","lvlToggle"]){
       const b = document.getElementById(id);
       if (b) b.style.display = "none";
     }
+    // Quit just returns to daily — no life penalty in tutorial
+    const qb = document.getElementById("btnQuit");
+    if (qb){ qb.style.display = ""; qb.onclick = () => enterDaily(); }
     return;
   }
   const rotTag = c.boxRotate ? " ⤾" : "";   // rotated-box marker
@@ -2213,6 +2201,15 @@ function renderSub(){
   let base;
   if (state.mode === "levels"){
     const cfg = state.lvl.cfg;
+
+    // Tutorial: show step counter, progress dots and instruction in the header sub
+    if (cfg.tutorial){
+      const dots = TUTORIAL_CONFIGS.map((_, i) => i < cfg.level ? "●" : i === cfg.level ? "◉" : "○").join("");
+      sub.textContent = "Tutorial " + (cfg.level + 1) + "/" + TUTORIAL_CONFIGS.length
+        + "  " + dots + "  " + (cfg.desc || cfg.title);
+      return;
+    }
+
     const gridLabel = cfg.n + "×" + cfg.n;
     const ruleLabel = cfg.boxless ? "Latin" : "Sudoku";
     const markLabel = cfg.markSet
@@ -3973,32 +3970,38 @@ function showTutorialHint(){
     }, startDelay);
   }
 
-  let t = 0;
-  let flashed = 0;
+  // Collect which layers need a hint (layer 0 always; layer 1 only after layer 0 complete)
+  const hintLayers = [];
   for (let li = 0; li < state.layers.length; li++){
-    // Double mode: only hint the inner layer once the outer is fully filled
     if (li > 0){
       const outer = state.layers[0];
       const outerDone = outer.grid.every((v, i) => v !== null || outer.givens[i]);
-      if (!outerDone) continue;
+      if (!outerDone) break; // outer still in progress — only hint the donut
     }
-
-    const layer = state.layers[li];
     const cellIdx = hintBestCell(li);
     if (cellIdx === null) continue; // layer complete
-
-    const correctMark = layer.solution[cellIdx];
+    const correctMark = state.layers[li].solution[cellIdx];
     const cellEl   = document.querySelector('[data-i="' + cellIdx + '"]');
     const swatchEl = document.querySelector('[data-l="' + li + '"][data-c="' + correctMark + '"]');
+    hintLayers.push({ li, cellEl, swatchEl });
+  }
 
-    // Layer 0 = donut → ring flash; Layer 1 = hole → dot flash
+  if (!hintLayers.length) return; // nothing to hint
+
+  // Interleave: all cell flashes first (donut, hole), then all swatch flashes (donut, hole).
+  // This gives the pattern: donut-cell → hole-cell → donut-swatch → hole-swatch
+  // so no two of the same kind appear consecutively.
+  let t = 0;
+  for (const { li, cellEl } of hintLayers){
     if (li === 0) pulseRing(cellEl, t);
     else          pulseDot(cellEl, t);
-
-    pulseRing(swatchEl, t + CELL_MS + SWATCH_GAP);
-
-    t += CELL_MS + SWATCH_GAP + CELL_MS + LAYER_GAP;
-    flashed++;
+    t += CELL_MS + SWATCH_GAP; // stagger each cell flash
+  }
+  // All swatches follow after the last cell flash finishes
+  let ts = t;
+  for (const { swatchEl } of hintLayers){
+    pulseRing(swatchEl, ts);
+    ts += CELL_MS + SWATCH_GAP;
   }
 }
 
