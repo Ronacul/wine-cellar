@@ -267,6 +267,14 @@ h1{
   white-space:nowrap; flex:0 0 auto; border:1px solid var(--line);
 }
 
+/* ================= tutorial tip ================= */
+.tut-tip{
+  width:100%; max-width:400px; padding:10px 14px;
+  background:rgba(201,162,39,.13); border:1px solid rgba(201,162,39,.35);
+  border-radius:10px; font-size:13px; color:var(--ink-dim); line-height:1.4;
+  text-align:center;
+}
+
 /* ================= board ================= */
 .play{
   flex:1; width:100%; display:flex; flex-direction:column;
@@ -640,6 +648,7 @@ html.dev .dev-only{display:grid}
   </div>
   <div class="tbarwrap" id="tbarwrap" style="display:none"><div class="tbar-fill" id="tbar"></div></div>
   <div class="powerups" id="powerups" style="display:none"></div>
+  <div class="tut-tip" id="tutTip" style="display:none"></div>
   <div class="board-wrap"><div class="board" id="board"></div></div>
   <div class="palette pal-pad" id="palette"></div>
   <!-- Ad banner mockup — shown only in level mode, hidden in daily -->
@@ -1477,25 +1486,32 @@ const LEVELS_PER_WORLD = LEVELS_PER_STAGE * STAGES_PER_WORLD;
 const TUTORIAL_CONFIGS = [
   // Level 0: Intro — tap colour, tap square
   { n:4, boxless:false, layers:1, givens:12, tutorial:true, noTimer:true,
-    title:"Tap a colour, tap a square" },
+    title:"Tap a colour, tap a square",
+    desc:"Pick any colour in the palette below, then tap an empty square to place it." },
   // Level 1: Rows — fill a complete row
   { n:4, boxless:false, layers:1, givens:11, tutorial:true, noTimer:true,
-    title:"Every row uses all four" },
+    title:"Every row uses all four",
+    desc:"Each row must contain one of each colour — no repeats." },
   // Level 2: Columns — add column constraint
   { n:4, boxless:false, layers:1, givens:11, tutorial:true, noTimer:true,
-    title:"Every column, too" },
+    title:"Every column, too",
+    desc:"Columns follow the same rule: one of each colour, no repeats." },
   // Level 3: Boxes — add 2×2 box constraint
   { n:4, boxless:false, layers:1, givens:10, tutorial:true, noTimer:true,
-    title:"Every 2×2 box" },
+    title:"Every 2×2 box",
+    desc:"Each bold 2×2 box must also have one of each. Rows + columns + boxes." },
   // Level 4: Shapes — introduce non-colour marks
   { n:4, boxless:false, layers:1, givens:12, tutorial:true, noTimer:true,
-    title:"Colours are just one option", markSet:"shapes" },
+    title:"Colours are just one option",
+    desc:"Marks can be shapes too — same rules apply. Your mark choice rotates each level.", markSet:"shapes" },
   // Level 5: Double outer — solve outer layer first
   { n:4, boxless:false, layers:2, givens:12, tutorial:true, noTimer:true,
-    title:"Donut: the outer layer" },
+    title:"Double: two grids, one board",
+    desc:"Two grids share the board. The outer ring and inner centre are separate puzzles." },
   // Level 6: Double both — solve both layers
   { n:4, boxless:false, layers:2, givens:12, tutorial:true, noTimer:true,
-    title:"Hole: the inner layer" }
+    title:"Solve both layers",
+    desc:"Fill both layers — the outer ring and the inner centre. Same rules for each." }
 ];
 
 const LS_TUTORIAL = "chromoku.tutorial.v1";
@@ -1806,6 +1822,15 @@ function tickTimer(){
     return;
   }
 
+  // Tutorial levels have no timer — hide the display and bar
+  if (state.lvl && state.lvl.cfg.noTimer){
+    el.textContent = "";
+    el.className = "timer";
+    const bar = document.getElementById("tbar");
+    if (bar) bar.style.width = "0";
+    return;
+  }
+
   const left = Math.max(0, state.limitMs - elapsedMs());
   el.textContent = fmtTime(left);
   el.className = "timer lvl" + (frozen ? " frozen" : left < 10000 ? " danger" : left < 30000 ? " warn" : "");
@@ -1958,6 +1983,24 @@ function loadLevel(n){
   render();
   tickTimer();
   paintUndo(); paintMark();
+
+  // Tutorial: flash an empty cell after a short pause, then repeat every 5s
+  // until the player makes their first move.
+  if (isTutorialLevel(n)){
+    if (state._hintTimer) clearTimeout(state._hintTimer);
+    if (state._hintInterval) clearInterval(state._hintInterval);
+    state._hintTimer = setTimeout(() => {
+      showTutorialHint();
+      state._hintInterval = setInterval(() => {
+        if (state.started || state.done){
+          clearInterval(state._hintInterval);
+          state._hintInterval = null;
+        } else {
+          showTutorialHint();
+        }
+      }, 5000);
+    }, 1800);
+  }
 }
 
 function enterDaily(){
@@ -2014,13 +2057,21 @@ function render(){
   paintCompletedUnits();
   applySharp();
   renderChallengeBar();
+  // Tutorial instruction tip — shown only during tutorial levels
+  const tip = document.getElementById("tutTip");
+  if (tip){
+    const isTut = state.mode === "levels" && state.lvl && state.lvl.cfg.tutorial;
+    tip.style.display = isTut ? "" : "none";
+    if (isTut) tip.textContent = state.lvl.cfg.desc || state.lvl.cfg.title;
+  }
   // Show the ✕ quit button whenever the player is inside a puzzle —
   // hidden on the welcome/help screen or once the puzzle is solved.
   const qb = document.getElementById("btnQuit");
   if (qb) qb.style.display = (state.started || state.elapsed > 0) && !state.done ? "" : "none";
-  // Banner ad mockup — visible only in level mode
+  // Banner ad mockup — visible in level mode, but not during tutorial
   const ab = document.getElementById("adBanner");
-  if (ab) ab.style.display = state.mode === "levels" ? "" : "none";
+  const isTut = state.mode === "levels" && state.lvl && state.lvl.cfg.tutorial;
+  if (ab) ab.style.display = (state.mode === "levels" && !isTut) ? "" : "none";
 }
 
 const heartsHTML = p => Array.from({ length:LIVES_MAX }, (_, i) =>
@@ -2086,6 +2137,31 @@ function renderLevelBar(){
   const lv = state.lvl, p = progress();
   const stars = p.stars[String(lv.cfg.level)] || 0;
   const c = lv.cfg;
+
+  // Tutorial levels get a stripped-down bar — no hearts, no stage path, no timer bar
+  if (isTutorialLevel(c.level)){
+    const dots = TUTORIAL_CONFIGS.map((_, i) =>
+      '<span style="font-size:10px;color:' + (i <= c.level ? "var(--gold)" : "var(--ink-faint)") + '">●</span>'
+    ).join(" ");
+    document.getElementById("diffs").outerHTML =
+      '<div class="levelbar" id="diffs">'
+      + '<div class="lvl-l"><button class="icon-btn" id="lvBack" aria-label="Back">←</button></div>'
+      + '<div class="lvl-c" style="gap:2px"><b>Tutorial</b>'
+      + '<span class="lvl-sub">Step ' + (c.level + 1) + ' of ' + TUTORIAL_CONFIGS.length + '</span>'
+      + '<div style="display:flex;gap:4px;justify-content:center;margin-top:2px">' + dots + '</div>'
+      + '</div>'
+      + '<div></div>'
+      + '</div>';
+    const tw = document.getElementById("tbarwrap");
+    if (tw) tw.style.display = "none";
+    document.getElementById("lvBack").onclick = confirmQuitLevel;
+    // Axis toggles irrelevant in tutorial
+    for (const id of ["latinToggle","dblToggle","scrambleToggle","lvlToggle"]){
+      const b = document.getElementById(id);
+      if (b) b.style.display = "none";
+    }
+    return;
+  }
   const rotTag = c.boxRotate ? " ⤾" : "";   // rotated-box marker
   const tag = c.n + "×" + c.n + (c.boxless ? " Latin" : "") + rotTag
             + (c.layers > 1 ? " ×2" : "");
@@ -2733,8 +2809,44 @@ function starsFor(secs, par){
   return Math.max(1, raw - hintsUsed);
 }
 
+function winTutorialLevel(lv){
+  const lvNum = lv.cfg.level;
+  const isLast = lvNum >= TUTORIAL_CONFIGS.length - 1;
+  const nextCfg = isLast ? null : TUTORIAL_CONFIGS[lvNum + 1];
+  markWon();
+  setTimeout(() => {
+    fireConfetti();
+    if (isLast){
+      openModal(
+        "<h2>Tutorial complete! 🎉</h2>"
+        + '<p class="lede">You\'ve learned all the mechanics. Time to play for real!</p>'
+        + '<button class="btn" id="mTutDone">▶ Start playing</button>'
+        + '<button class="btn ghost" id="mTutRestart">Replay tutorial</button>'
+      );
+      document.getElementById("mTutDone").onclick = () => { closeModal(); enterDaily(); };
+      document.getElementById("mTutRestart").onclick = () => { closeModal(); loadLevel(0); };
+    } else {
+      openModal(
+        '<h2>✓ Got it!</h2>'
+        + '<p class="lede" style="color:var(--gold)">' + lv.cfg.title + '</p>'
+        + '<div style="background:var(--panel2);border-radius:10px;padding:12px 16px;margin:12px 0;text-align:left">'
+        + '<div style="font-size:10px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Next up</div>'
+        + '<div style="font-size:14px;font-weight:600;color:var(--ink);margin-bottom:4px">' + nextCfg.title + '</div>'
+        + (nextCfg.desc ? '<div style="font-size:12px;color:var(--ink-dim)">' + nextCfg.desc + '</div>' : '')
+        + '</div>'
+        + '<button class="btn" id="mTutNext">Continue →</button>'
+        + '<button class="btn ghost" id="mTutStop">Done for now</button>'
+      );
+      document.getElementById("mTutNext").onclick = () => { closeModal(); loadLevel(lvNum + 1); };
+      document.getElementById("mTutStop").onclick = () => { closeModal(); enterDaily(); };
+    }
+  }, 800);
+}
+
 function winLevel(){
   const lv = state.lvl, secs = Math.round(elapsedMs() / 1000);
+  // Tutorial levels get their own streamlined win flow
+  if (isTutorialLevel(lv.cfg.level)){ winTutorialLevel(lv); return; }
   const st = starsFor(secs, lv.par);
   const p = progress();
   const key = String(lv.cfg.level);
