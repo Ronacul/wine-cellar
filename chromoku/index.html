@@ -2852,36 +2852,32 @@ function winTutorialLevel(lv){
   const nextCfg = isLast ? null : TUTORIAL_CONFIGS[lvNum + 1];
   markWon();
 
-  // Build a mini palette strip showing what was just mastered.
-  // Outer layer swatches — coloured squares (or shaped if markSet:"shapes")
-  function miniChip(m, size){
-    const sz = size || 26;
-    const bg = m.kind === "pattern"
-      ? 'background-color:var(--panel2);background-image:' + m.bg + ';background-size:' + (m.bgS || '24px')
-      : 'background:' + m.hex;
-    const clip = m.clip ? ';clip-path:' + m.clip + ';border-radius:2px' : ';border-radius:5px';
-    return '<span style="display:inline-block;width:' + sz + 'px;height:' + sz + 'px;flex-shrink:0;'
-           + bg + clip + '"></span>';
-  }
-  const outerChips = MARKS.slice(0, state.n).map(m => miniChip(m, 26)).join('');
-  let swatchHtml =
-    '<div style="display:flex;gap:5px;justify-content:center;flex-wrap:wrap;margin:10px 0 4px">'
-    + outerChips + '</div>';
-  // Inner layer dots for Double mode
-  if (state.layers.length > 1){
-    const innerChips = INNER.slice(0, state.n).map(m => miniChip(m, 18)).join('');
-    swatchHtml +=
-      '<div style="display:flex;gap:5px;justify-content:center;flex-wrap:wrap;margin-bottom:12px">'
-      + innerChips + '</div>';
-  }
+  // Render the completed board as a canvas badge, then embed it as an image
+  // so the user can see the solved puzzle in the modal (like the share card in
+  // daily mode). Done before the setTimeout so the canvas is ready.
+  let boardImgHtml = '';
+  try {
+    const badge = renderShareBadge();
+    // Shrink to fit inside the modal (max ~280px wide)
+    const scale = Math.min(1, 280 / badge.width * (window.devicePixelRatio || 1));
+    badge.style.width  = Math.round(badge.width  * scale / (window.devicePixelRatio || 1)) + 'px';
+    badge.style.height = Math.round(badge.height * scale / (window.devicePixelRatio || 1)) + 'px';
+    badge.style.borderRadius = '10px';
+    badge.style.display = 'block';
+    badge.style.margin  = '12px auto 0';
+    // Convert to img src so we can inject it via innerHTML
+    boardImgHtml = '<img src="' + badge.toDataURL() + '" style="'
+      + 'width:' + badge.style.width + ';height:' + badge.style.height
+      + ';border-radius:10px;display:block;margin:12px auto 0" alt="Completed board">';
+  } catch(e){ /* canvas not available — skip */ }
 
   setTimeout(() => {
     fireConfetti();
     if (isLast){
       openModal(
         "<h2>Tutorial complete! 🎉</h2>"
-        + swatchHtml
-        + '<p class="lede">You\'ve learned all the mechanics. Time to play for real!</p>'
+        + boardImgHtml
+        + '<p class="lede" style="margin-top:12px">You\'ve learned all the mechanics. Time to play for real!</p>'
         + '<button class="btn" id="mTutDone">▶ Start playing</button>'
         + '<button class="btn ghost" id="mTutRestart">Replay tutorial</button>'
       );
@@ -2890,8 +2886,8 @@ function winTutorialLevel(lv){
     } else {
       openModal(
         '<h2>✓ ' + lv.cfg.title + '</h2>'
-        + swatchHtml
-        + '<div style="background:var(--panel2);border-radius:10px;padding:12px 16px;margin:8px 0;text-align:left">'
+        + boardImgHtml
+        + '<div style="background:var(--panel2);border-radius:10px;padding:12px 16px;margin:12px 0;text-align:left">'
         + '<div style="font-size:10px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Next up</div>'
         + '<div style="font-size:14px;font-weight:600;color:var(--ink);margin-bottom:4px">' + nextCfg.title + '</div>'
         + (nextCfg.desc ? '<div style="font-size:12px;color:var(--ink-dim)">' + nextCfg.desc + '</div>' : '')
@@ -3774,7 +3770,7 @@ function renderShareBadge(){
   const streakStr = state.mode !== "levels" && st.streak > 1
     ? " · 🔥" + st.streak : "";
   const sub = state.mode === "levels"
-    ? state.lvl.cfg.theme.name + " · " + fmtTime(elapsedMs())
+    ? (state.lvl.cfg.theme ? state.lvl.cfg.theme.name : state.lvl.cfg.title || "Tutorial") + " · " + fmtTime(elapsedMs())
     : (state.latin ? "Latin " : "") + sizeOf(state.size).label + " " + diffOf2(state.diff, state.n).label
       + (state.dbl ? " · Double" : "") + (state.scramble ? " · Scramble" : "")
       + " · " + fmtTime(elapsedMs()) + streakStr;
