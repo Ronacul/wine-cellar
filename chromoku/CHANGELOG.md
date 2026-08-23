@@ -8,6 +8,10 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.9.4] 2026-08-23 — Admin bar always visible on playtest build
+
+- **Admin bar:** A green 🛠 ADMIN strip now appears between the header and the game board whenever admin mode is active (i.e. always on playtest). Controls directly on screen: level jump input + Go, date input + Today, Reset progress, Daily. No more hunting in Settings.
+
 ### [v0.9.3] 2026-08-23 — Fix admin always-on in playtest, fix level reset board
 
 - **Fix A — Admin always visible in playtest:** `adminMode` now defaults to `true` when the playtest banner is present. No more hunting for the toggle or long-pressing ⚙ during playtesting.
