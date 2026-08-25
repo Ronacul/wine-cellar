@@ -150,6 +150,36 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
 .card.sold{opacity:.45;filter:grayscale(.6)}
 .card.gifted{opacity:.55;filter:sepia(.2)}
 
+/* ---------- series view ---------- */
+.series-row{
+  background:var(--panel);border:1px solid var(--line);border-radius:6px;
+  margin-bottom:10px;overflow:hidden;
+}
+.series-header{
+  display:flex;align-items:flex-start;gap:10px;padding:13px 14px;cursor:pointer;
+}
+.series-header:active{background:var(--panel2)}
+.series-title{
+  font-family:"Bangers",cursive;font-size:20px;letter-spacing:.02em;line-height:1.2;
+}
+.series-meta{
+  font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-dim);margin-top:3px;
+}
+.series-gaps{
+  font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--warn);margin-top:3px;
+}
+.series-count-badge{
+  font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;
+  background:var(--panel2);border:1px solid var(--line);border-radius:10px;
+  padding:2px 8px;white-space:nowrap;flex-shrink:0;color:var(--ink-dim);
+}
+.series-chevron{
+  color:var(--ink-faint);font-size:11px;flex-shrink:0;transition:transform .2s;margin-top:4px;
+}
+.series-row.open .series-chevron{transform:rotate(90deg)}
+.series-issues{display:none;padding:0 12px 10px}
+.series-row.open .series-issues{display:block}
+
 /* ---------- value band (the signature) ---------- */
 .vband-wrap{margin-top:auto; padding-top:6px}
 .vband-labels{
@@ -434,6 +464,7 @@ let editingId = null;
 let detailId = null;
 let collectionScrollY = 0;
 let searchQ = "", pubFilter = "", sortBy = "title", collectionView = "cave";
+let expandedSeries = new Set(); /* series keys open in the series view */
 let filters = {fire:false, key:false, graded:false, gradeCandidate:false, raw:false};
 let boxFilters = new Set();
 let valueSort = "change-desc";
@@ -1141,17 +1172,21 @@ function renderList(hotMode){
       ${!hotMode && boxLetters.length ? `<div class="shelf-bar">
         ${boxLetters.map(l => `<button class="shelf-chip${boxFilters.has(l)?" active":""}" data-box="${esc(l)}">${esc(l)} <span class="sc-count">${bCounts[l]}</span></button>`).join("")}
       </div>` : ""}
-      ${!hotMode && hasSold ? `
+      ${!hotMode ? `
         <div style="display:flex;gap:4px;width:100%">
           <button class="toggle-btn${collectionView==="cave"?" on":""}" id="v-cave" style="flex:1;font-size:11px">In cave</button>
-          <button class="toggle-btn${collectionView==="sold"?" on":""}" id="v-sold" style="flex:1;font-size:11px">Sold/Gifted</button>
+          ${hasSold ? `<button class="toggle-btn${collectionView==="sold"?" on":""}" id="v-sold" style="flex:1;font-size:11px">Sold</button>` : ""}
           <button class="toggle-btn${collectionView==="all"?" on":""}" id="v-all" style="flex:1;font-size:11px">All</button>
+          <button class="toggle-btn${collectionView==="series"?" on":""}" id="v-series" style="flex:1;font-size:11px">Series</button>
         </div>
       ` : ""}
     </div>
     <div class="list" id="card-list">
-      ${items.length === 0 ? `<div class="empty-state"><div class="comic">No books here yet</div><div>${hotMode ? "Add some key issues or flag books for grading." : "Tap + Add to scan a cover."}</div></div>` : ""}
-      ${items.map(c => cardHTML(c)).join("")}
+      ${collectionView === "series"
+        ? seriesViewHTML(items)
+        : items.length === 0
+          ? `<div class="empty-state"><div class="comic">No books here yet</div><div>${hotMode ? "Add some key issues or flag books for grading." : "Tap + Add to scan a cover."}</div></div>`
+          : items.map(c => cardHTML(c)).join("")}
     </div>`;
 
   /* bind events */
@@ -1181,9 +1216,26 @@ function renderList(hotMode){
   });
 
   /* view toggles */
-  ["cave","sold","all"].forEach(v => {
+  ["cave","sold","all","series"].forEach(v => {
     const el = document.getElementById("v-"+v);
     if(el) el.onclick = ()=>{ collectionView = v; render(); };
+  });
+
+  /* series row expand/collapse */
+  document.querySelectorAll(".series-row").forEach(row => {
+    row.querySelector(".series-header").onclick = () => {
+      const key = row.dataset.skey;
+      if(expandedSeries.has(key)) expandedSeries.delete(key); else expandedSeries.add(key);
+      row.classList.toggle("open", expandedSeries.has(key));
+      /* lazy-load thumbnails in newly expanded rows */
+      row.querySelectorAll(".thumb.empty[data-id]").forEach(el => {
+        const id = el.dataset.id;
+        const c = comics.find(x => x.id === id);
+        if(c) loadPhoto(c).then(data => {
+          if(data){ const img = document.createElement("img"); img.className="thumb"; img.src=data; el.replaceWith(img); c._photoUrl=data; }
+        });
+      });
+    };
   });
 
   /* card clicks */
@@ -1252,9 +1304,30 @@ function renderListOnly(hotMode){
 
   const listEl = document.getElementById("card-list");
   if(!listEl) return;
-  listEl.innerHTML = items.length === 0
-    ? `<div class="empty-state"><div class="comic">No matches</div></div>`
-    : items.map(c => cardHTML(c)).join("");
+
+  if(collectionView === "series"){
+    listEl.innerHTML = seriesViewHTML(items);
+    /* series expand/collapse */
+    document.querySelectorAll(".series-row").forEach(row => {
+      row.querySelector(".series-header").onclick = () => {
+        const key = row.dataset.skey;
+        if(expandedSeries.has(key)) expandedSeries.delete(key); else expandedSeries.add(key);
+        row.classList.toggle("open", expandedSeries.has(key));
+        row.querySelectorAll(".thumb.empty[data-id]").forEach(el => {
+          const id = el.dataset.id;
+          const c = comics.find(x => x.id === id);
+          if(c) loadPhoto(c).then(data => {
+            if(data){ const img = document.createElement("img"); img.className="thumb"; img.src=data; el.replaceWith(img); c._photoUrl=data; }
+          });
+        });
+      };
+    });
+  } else {
+    listEl.innerHTML = items.length === 0
+      ? `<div class="empty-state"><div class="comic">No matches</div></div>`
+      : items.map(c => cardHTML(c)).join("");
+  }
+
   document.querySelectorAll(".card").forEach(card => {
     card.onclick = ()=>{
       collectionScrollY = window.scrollY;
@@ -1264,6 +1337,70 @@ function renderListOnly(hotMode){
       render(); window.scrollTo(0,0);
     };
   });
+}
+
+/* ── series view helpers ─────────────────────────────────────── */
+function seriesGaps(issues){
+  const nums = [...new Set(
+    issues.map(c => parseInt(c.issueNumber)).filter(n => !isNaN(n))
+  )].sort((a,b) => a - b);
+  if(nums.length < 2) return [];
+  const gaps = [];
+  for(let i = 1; i < nums.length; i++){
+    const d = nums[i] - nums[i-1];
+    if(d > 1) gaps.push(d === 2 ? `#${nums[i-1]+1}` : `#${nums[i-1]+1}–${nums[i]-1}`);
+  }
+  return gaps;
+}
+
+function seriesViewHTML(items){
+  /* group by publisher + title */
+  const map = {};
+  for(const c of items){
+    const key = (c.publisher||"?") + "|||" + (c.title||"?");
+    if(!map[key]) map[key] = {publisher:c.publisher||"?", title:c.title||"?", issues:[]};
+    map[key].issues.push(c);
+  }
+  const groups = Object.values(map).sort((a,b) => a.title.localeCompare(b.title));
+  if(!groups.length) return `<div class="empty-state"><div class="comic">No series found</div></div>`;
+
+  return groups.map(g => {
+    const key = g.publisher + "|||" + g.title;
+    const isOpen = expandedSeries.has(key);
+    const sorted = [...g.issues].sort((a,b) =>
+      (a.issueNumber||"").localeCompare(b.issueNumber||"", undefined, {numeric:true}));
+    const nums = sorted.map(c => parseInt(c.issueNumber)).filter(n => !isNaN(n));
+    const lo = nums.length ? Math.min(...nums) : null;
+    const hi = nums.length ? Math.max(...nums) : null;
+    const rangeStr = lo !== null ? (lo === hi ? `#${lo}` : `#${lo}–${hi}`) : "";
+    const gaps = seriesGaps(g.issues);
+    const keyCount = g.issues.filter(isKey).length;
+    const maxFire = Math.max(...g.issues.map(c => fireLevel(c)));
+    const pubClass = (g.publisher||"").toLowerCase().replace(/[^a-z]/g,"");
+    const fireBadge = maxFire > 0
+      ? ` <span class="chip fire" style="font-size:10px;vertical-align:middle">${"🔥".repeat(maxFire)}</span>` : "";
+    const keyBadge = keyCount
+      ? ` <span class="chip key" style="font-size:10px;vertical-align:middle">🔑 ${keyCount}</span>` : "";
+
+    return `
+      <div class="series-row${isOpen?" open":""}" data-skey="${esc(key)}">
+        <div class="series-header">
+          <div style="flex:1;min-width:0">
+            <div class="series-title">${esc(g.title)}${fireBadge}${keyBadge}</div>
+            <div class="series-meta">
+              <span class="chip ${pubClass}" style="font-size:10px">${esc(g.publisher)}</span>
+              &nbsp;${g.issues.length} issue${g.issues.length!==1?"s":""}${rangeStr ? " · " + rangeStr : ""}
+            </div>
+            ${gaps.length ? `<div class="series-gaps">Gaps: ${gaps.slice(0,8).join(", ")}${gaps.length>8?` +${gaps.length-8} more`:""}</div>` : ""}
+          </div>
+          <span class="series-count-badge">${g.issues.length}</span>
+          <span class="series-chevron">▶</span>
+        </div>
+        <div class="series-issues">
+          ${sorted.map(c => cardHTML(c)).join("")}
+        </div>
+      </div>`;
+  }).join("");
 }
 
 function cardHTML(c){
@@ -2672,6 +2809,9 @@ function renderSync(){
       <summary>What's new</summary>
       <div class="collapse-body">
         <ul class="changelog">
+          <li><span class="cl-ver">Aug 25 2026</span>
+            <span class="cl-title">📚 Series view + gap detection</span><br>
+            <span class="cl-desc">New "Series" view in the Collection tab groups all issues by title. Each row shows issue count, range (#2–179), and gaps in your run (e.g. "Gaps: #3–19, #73, #75–78"). Fire and key issue badges on series headers. Tap any series to expand its issues inline. Search and filters still apply — matching series are shown, non-matching hidden.</span></li>
           <li><span class="cl-ver">Aug 25 2026</span>
             <span class="cl-title">🧹 Data cleanup + smart sort</span><br>
             <span class="cl-desc">New "Data cleanup" tool on Sync page finds series with inconsistent title spellings (e.g. colons, "The" prefix) and lets you pick a canonical name — all issues merge in one tap. Searching for a title now automatically sorts results by issue number. Fixed 20 Buffy comics misfiled under the wrong series title.</span></li>
