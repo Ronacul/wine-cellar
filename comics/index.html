@@ -1085,18 +1085,24 @@ function renderList(hotMode){
       if(isGradeCandidate(a) !== isGradeCandidate(b)) return isGradeCandidate(a) ? -1 : 1;
       return (a.title||"").localeCompare(b.title||"");
     });
-  } else if(sortBy === "title"){
-    items.sort((a,b) => (a.title||"").localeCompare(b.title||"") || (a.issueNumber||"").localeCompare(b.issueNumber||"", undefined, {numeric:true}));
-  } else if(sortBy === "publisher"){
-    items.sort((a,b) => (a.publisher||"").localeCompare(b.publisher||"") || (a.title||"").localeCompare(b.title||""));
-  } else if(sortBy === "year-desc"){
-    items.sort((a,b) => (parseInt(b.year)||0) - (parseInt(a.year)||0));
-  } else if(sortBy === "year-asc"){
-    items.sort((a,b) => (parseInt(a.year)||0) - (parseInt(b.year)||0));
-  } else if(sortBy === "added"){
-    items.sort((a,b) => (b.added||"").localeCompare(a.added||""));
-  } else if(sortBy === "value"){
-    items.sort((a,b) => (parsePrice(b.marketValue)||parsePrice(b.price)||0) - (parsePrice(a.marketValue)||parsePrice(a.price)||0));
+  } else {
+    /* when a search narrows results to a single series, sort by issue# automatically */
+    const singleSeries = searchQ && items.length > 0 && items.every(c => c.title === items[0].title);
+    if(singleSeries){
+      items.sort((a,b) => (a.issueNumber||"").localeCompare(b.issueNumber||"",undefined,{numeric:true}));
+    } else if(sortBy === "title"){
+      items.sort((a,b) => (a.title||"").localeCompare(b.title||"") || (a.issueNumber||"").localeCompare(b.issueNumber||"", undefined, {numeric:true}));
+    } else if(sortBy === "publisher"){
+      items.sort((a,b) => (a.publisher||"").localeCompare(b.publisher||"") || (a.title||"").localeCompare(b.title||""));
+    } else if(sortBy === "year-desc"){
+      items.sort((a,b) => (parseInt(b.year)||0) - (parseInt(a.year)||0));
+    } else if(sortBy === "year-asc"){
+      items.sort((a,b) => (parseInt(a.year)||0) - (parseInt(b.year)||0));
+    } else if(sortBy === "added"){
+      items.sort((a,b) => (b.added||"").localeCompare(a.added||""));
+    } else if(sortBy === "value"){
+      items.sort((a,b) => (parsePrice(b.marketValue)||parsePrice(b.price)||0) - (parsePrice(a.marketValue)||parsePrice(a.price)||0));
+    }
   }
 
   /* has sold/gifted books? */
@@ -1226,13 +1232,23 @@ function renderListOnly(hotMode){
   if(filters.raw) items = items.filter(c => !isGraded(c));
   if(boxFilters.size) items = items.filter(c => boxFilters.has((c.location||"").trim().toUpperCase()));
 
-  /* sort */
-  if(sortBy === "title") items.sort((a,b) => (a.title||"").localeCompare(b.title||"") || (a.issueNumber||"").localeCompare(b.issueNumber||"",undefined,{numeric:true}));
-  else if(sortBy === "publisher") items.sort((a,b) => (a.publisher||"").localeCompare(b.publisher||"") || (a.title||"").localeCompare(b.title||""));
-  else if(sortBy === "year-desc") items.sort((a,b) => (parseInt(b.year)||0) - (parseInt(a.year)||0));
-  else if(sortBy === "year-asc") items.sort((a,b) => (parseInt(a.year)||0) - (parseInt(b.year)||0));
-  else if(sortBy === "added") items.sort((a,b) => (b.added||"").localeCompare(a.added||""));
-  else if(sortBy === "value") items.sort((a,b) => (parsePrice(b.marketValue)||parsePrice(b.price)||0) - (parsePrice(a.marketValue)||parsePrice(a.price)||0));
+  /* sort — when a search narrows results to a single series, sort by issue# automatically */
+  const singleSeries = searchQ && items.length > 0 && items.every(c => c.title === items[0].title);
+  if(singleSeries){
+    items.sort((a,b) => (a.issueNumber||"").localeCompare(b.issueNumber||"",undefined,{numeric:true}));
+  } else if(sortBy === "title"){
+    items.sort((a,b) => (a.title||"").localeCompare(b.title||"") || (a.issueNumber||"").localeCompare(b.issueNumber||"",undefined,{numeric:true}));
+  } else if(sortBy === "publisher"){
+    items.sort((a,b) => (a.publisher||"").localeCompare(b.publisher||"") || (a.title||"").localeCompare(b.title||""));
+  } else if(sortBy === "year-desc"){
+    items.sort((a,b) => (parseInt(b.year)||0) - (parseInt(a.year)||0));
+  } else if(sortBy === "year-asc"){
+    items.sort((a,b) => (parseInt(a.year)||0) - (parseInt(b.year)||0));
+  } else if(sortBy === "added"){
+    items.sort((a,b) => (b.added||"").localeCompare(a.added||""));
+  } else if(sortBy === "value"){
+    items.sort((a,b) => (parsePrice(b.marketValue)||parsePrice(b.price)||0) - (parsePrice(a.marketValue)||parsePrice(a.price)||0));
+  }
 
   const listEl = document.getElementById("card-list");
   if(!listEl) return;
@@ -2637,6 +2653,11 @@ function renderSync(){
     <div class="sync-status" id="trim-all-st" style="display:none"></div>
 
     <hr class="section-rule">
+    <button class="btn btn-ghost" id="cleanup-btn" style="border-color:#8a7dc9;color:#8a7dc9">🧹 Data cleanup</button>
+    <div class="note" id="cleanup-note">Find and fix title inconsistencies, duplicate series names, and misfiled comics.</div>
+    <div class="sync-status" id="cleanup-st" style="display:none"></div>
+
+    <hr class="section-rule">
     <button class="btn btn-ghost" id="recheck-all-sync" style="border-color:var(--accent);color:var(--accent)">✨ Re-check all values (AI)</button>
     <div class="note">Uses Gemini to estimate market values in CAD for all comics. ~1 book/sec. You can stop anytime.</div>
     <div class="sync-status" id="recheck-all-st" style="display:none"></div>
@@ -2651,6 +2672,9 @@ function renderSync(){
       <summary>What's new</summary>
       <div class="collapse-body">
         <ul class="changelog">
+          <li><span class="cl-ver">Aug 25 2026</span>
+            <span class="cl-title">🧹 Data cleanup + smart sort</span><br>
+            <span class="cl-desc">New "Data cleanup" tool on Sync page finds series with inconsistent title spellings (e.g. colons, "The" prefix) and lets you pick a canonical name — all issues merge in one tap. Searching for a title now automatically sorts results by issue number. Fixed 20 Buffy comics misfiled under the wrong series title.</span></li>
           <li><span class="cl-ver">Aug 23 2026</span>
             <span class="cl-title">📸 Add missing covers + sync status</span><br>
             <span class="cl-desc">New "Add missing covers" wizard on Sync page — shows comics without cover art and lets you photograph them in sequence with crop option. Sync buttons now show ⏳ progress and disable during push/pull to prevent double-taps.</span></li>
@@ -2911,6 +2935,110 @@ function renderSync(){
     if(!missing.length){ bpBtn.disabled = true; bpBtn.style.opacity = "0.45"; return; }
     bpBtn.onclick = () => openBulkPhotoWizard(missing);
   })();
+
+  /* data cleanup */
+  document.getElementById("cleanup-btn").onclick = openCleanupPanel;
+}
+
+/* ─── data cleanup panel ─────────────────────────────────────── */
+function normaliseTitle(t){
+  return (t||"").toLowerCase()
+    .replace(/^the\s+/,"")
+    .replace(/[:\-–]/g," ")
+    .replace(/\s+/g," ")
+    .trim();
+}
+
+function buildCleanupGroups(){
+  const active = comics.filter(c => !isGone(c));
+  /* group by publisher + normalised title */
+  const map = {};
+  for(const c of active){
+    const key = (c.publisher||"?") + "|||" + normaliseTitle(c.title);
+    if(!map[key]) map[key] = {publisher: c.publisher||"?", variants: {}};
+    const t = c.title||"?";
+    if(!map[key].variants[t]) map[key].variants[t] = [];
+    map[key].variants[t].push(c);
+  }
+  /* keep only groups with >1 distinct title spelling */
+  return Object.values(map).filter(g => Object.keys(g.variants).length > 1);
+}
+
+function openCleanupPanel(){
+  const groups = buildCleanupGroups();
+  const overlay = document.createElement("div");
+  overlay.style.cssText = "position:fixed;inset:0;background:var(--bg);z-index:9000;overflow-y:auto;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)";
+
+  const renderPanel = () => {
+    const groups2 = buildCleanupGroups();
+    if(!groups2.length){
+      overlay.innerHTML = `
+        <div style="padding:20px">
+          <button class="btn btn-ghost" id="cp-close">← Back</button>
+          <div style="text-align:center;padding:60px 20px;font-size:15px;color:var(--ink-dim)">
+            ✅ No title inconsistencies found. Collection looks clean!
+          </div>
+        </div>`;
+      overlay.querySelector("#cp-close").onclick = () => overlay.remove();
+      return;
+    }
+
+    let html = `
+      <div style="padding:16px 16px 0">
+        <button class="btn btn-ghost" id="cp-close">← Back</button>
+        <h2 style="font-family:'Bangers',cursive;font-size:22px;color:var(--accent);margin:12px 0 4px">🧹 Data Cleanup</h2>
+        <p style="font-size:13px;color:var(--ink-dim);margin:0 0 16px">${groups2.length} series with inconsistent spellings found. Pick a canonical title for each — all issues merge into it.</p>
+      </div>`;
+
+    for(const [gi, g] of groups2.entries()){
+      const variants = Object.entries(g.variants).sort((a,b) => b[1].length - a[1].length);
+      const canonical = variants[0][0]; /* default: most-issues variant */
+      html += `<div class="bulk-photo-card" style="margin:0 12px 14px" data-gi="${gi}">`;
+      html += `<div class="title">${esc(g.publisher)}</div>`;
+      html += `<div style="font-size:12px;color:var(--ink-dim);margin:6px 0 10px;font-family:'IBM Plex Mono',monospace">${variants.length} spellings · ${variants.reduce((s,[,v])=>s+v.length,0)} comics total</div>`;
+      for(const [ti, [title, items]] of variants.entries()){
+        const inputId = `cp-radio-${gi}-${ti}`;
+        html += `
+          <label style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-top:1px solid var(--line);cursor:pointer">
+            <input type="radio" name="cp-group-${gi}" value="${esc(title)}" ${ti===0?"checked":""} style="margin-top:3px;flex-shrink:0">
+            <div>
+              <div style="font-size:14px;color:var(--ink)">${esc(title)}</div>
+              <div style="font-size:11px;color:var(--ink-dim);font-family:'IBM Plex Mono',monospace">${items.length} issue${items.length!==1?"s":""} · #${items.map(c=>c.issueNumber).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})).join(", #")}</div>
+            </div>
+          </label>`;
+      }
+      html += `<button class="btn btn-primary" data-gi="${gi}" id="cp-merge-${gi}" style="margin-top:10px;width:100%">Merge into selected title</button>`;
+      html += `</div>`;
+    }
+
+    overlay.innerHTML = html;
+    overlay.querySelector("#cp-close").onclick = () => overlay.remove();
+
+    /* wire merge buttons */
+    groups2.forEach((g, gi) => {
+      const btn = document.getElementById(`cp-merge-${gi}`);
+      if(!btn) return;
+      btn.onclick = () => {
+        const radio = overlay.querySelector(`input[name="cp-group-${gi}"]:checked`);
+        if(!radio) return;
+        const targetTitle = radio.value;
+        let count = 0;
+        for(const c of comics){
+          const norm = normaliseTitle(c.title);
+          if(c.publisher === g.publisher && norm === normaliseTitle(Object.keys(g.variants)[0]) && c.title !== targetTitle){
+            c.title = targetTitle;
+            count++;
+          }
+        }
+        saveComics();
+        showToast(`✅ Merged ${count} comic${count!==1?"s":""} → "${targetTitle}"`, "ok", 3000);
+        renderPanel(); /* refresh to show remaining groups */
+      };
+    });
+  };
+
+  renderPanel();
+  document.body.appendChild(overlay);
 }
 
 /* ================= navigation ================= */
