@@ -2899,7 +2899,10 @@ function renderSync(){
   /* bulk add missing covers */
   (async ()=>{
     const photoKeys = await allPhotoKeys().catch(()=>[]);
-    const missing = comics.filter(c => !isGone(c) && !photoKeys.includes(c.id) && !c._photoUrl);
+    /* a comic "has" a cover if: it has a local IndexedDB photo, an in-memory cached URL,
+       or an imagePath pointing to a GitHub-hosted image — checking imagePath prevents
+       already-uploaded covers from falsely counting as missing */
+    const missing = comics.filter(c => !isGone(c) && !photoKeys.includes(c.id) && !c._photoUrl && !c.imagePath);
     const noteEl = document.getElementById("bulk-photo-note");
     if(noteEl) noteEl.textContent = missing.length
       ? `${missing.length} comic${missing.length!==1?"s":""} without cover art. Camera opens for each one in sequence.`
