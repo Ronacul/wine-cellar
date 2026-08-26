@@ -98,6 +98,11 @@ h1{
 .diffs::-webkit-scrollbar{display:none}
 .tiers{display:flex; flex-direction:column; gap:4px; align-items:center; max-width:100%}
 .axis-row{display:flex; gap:8px; align-items:center; max-width:100%}
+/* Size row and diff row (Latin/Double/Scramble/Levels) are admin-only for regular players.
+   The level bar (#diffRow) is restored during active level play regardless. */
+#sizeRow, #diffRow{display:none}
+html.dev #sizeRow, html.dev #diffRow{display:flex}
+html.in-level #diffRow{display:flex !important}
 /* Layering is its own axis, so it sits outside the size ladder rather than
    pretending to be one more step along it. */
 .dbl{
@@ -116,17 +121,25 @@ h1{
 
 /* ================= level mode ================= */
 .levelbar{
-  flex:1; display:flex; align-items:center; gap:10px; min-width:0;
-  background:var(--panel2); border-radius:11px; padding:7px 9px;
+  flex:1; display:flex; align-items:center; gap:8px; min-width:0;
+  background:var(--panel2); border-radius:11px; padding:5px 8px;
 }
-.lvl-c{flex:1; display:flex; flex-direction:column; line-height:1.15}
-.lvl-c b{font-size:14px; font-weight:700; white-space:nowrap}
+/* Left section: ← ↶ ↻ buttons in a horizontal row */
+.lvl-l{display:flex; gap:2px; align-items:center; flex-shrink:0}
+/* Buttons in the level bar are smaller than header buttons */
+.levelbar .icon-btn{width:28px; height:28px; font-size:13px; border-radius:7px}
+.lvl-c{flex:1; display:flex; flex-direction:column; line-height:1.15; min-width:0}
+.lvl-c b{font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+/* Right section: hearts stacked above the countdown timer */
+.lvl-r{display:flex; flex-direction:column; align-items:flex-end; gap:1px; flex-shrink:0}
+.lvl-hearts{display:flex; gap:2px; font-size:12px; color:var(--ink-faint); align-items:center}
+.lvl-hearts .on{color:var(--error)}
 /* A peek borrows the next world's mechanic, so it says whose. */
 .pk{font-size:9px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
   background:var(--ink); color:var(--bg); border-radius:5px; padding:2px 5px; vertical-align:2px}
 .lvl-sub{
-  font-family:var(--mono); font-size:9.5px; color:var(--ink-faint); white-space:nowrap;
-  text-transform:uppercase; letter-spacing:.06em; margin-top:2px;
+  font-family:var(--mono); font-size:9px; color:var(--ink-faint); white-space:nowrap;
+  text-transform:uppercase; letter-spacing:.06em; margin-top:1px;
 }
 .hearts{display:flex; gap:2px; font-size:13px; color:var(--ink-faint); align-items:center}
 .hearts #lvlTimer{margin-left:6px; font-size:17px; min-width:48px; text-align:right}
@@ -255,28 +268,28 @@ h1{
 }
 
 /* ================= ad banner mockup ================= */
-/* Targeting 300×250 medium rectangle — highest CPM format for mobile in-content */
+/* Full-width horizontal strip — lower profile than the 300×250 rectangle */
 .ad-banner{
-  width:min(300px,100%); min-height:100px;
-  display:flex; flex-direction:column; align-items:center; justify-content:center;
-  gap:10px; background:var(--panel2); border-radius:12px; padding:20px 16px;
-  border:1px solid var(--line); align-self:center; margin:0 auto;
+  width:100%;
+  display:flex; flex-direction:row; align-items:center;
+  gap:10px; background:var(--panel2); border-radius:12px; padding:10px 14px;
+  border:1px solid var(--line);
 }
 .ad-label{
   font-family:var(--mono); font-size:9px; font-weight:700; letter-spacing:.06em;
   text-transform:uppercase; color:var(--ink-faint); border:1px solid var(--line);
-  border-radius:4px; padding:2px 5px; align-self:flex-start;
+  border-radius:4px; padding:2px 5px; flex-shrink:0; align-self:flex-start;
 }
 .ad-copy{
-  color:var(--ink); font-size:14px; font-weight:600; text-align:center; line-height:1.4;
+  color:var(--ink); font-size:13px; font-weight:600; line-height:1.3; flex:1; min-width:0;
 }
 .ad-sub{
-  font-size:11px; color:var(--ink-dim); text-align:center; line-height:1.4;
+  font-size:11px; color:var(--ink-dim); line-height:1.3;
 }
 .ad-cta{
-  font-size:13px; font-weight:700; color:#fff;
-  background:#4a8feb; border-radius:9px; padding:8px 20px;
-  white-space:nowrap; border:none; cursor:pointer;
+  font-size:12px; font-weight:700; color:#fff;
+  background:#4a8feb; border-radius:9px; padding:6px 14px;
+  white-space:nowrap; border:none; cursor:pointer; flex-shrink:0;
 }
 /* ── Previous-day navigation strip ── */
 .day-nav{
@@ -691,11 +704,13 @@ html.dev #adminBar{display:flex}
 </div>
 
 <div class="play">
+  <!-- Day navigation strip — sits at the top so it's the first thing players see -->
+  <div class="day-nav" id="dayNav" style="display:none"></div>
   <div class="tiers">
     <div class="axis-row" id="sizeRow">
       <div class="diffs" id="sizes"></div>
     </div>
-    <div class="axis-row">
+    <div class="axis-row" id="diffRow">
       <div class="diffs" id="diffs"></div>
       <button class="dbl" id="latinToggle">Latin</button>
       <button class="dbl" id="dblToggle">Double</button>
@@ -708,15 +723,15 @@ html.dev #adminBar{display:flex}
   <div class="tut-tip" id="tutTip" style="display:none"></div>
   <div class="board-wrap"><div class="board" id="board"></div></div>
   <div class="palette pal-pad" id="palette"></div>
-  <!-- Ad banner — 300×250 medium-rectangle format (highest mobile CPM) -->
+  <!-- Ad banner — full-width horizontal strip -->
   <div class="ad-banner" id="adBanner" style="display:none">
-    <span class="ad-label">Ad · 300×250</span>
-    <div class="ad-copy">🎮 PuzzleVault</div>
-    <div class="ad-sub">500+ brain games — free to play</div>
+    <span class="ad-label">Ad</span>
+    <div style="flex:1;min-width:0">
+      <div class="ad-copy">🎮 PuzzleVault</div>
+      <div class="ad-sub">500+ brain games — free to play</div>
+    </div>
     <button class="ad-cta">Try it free →</button>
   </div>
-  <!-- Day navigation — rendered by renderDailyNav() -->
-  <div class="day-nav" id="dayNav" style="display:none"></div>
 </div>
 
 <div class="vignette" id="vignette"></div>
@@ -1151,7 +1166,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.10.6";
+const CHROMOKU_VERSION = "v0.10.7";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -2204,6 +2219,10 @@ function renderDailyNav(){
           + dow + '<br><span style="font-size:8px;color:inherit;opacity:.7">' + sc.tier + '</span>'
           + '</button>';
   }
+  // Admin-only Levels chip — gives admins quick access from the day strip
+  if (adminMode){
+    html += '<button class="past" id="dnLevels" style="margin-left:auto">🏆 Levels</button>';
+  }
   el.innerHTML = html;
   el.querySelector("#dnToday").onclick = () => {
     if (state.day !== today){ state.day = today; enterDaily(); }
@@ -2211,6 +2230,8 @@ function renderDailyNav(){
   el.querySelectorAll("[data-day]").forEach(btn => {
     btn.onclick = () => { state.day = +btn.dataset.day; enterDaily(); };
   });
+  const dnLvl = el.querySelector("#dnLevels");
+  if (dnLvl) dnLvl.onclick = () => enterLevels();
 }
 
 function render(){
@@ -2344,6 +2365,9 @@ function renderLevelBar(){
   const rotTag = c.boxRotate ? " ⤾" : "";   // rotated-box marker
   const tag = c.n + "×" + c.n + (c.boxless ? " Latin" : "") + rotTag
             + (c.layers > 1 ? " ×2" : "");
+  // Hearts row (no timer — timer sits below in .lvl-r)
+  const heartsRowHTML = p => Array.from({ length:LIVES_MAX }, (_, i) =>
+    '<span class="' + (i < p.lives ? "on" : "") + '">♥</span>').join("");
   document.getElementById("diffs").outerHTML =
     '<div class="levelbar" id="diffs">'
     + '<div class="lvl-l">'
@@ -2355,10 +2379,12 @@ function renderLevelBar(){
     + (c.peek ? ' <span class="pk">' + (c.peekOf || "ahead") + "</span>" : "") + "</b>"
     + '<span class="lvl-sub">' + (c.peek ? "Preview" : c.theme.name) + " · " + tag
     + (c.boss ? " · boss" : "") + "</span>"
-    + renderStagePath(lv.cfg) + "</div>"
-    + '<div class="hearts">' + heartsHTML(p)
-    + '<span class="regen" id="regen"></span>'
-    + '<span class="timer lvl" id="lvlTimer"></span></div>'
+    + "</div>"
+    + '<div class="lvl-r">'
+    + '<div class="lvl-hearts">' + heartsRowHTML(p)
+    + '<span class="regen" id="regen"></span></div>'
+    + '<span class="timer lvl" id="lvlTimer" style="font-size:16px;min-width:44px;text-align:right"></span>'
+    + '</div>'
     + "</div>";
   const tw = document.getElementById("tbarwrap");
   if (tw) tw.style.display = "";
@@ -4598,7 +4624,7 @@ function showAbout(){
     try { localStorage.setItem(LS_ADMIN, adminMode ? "1" : "0"); } catch {}
     if (adminMode) document.documentElement.classList.add("dev");
     else document.documentElement.classList.remove("dev");
-    syncLvlToggle();
+    syncAdminControls();
     toast(adminMode ? "Admin ON" : "Admin OFF");
     showAbout();  // re-open to refresh toggle state
   };
@@ -4873,7 +4899,7 @@ function showSettings(){
     try { localStorage.setItem(LS_ADMIN, adminMode ? "1" : "0"); } catch {}
     if (adminMode) document.documentElement.classList.add("dev");
     else document.documentElement.classList.remove("dev");
-    syncLvlToggle();
+    syncAdminControls();
     showSettings();
   };
   if (adminMode) m.querySelector("#dbgDate").onchange = e => {
@@ -4947,7 +4973,7 @@ document.getElementById("btnQuit").onclick = confirmQuit;
       try { localStorage.setItem(LS_ADMIN, adminMode ? "1" : "0"); } catch {}
       if (adminMode) document.documentElement.classList.add("dev");
       else document.documentElement.classList.remove("dev");
-      syncLvlToggle();
+      syncAdminControls();
       toast(adminMode ? "Admin ON" : "Admin OFF");
       showSettings();
     }, 800);
@@ -4988,10 +5014,25 @@ updateAddsBadge();
 if (adminMode) document.documentElement.classList.add("dev");
 
 // An uncaught error used to leave a blank page with no way back. Show a panel
-// with an escape hatch instead.
-// Levels entry is admin-only — hide from regular players; synced on every admin toggle
-function syncLvlToggle(){ const lb = document.getElementById("lvlToggle"); if (lb) lb.style.display = adminMode ? "" : "none"; }
-syncLvlToggle();
+// Admin controls sync — size row, diff row (Latin/Double/Scramble/Levels) are admin-only.
+// The CSS already hides them by default; this function also keeps inline display in sync
+// (e.g. when renderLevelBar() clears them individually during level play).
+// Call whenever adminMode changes.
+function syncAdminControls(){
+  // sizeRow and diffRow visibility is handled entirely by CSS classes:
+  //   html.dev → shown; html.in-level → diffRow forced visible; otherwise hidden.
+  // Individual toggles inside diffRow that renderLevelBar hides inline:
+  for (const id of ["latinToggle","dblToggle","scrambleToggle"]){
+    const b = document.getElementById(id);
+    if (b && !document.documentElement.classList.contains("in-level")){
+      b.style.display = adminMode ? "" : "none";
+    }
+  }
+  // lvlToggle: still in diffRow (admin panel), and also in dayNav strip (renderDailyNav redraws it)
+  const lb = document.getElementById("lvlToggle");
+  if (lb) lb.style.display = adminMode ? "" : "none";
+}
+syncAdminControls();
 
 window.addEventListener("error", e => showCrash(e.message));
 window.addEventListener("unhandledrejection", e => showCrash(String(e.reason)));

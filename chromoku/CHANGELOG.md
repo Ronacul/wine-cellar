@@ -8,6 +8,13 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.10.7] 2026-08-26 — Level bar compact, admin controls tidy, day-nav to top, banner horizontal
+
+- **Level bar ~50% shorter:** `.lvl-l` is now `display:flex` so the ← ↶ ↻ buttons sit in a horizontal row instead of stacking vertically. Buttons shrink to 28×28 px. Right section uses `.lvl-r` (column-flex) — hearts sit above the countdown timer.
+- **Admin-only daily controls:** Size row (`#sizeRow`) and diff row (`#diffRow` — Latin/Double/Scramble/Levels) hidden by CSS for regular players; `html.dev` reveals them. `html.in-level` forces `#diffRow` visible so the level bar (which replaces `#diffs` inside it) still shows. `syncLvlToggle()` renamed to `syncAdminControls()` and extended to cover the three modifier toggles.
+- **Day nav to top:** `#dayNav` moved above `.tiers` so the day chip strip is the first thing players see below the header. Admin-only **🏆 Levels** chip appended at the end of the strip (via `renderDailyNav()`).
+- **Banner horizontal:** `.ad-banner` is now `width:100%`, `flex-direction:row`, `padding:10px 14px` — a shorter, less intrusive strip instead of the tall 300×250 column. Win-modal `winBannerHTML()` was already horizontal (inline styles) — no change needed there.
+
 ### [v0.10.6] 2026-08-26 — Header cleanup, levels admin-only, win modal de-cluttered
 
 - **💡 removed from header:** Lightbulb hint button gone — hints are in help (?) and the power-up bar below the board. `btnStats` (?) moved from left to right section so left is clean: logo · undo only.
