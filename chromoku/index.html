@@ -1123,7 +1123,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.9.9";
+const CHROMOKU_VERSION = "v0.10.0";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -1803,6 +1803,7 @@ const state = {
   history:[],              // stack of { entries:[{L,i,prev}] } — one per user gesture
   bookmark:null,           // { layers:[grid, ...] } — single-slot board snapshot
   hints:{ reveals:0, freezes:0, adds:0, flashes:0 },   // hint usage this puzzle
+  adShown:false,           // true once the 5-hint interstitial has fired this puzzle
   frozenUntil:0,           // timestamp: clock display freezes until
 };
 const HISTORY_MAX = 50;
@@ -1996,7 +1997,7 @@ function loadPuzzle(sizeId, diffId, fresh){
     }
     state.elapsed = 0; state.mistakes = 0; state.done = false; state.started = false;
     state.bookmark = null;
-    state.hints = { reveals:0, freezes:0, adds:0, flashes:0 };
+    state.hints = { reveals:0, freezes:0, adds:0, flashes:0 }; state.adShown = false;
   }
   state.since = null; state.sel = null; state.erase = false;
   state.history = []; state.frozenUntil = 0;
@@ -2057,7 +2058,7 @@ function loadLevel(n){
   state.elapsed = 0; state.since = null; state.started = false;
   state.mistakes = 0; state.done = false; state.sel = null; state.erase = false;
   state.history = []; state.bookmark = null;
-  state.hints = { reveals:0, freezes:0, adds:0, flashes:0 }; state.frozenUntil = 0;
+  state.hints = { reveals:0, freezes:0, adds:0, flashes:0 }; state.adShown = false; state.frozenUntil = 0;
 
   // Don't overwrite the player's highest-level progress when replaying tutorial.
   // Tutorial replay uses levels 0–6; we only advance, never regress.
@@ -2141,7 +2142,7 @@ function isSolved(){
 
 function render(){
   if (state.mode === "levels") renderLevelBar();
-  else { renderSizes(); renderDiffs(); }
+  else { renderSizes(); renderDiffs(); renderPowerups(); }
   renderBoard(); renderPalette(); renderSub();
   paintCompletedUnits();
   applySharp();
@@ -2172,9 +2173,8 @@ function render(){
   // identity; the big title is wasted vertical space on mobile.
   const h1El = document.querySelector("header h1");
   if (h1El) h1El.style.display = (state.mode === "levels") ? "none" : "";
-  // Banner ad mockup — visible in level mode, but not during tutorial
-  const ab = document.getElementById("adBanner");
-  if (ab) ab.style.display = (state.mode === "levels" && !isTutNow) ? "" : "none";
+  // Banner visibility is context-driven — see updateAdBanner()
+  updateAdBanner();
 }
 
 const heartsHTML = p => Array.from({ length:LIVES_MAX }, (_, i) =>
@@ -3622,23 +3622,114 @@ function totalHints(){ return state.hints.reveals + state.hints.freezes + state.
 // Power-ups: always visible during levels so the player can fire them
 // without opening a modal. The hint modal still exists for daily mode
 // (where only Reveal applies) and as a fallback info panel.
+// ── Banner visibility ─────────────────────────────────────────────────────
+// Rules: today's daily (no hints) = clean/no banner.
+// Past dailies = banner always. Daily + 2+ real hints = banner.
+// Levels (non-tutorial) = banner. Tutorial = never.
+function updateAdBanner(){
+  const ab = document.getElementById("adBanner");
+  if (!ab) return;
+  const isTutNow = state.mode === "levels" && state.lvl && state.lvl.cfg.tutorial;
+  const isPastDaily = state.mode !== "levels" && !state.practice && state.day < dayNumber();
+  const dailyWithHints = state.mode !== "levels" && !state.practice && totalHints() >= 2;
+  const show = (state.mode === "levels" && !isTutNow) || isPastDaily || dailyWithHints;
+  ab.style.display = show ? "" : "none";
+}
+
+// Called after any real hint (reveal/freeze/add) is consumed on daily.
+// Triggers banner at 2+ hints and the one-time 15s interstitial at 5+.
+function afterHintUsed(){
+  updateAdBanner();
+  if (state.mode === "levels" || state.practice) return;
+  if (!state.adShown && totalHints() >= 5) showAdInterstitial();
+}
+
+// 15-second soft interstitial — puzzle timer pauses, skip unlocks after 15s.
+function showAdInterstitial(){
+  state.adShown = true;
+  if (state.since){ state.elapsed += Date.now() - state.since; state.since = null; }
+  let rem = 15;
+  openModal(
+    '<div style="text-align:center;padding:4px 0">'
+    + '<span style="background:var(--ink-faint);color:var(--ink);border-radius:4px;'
+    + 'padding:2px 8px;font-size:10px;font-family:var(--mono);letter-spacing:.06em">Ad</span>'
+    + '<div style="margin:14px 0 4px;font-size:15px;font-weight:700">🎮 PuzzleVault</div>'
+    + '<div style="font-size:12px;color:var(--ink-dim);margin-bottom:18px">500+ brain games — free to play</div>'
+    + '<div id="adIntCount" style="font-size:52px;font-weight:800;color:var(--gold);line-height:1;margin-bottom:4px">15</div>'
+    + '<div id="adIntMsg" style="font-size:12px;color:var(--ink-dim);margin-bottom:16px">Skip available in 15s</div>'
+    + '<div style="font-size:12px;color:var(--ok);margin-bottom:20px">🟢 Puzzle saved — timer paused</div>'
+    + '<button class="btn ghost" id="adIntSkip" style="display:none">Skip →</button>'
+    + '</div>'
+  );
+  // Block overlay-tap close during countdown
+  const overlay = document.getElementById("overlay");
+  const savedClick = overlay.onclick;
+  overlay.onclick = null;
+  const iv = setInterval(() => {
+    rem--;
+    const cd = document.getElementById("adIntCount");
+    const msg = document.getElementById("adIntMsg");
+    const skip = document.getElementById("adIntSkip");
+    if (cd) cd.textContent = rem > 0 ? rem : "✓";
+    if (rem <= 0){
+      clearInterval(iv);
+      if (msg) msg.textContent = "Thanks for watching";
+      if (skip) skip.style.display = "";
+    }
+  }, 1000);
+  const dismiss = () => {
+    clearInterval(iv);
+    overlay.onclick = savedClick;
+    if (!state.done) state.since = Date.now();
+    closeModal();
+  };
+  // Skip button wires up after it appears; also catch early DOM-not-yet-ready case
+  // by delegating via the modal container
+  document.getElementById("modal").addEventListener("click", function handler(e){
+    if (e.target.id === "adIntSkip" && rem <= 0){
+      this.removeEventListener("click", handler);
+      dismiss();
+    }
+  });
+}
+
 function renderPowerups(){
   const el = document.getElementById("powerups");
   if (!el) return;
   const isTutNow = state.mode === "levels" && state.lvl && state.lvl.cfg.tutorial;
   const tutLvl   = isTutNow ? (state.lvl.cfg.level || 0) : -1;
-  // Tutorial levels 0-3: no powerup bar. Tutorial 4+ (index ≥ 3): show 🔦 only.
-  // Non-tutorial levels: show full bar.
-  if (state.mode !== "levels" || state.done || (isTutNow && tutLvl < 3)){
-    el.style.display = "none"; return;
-  }
+
+  // Always hide when done
+  if (state.done){ el.style.display = "none"; return; }
+
+  // Tutorial levels 0–2: no bar. Tutorial 3+: flash only.
+  if (isTutNow && tutLvl < 3){ el.style.display = "none"; return; }
   if (isTutNow){
-    // Tutorial powerup bar: just the flash hint button (free in tutorial, no pool gate).
     el.style.display = "";
     el.innerHTML = '<button class="pu" id="puFlash" title="Flash hint — shows which cell and colour">'
       + '<span class="pu-icon">🔦</span></button>';
     const pFl = document.getElementById("puFlash");
     if (pFl) pFl.onclick = () => flashHint(true);
+    return;
+  }
+
+  // ── Daily / practice: flash + reveal only (no pool gate, no freeze/add) ──
+  if (state.mode !== "levels"){
+    el.style.display = "";
+    const revLeft = HINT_LIMITS.reveals - state.hints.reveals;
+    const flsLeft = HINT_LIMITS.flashes - state.hints.flashes;
+    el.innerHTML =
+      '<span style="font-size:9px;color:var(--ink-dim);font-family:var(--mono)">Advantages</span> '
+      + '<button class="pu" id="puFlash"' + (flsLeft <= 0 ? " disabled" : "")
+      + ' title="Flash hint — free, no badge penalty">'
+      + '<span class="pu-icon">🔦</span><span class="pu-n">' + flsLeft + '</span></button>'
+      + '<button class="pu" id="puReveal"' + (revLeft <= 0 ? " disabled" : "")
+      + ' title="Reveal a cell — counts toward hint badge">'
+      + '<span class="pu-icon">💡</span><span class="pu-n">' + revLeft + '</span></button>';
+    const pFl = document.getElementById("puFlash");
+    if (pFl) pFl.onclick = () => { flashHint(true); renderPowerups(); };
+    const pR = document.getElementById("puReveal");
+    if (pR) pR.onclick = () => { revealCell(); renderPowerups(); };
     return;
   }
   el.style.display = "";
@@ -3786,6 +3877,7 @@ function revealCell(){
   const el = cellEl(pick.i);
   if (el){ el.classList.add("revealed"); setTimeout(() => el.classList.remove("revealed"), 900); }
   toast("Cell revealed · " + (HINT_LIMITS.reveals - state.hints.reveals) + " left");
+  afterHintUsed();
 }
 
 function freezeClock(){
@@ -4447,11 +4539,17 @@ function showWin(){
   // Challenge info — if they beat a friend's time, celebrate it
   const challTime = getChallengeTime();
   const beatChall = challTime && elapsedMs() < challTime * 1000;
+  const badgeIcon = hintsUsed === 0
+    ? '<div style="font-size:30px;line-height:1;margin-bottom:2px">🧠</div>'
+      + '<div style="font-size:10px;color:var(--ok);font-family:var(--mono);letter-spacing:.08em;margin-bottom:10px">CLEAN SOLVE</div>'
+    : '<div style="font-size:26px;line-height:1;margin-bottom:2px">' + '💡'.repeat(Math.min(hintsUsed, 3)) + '</div>'
+      + '<div style="font-size:10px;color:var(--ink-dim);font-family:var(--mono);letter-spacing:.08em;margin-bottom:10px">'
+      + hintsUsed + ' HINT' + (hintsUsed !== 1 ? 'S' : '') + ' USED</div>';
   openModal(
     "<h2>Solved</h2>"
-    + '<p class="lede">' + SHARE_NAME + " #" + state.day + " · " + sizeOf(state.size).label + " " + diffOf2(state.diff, state.n).label
-    + (hintsUsed ? ' · 💡×' + hintsUsed : '') + "</p>"
+    + '<p class="lede">' + SHARE_NAME + " #" + state.day + " · " + sizeOf(state.size).label + " " + diffOf2(state.diff, state.n).label + "</p>"
     + '<div class="win-time">' + fmtTime(elapsedMs()) + "</div>"
+    + '<div style="text-align:center;margin:6px 0">' + badgeIcon + '</div>'
     + '<div class="badge-wrap" id="badgeWrap"></div>'
     + (beatChall ? '<p class="lede" style="color:var(--ok)">⚡ Beat the challenge time!</p>' : '')
     + '<div class="stats">'
@@ -4681,10 +4779,11 @@ document.getElementById("btnQuit").onclick = confirmQuit;
   sb.addEventListener("pointerdown", function(){
     _st = setTimeout(function(){
       _st = null;
-      adminMode = true;
-      try { localStorage.setItem(LS_ADMIN, "1"); } catch {}
-      document.documentElement.classList.add("dev");
-      toast("Admin mode enabled");
+      adminMode = !adminMode;
+      try { localStorage.setItem(LS_ADMIN, adminMode ? "1" : "0"); } catch {}
+      if (adminMode) document.documentElement.classList.add("dev");
+      else document.documentElement.classList.remove("dev");
+      toast(adminMode ? "Admin ON" : "Admin OFF");
       showSettings();
     }, 800);
   });

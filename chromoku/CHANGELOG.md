@@ -8,6 +8,14 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.10.0] 2026-08-26 — Advantages bar, context-aware banner, admin toggle, win badge
+
+- **Advantages bar in daily mode:** Flash (🔦) and Reveal (💡) buttons now visible below the board during daily puzzles — no longer buried behind the 💡 modal. Counts shown inline.
+- **Context-aware ad banner:** Banner now appears on: past dailies (any day before today), daily with 2+ real hints used, levels mode. Today's clean daily stays banner-free.
+- **Hint 5+ interstitial:** Fifth real hint on daily triggers a 15-second soft overlay — puzzle state is preserved, timer pauses, skip unlocks after 15s. One-time per puzzle (`state.adShown`).
+- **Win modal badge:** Clean solve shows 🧠 + "CLEAN SOLVE" in green; hints used shows 💡 (repeated, capped 3) + "N HINTS USED". More prominent than the old inline `💡×N` in the subtitle.
+- **Admin long-press toggle:** Long-pressing ⚙ now toggles admin both on and off (was one-way on-only). Toast confirms state.
+
 ### [v0.9.9] 2026-08-26 — Share card: swatch dots, hint badge, game URL
 
 - **Canvas badge footer:** Replaced bare "💡×N" text with a full footer section — a row of coloured swatch dots (one per mark), a hint badge (🧠 Solved clean or 💡💡💡), and the game URL at the bottom so recipients know where to play.
