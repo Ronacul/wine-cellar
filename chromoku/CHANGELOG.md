@@ -8,6 +8,10 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.9.8] 2026-08-26 — Fix palette swatch unevenness on 9×9 grid
+
+- **Swatch sizing fix:** 9-mark palette was split 5+4 across two rows; `flex:1 1 0` made the 4-swatch row's swatches visibly wider than the 5-swatch row. Short rows are now padded with invisible `.swatch.spacer` elements so all rows divide the same width by the same count — uniform swatch sizes at every grid size.
+
 ### [v0.9.7] 2026-08-23 — Admin: → Next day button cycles through weekly schedule
 
 - **Admin bar — "→ Next day" button:** Increments `state.day` by 1 and reloads the daily, so testers can walk Monday → Tuesday → … → Sunday → Monday without touching the date picker. The button's tooltip shows the date + day name + tier for the current day (e.g. *2026-08-23 · Sunday · Master*). `updateAdminBar()` keeps the tooltip in sync on every navigation.
