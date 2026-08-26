@@ -2542,12 +2542,18 @@ function renderPalette(){
     // No eraser swatch — tapping the same colour on a cell clears it.
     // 9+ marks split into two rows for bigger, more tappable swatches.
     const isDbl = state.layers.length > 1;
-    // 9×9 gets 2 rows (9 marks split 5+4); 4×4 and 6×6 fit in one row.
+    // 9×9 gets 2 rows (9 marks split 5+5 with spacer); 4×4 and 6×6 fit in one row.
     const nRows = isDbl ? 1 : (state.n > 6 ? 2 : 1);
     const perRow = Math.ceil(swatches.length / nRows);
-    for (let k = 0; k < swatches.length; k += perRow)
+    // Pad the last (shorter) row with invisible spacers so flex:1 gives
+    // identical swatch widths across all rows (fixes 5+4 unevenness on 9×9).
+    const spacer = '<div class="swatch spacer" aria-hidden="true"></div>';
+    for (let k = 0; k < swatches.length; k += perRow) {
+      const row = swatches.slice(k, k + perRow);
+      while (row.length < perRow) row.push(spacer);
       rows += '<div class="prow' + (state.n > 4 ? " wrap" : "") + '">'
-            + swatches.slice(k, k + perRow).join("") + "</div>";
+            + row.join("") + "</div>";
+    }
   }
   const p = document.getElementById("palette");
   p.className = "palette pal-pad" + (state.n > 4 ? " tight" : "")
