@@ -725,7 +725,7 @@ const HUES = [
   { hex:"#ff6800", emoji:["🟧","🟧"], label:"Orange"    },   //  5 — vivid orange
   { hex:"#803e75", emoji:["🟪","🟪"], label:"Purple"    },   //  6 — strong purple
   { hex:"#a6bdd7", emoji:["⬜","⬜"], label:"Ice"       },   //  7 — very light blue
-  { hex:"#232c16", emoji:["⬛","⬛"], label:"Dark Olive" },   //  8 — dark olive green
+  { hex:"#f6768e", emoji:["🌸","🌸"], label:"Pink"       },   //  8 — purplish pink (replaces near-black Dark Olive — unplayable)
   { hex:"#593315", emoji:["🟫","🟫"], label:"Brown"     },   //  9 — deep yellowish brown
   { hex:"#ffb300", emoji:["🟨","🟨"], label:"Gold"      },   // 10 — vivid yellow (TODO: refine 10–16)
   { hex:"#cea262", emoji:["🟫","🟫"], label:"Sand"      },   // 11 — grayish yellow
@@ -1123,7 +1123,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.10.0";
+const CHROMOKU_VERSION = "v0.10.1";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -1137,9 +1137,10 @@ const DEV = (() => {
     return localStorage.getItem(LS_ADMIN) === "1";
   } catch { return false; }
 })();
-// On playtest builds the banner div is present — default admin ON so
-// the tester never has to hunt for the toggle or long-press.
-let adminMode = DEV || !!document.getElementById("playtestBanner");
+// On playtest builds: default admin ON, but an explicit "0" stored in LS_ADMIN
+// takes priority — so the tester can actually turn admin off and have it stay off.
+const _savedAdminVal = (() => { try { return localStorage.getItem(LS_ADMIN); } catch { return null; } })();
+let adminMode = _savedAdminVal === "1" || (_savedAdminVal === null && (DEV || !!document.getElementById("playtestBanner")));
 const LS_DAY   = "chromoku.debug-day.v1";   // debug: pin the daily puzzle to a date
 
 // Box dimensions for a given grid size. 4→2x2, 6→3x2, 9→3x3.
@@ -2072,7 +2073,11 @@ function loadLevel(n){
   if (isTutorialLevel(n)){
     state._tutHintLayer = 0; // Double mode: start by coaching the outer (donut) layer
     state._tutHintCount = 0; // how many auto-hints have fired this level (for power-up demo timing)
-    if (n === 0) state._tutPowerupDemo = false; // reset the one-shot demo on full tutorial restart
+    if (n === 0){
+      state._tutPowerupDemo = false; // reset the one-shot demo on full tutorial restart
+      // Brief announcement so the player knows they've entered the tutorial
+      setTimeout(() => toast("📚 Tutorial · 7 levels · follow the flashing cells"), 400);
+    }
     if (state._hintTimer) clearTimeout(state._hintTimer);
     if (state._hintInterval) clearInterval(state._hintInterval);
     // First hint after 1.5s; repeat every 4.5s.
@@ -3039,7 +3044,7 @@ function winTutorialLevel(lv){
         + (nextCfg.desc ? '<div style="font-size:12px;color:var(--ink-dim)">' + nextCfg.desc + '</div>' : '')
         + '</div>'
         + '<button class="btn" id="mTutNext">Continue →</button>'
-        + '<button class="btn ghost" id="mTutStop">Done for now</button>'
+        + '<button class="btn ghost" id="mTutStop">Skip to daily puzzle</button>'
       );
       document.getElementById("mTutNext").onclick = () => { closeModal(); loadLevel(lvNum + 1); };
       document.getElementById("mTutStop").onclick = () => { closeModal(); enterDaily(); };
@@ -4298,7 +4303,10 @@ function hintBestCell(layerIdx){
 // In non-tutorial mode, consumes a pool charge and tracks state.hints.flashes.
 // Does NOT fill the cell — just shows you where to look. No star penalty.
 function flashHint(isManual){
-  if (!state.lvl) return;
+  // state.lvl is null in daily/practice mode — that's fine, we use state.layers directly.
+  // Only early-exit if there's genuinely no board loaded.
+  if (state.mode === "levels" && !state.lvl) return;
+  if (!state.layers || !state.layers.length) return;
   const isTutManual = isManual && state.lvl && state.lvl.cfg.tutorial;
   if (isManual){
     if (state.done) return;
@@ -4404,9 +4412,9 @@ function flashHint(isManual){
   }
 
   // Consume resources for manual use — but not in tutorial (🔦 is free there).
-  if (isManual && state.mode === "levels" && !isTutManual){
+  if (isManual && !isTutManual){
     state.hints.flashes++;
-    usePoolCharge();
+    if (state.mode === "levels") usePoolCharge();
     const left = HINT_LIMITS.flashes - state.hints.flashes;
     toast("🔦 Flash hint · " + left + " left");
     renderPowerups();
@@ -4421,7 +4429,7 @@ function showAbout(){
       .inner { stroke: white; stroke-width: 1.5; }
     </style>`;
 
-  const HUES = ["#c10020","#007d34","#00538a","#f4c800","#ff6800","#803e75","#a6bdd7","#232c16","#593315","#ffb300","#cea262","#817066","#f6768e","#ff7a5c","#53377a","#ff8e00"];
+  const HUES = ["#c10020","#007d34","#00538a","#f4c800","#ff6800","#803e75","#a6bdd7","#f6768e","#593315","#ffb300","#cea262","#817066","#f6768e","#ff7a5c","#53377a","#ff8e00"];
 
   const pattern = [[0,1,2,3,4,5,6,7,8],[9,10,11,12,13,14,15,0,1],[2,3,4,5,6,7,8,9,10],[11,12,13,14,15,0,1,2,3],[4,5,6,7,8,9,10,11,12],[13,14,15,0,1,2,3,4,5],[6,7,8,9,10,11,12,13,14],[15,0,1,2,3,4,5,6,7],[8,9,10,11,12,13,14,15,0]];
   const innerPattern = [[8,9,10,11,12,13,14,15,0],[1,2,3,4,5,6,7,8,9],[10,11,12,13,14,15,0,1,2],[3,4,5,6,7,8,9,10,11],[12,13,14,15,0,1,2,3,4],[5,6,7,8,9,10,11,12,13],[14,15,0,1,2,3,4,5,6],[7,8,9,10,11,12,13,14,15],[0,1,2,3,4,5,6,7,8]];
@@ -4549,8 +4557,8 @@ function showWin(){
     "<h2>Solved</h2>"
     + '<p class="lede">' + SHARE_NAME + " #" + state.day + " · " + sizeOf(state.size).label + " " + diffOf2(state.diff, state.n).label + "</p>"
     + '<div class="win-time">' + fmtTime(elapsedMs()) + "</div>"
-    + '<div style="text-align:center;margin:6px 0">' + badgeIcon + '</div>'
-    + '<div class="badge-wrap" id="badgeWrap"></div>'
+    + '<div style="text-align:center;margin:14px 0 4px">' + badgeIcon + '</div>'
+    + '<div class="badge-wrap" id="badgeWrap" style="margin-top:8px"></div>'
     + (beatChall ? '<p class="lede" style="color:var(--ok)">⚡ Beat the challenge time!</p>' : '')
     + '<div class="stats">'
     + '<div class="stat"><div class="n">' + st.streak + '</div><div class="l">Streak</div></div>'

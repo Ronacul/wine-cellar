@@ -8,6 +8,15 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.10.1] 2026-08-26 — Fix game palette, admin off-persistence, flash hint in daily, tutorial UX
+
+- **Game palette fix — no more Dark Olive:** HUES[7] was `#232c16` (near-black dark olive) — invisible on small cells, indistinguishable from Brown. Replaced with `#f6768e` (Purplish Pink), a clearly playable, highly distinct colour. The quilt logo uses its own `QUILT_PAL` and was unaffected.
+- **Admin toggle persists OFF:** On playtest builds, admin defaulted ON every reload (playtest banner always present). Now an explicit "off" stored in localStorage survives reloads — long-press ⚙ or Settings toggle actually sticks.
+- **Flash hint works in daily mode:** `flashHint()` was guarded by `if (!state.lvl) return` — but `state.lvl` is null in daily mode. Guard now only blocks levels mode with no loaded level. Flash counter and toast also appear in daily.
+- **Share badge spacing:** Extra top margin between the difficulty subtitle and the canvas badge image in the win modal.
+- **Tutorial entry toast:** A brief "📚 Tutorial · 7 levels · follow the flashing cells" toast fires when tutorial level 0 starts, so the player knows they've entered tutorial mode.
+- **Tutorial intermediate button:** "Done for now" renamed to "Skip to daily puzzle" — clarifies where the button leads.
+
 ### [v0.10.0] 2026-08-26 — Advantages bar, context-aware banner, admin toggle, win badge
 
 - **Advantages bar in daily mode:** Flash (🔦) and Reveal (💡) buttons now visible below the board during daily puzzles — no longer buried behind the 💡 modal. Counts shown inline.
