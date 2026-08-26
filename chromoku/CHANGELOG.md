@@ -8,6 +8,12 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.10.2] 2026-08-26 — Fix tutorial auto-flash bleeding, flash count in share, admin in About modal
+
+- **Fix tutorial flash timer bleed:** Tutorial auto-hint interval was not cleared when entering daily mode — the timer kept calling `flashHint(false)`, which now runs in daily mode too (my v0.10.1 regression). Two-part fix: (1) `enterDaily()` now clears `_hintTimer` / `_hintInterval`; (2) auto-hint path in `flashHint()` guards against non-tutorial contexts.
+- **Flash count in share:** `🔦×N` now appears in text share and canvas badge when flash hints were used. Flash is free (no star penalty) so it stays distinct from 💡 reveals. Win modal badge also shows `🔦×N` as a separate line below the main hint indicator.
+- **Admin toggle in About modal:** Long-pressing the logo opens the About panel, which now has an Admin tools toggle at the bottom — much more discoverable than the buried Settings row. Toggling here also saves to localStorage correctly so OFF persists across reloads.
+
 ### [v0.10.1] 2026-08-26 — Fix game palette, admin off-persistence, flash hint in daily, tutorial UX
 
 - **Game palette fix — no more Dark Olive:** HUES[7] was `#232c16` (near-black dark olive) — invisible on small cells, indistinguishable from Brown. Replaced with `#f6768e` (Purplish Pink), a clearly playable, highly distinct colour. The quilt logo uses its own `QUILT_PAL` and was unaffected.

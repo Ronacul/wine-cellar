@@ -1123,7 +1123,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.10.1";
+const CHROMOKU_VERSION = "v0.10.2";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -2095,6 +2095,10 @@ function loadLevel(n){
 
 function enterDaily(){
   state.mode = "daily"; state.lvl = null; state.practice = false;
+  // Clear tutorial auto-hint timers — they fire flashHint(false) on a loop and
+  // must not bleed into daily mode when the player quits mid-tutorial.
+  if (state._hintTimer){ clearTimeout(state._hintTimer); state._hintTimer = null; }
+  if (state._hintInterval){ clearInterval(state._hintInterval); state._hintInterval = null; }
   // Apply today's scheduled config — size, diff, ruleset, mark set are all
   // determined by the day of the week. Player preference settings (scramble,
   // saved size/diff) are intentionally ignored for the daily puzzle so
@@ -3259,13 +3263,16 @@ function shareText(){
   const mods = (state.dbl ? " · Double" : "") + (state.scramble ? " · Scramble" : "");
   const st = load(LS_STATS, blankStats());
   const hintsUsed = totalHints();
+  const flashesUsed = state.hints.flashes;
   // 🧠 for clean solves; up to 3 💡 for hint use (capped so it stays compact)
+  // 🔦×N appended when flash hints were used (flash is free, shown separately)
   const hintBadge = hintsUsed === 0 ? " 🧠" : " " + "💡".repeat(Math.min(hintsUsed, 3));
+  const flashBit  = flashesUsed > 0 ? " 🔦×" + flashesUsed : "";
   const streakBit = st.streak > 1 ? " · 🔥" + st.streak : "";
   // Show actual mark glyphs on small grids — more interesting than row counts.
   // 9×9 and up use spoiler-free row counts (9 rows of 9 glyphs is too dense).
   const grid = state.n <= 6 ? emojiGrid(0) : spoilerFreeGrid();
-  return SHARE_NAME + " #" + state.day + " · " + sizeOf(state.size).label + " " + diffOf2(state.diff, state.n).label + mods + hintBadge + "\n"
+  return SHARE_NAME + " #" + state.day + " · " + sizeOf(state.size).label + " " + diffOf2(state.diff, state.n).label + mods + hintBadge + flashBit + "\n"
        + "⏱️ " + fmtTime(elapsedMs()) + streakBit + "\n"
        + "\n"
        + grid + "\n"
@@ -4155,17 +4162,20 @@ function renderShareBadge(){
     swX += swatchR * 2 + 5;
   }
 
-  // Hint badge or clean-solve indicator
+  // Hint badge or clean-solve indicator (💡 = real hints, 🔦 = flash, shown separately)
+  const flashesUsed = state.hints.flashes;
   const badgeY = swatchY + swatchR * 2 + 14;
   ctx.textAlign = "center";
   ctx.font = "13px system-ui,-apple-system,sans-serif";
-  if (hintsUsed === 0){
+  if (hintsUsed === 0 && flashesUsed === 0){
     ctx.fillStyle = ink;
     ctx.fillText("🧠 Solved clean", W / 2, badgeY);
   } else {
     ctx.fillStyle = dim;
-    ctx.fillText("💡".repeat(Math.min(hintsUsed, 3)) + (hintsUsed > 3 ? "+" : "")
-                 + "  " + hintsUsed + " hint" + (hintsUsed !== 1 ? "s" : ""), W / 2, badgeY);
+    let badgeTxt = "";
+    if (hintsUsed > 0) badgeTxt += "💡".repeat(Math.min(hintsUsed, 3)) + (hintsUsed > 3 ? "+" : "") + "  " + hintsUsed + " hint" + (hintsUsed !== 1 ? "s" : "");
+    if (flashesUsed > 0) badgeTxt += (badgeTxt ? "  " : "") + "🔦×" + flashesUsed;
+    ctx.fillText(badgeTxt, W / 2, badgeY);
   }
 
   // Game URL so recipients know where to play
@@ -4303,8 +4313,9 @@ function hintBestCell(layerIdx){
 // In non-tutorial mode, consumes a pool charge and tracks state.hints.flashes.
 // Does NOT fill the cell — just shows you where to look. No star penalty.
 function flashHint(isManual){
-  // state.lvl is null in daily/practice mode — that's fine, we use state.layers directly.
-  // Only early-exit if there's genuinely no board loaded.
+  // Auto-hints (from the tutorial timer) must only fire inside a tutorial level.
+  if (!isManual && !(state.mode === "levels" && state.lvl && state.lvl.cfg.tutorial)) return;
+  // Manual flash needs a loaded board; state.lvl is null in daily/practice — that's fine.
   if (state.mode === "levels" && !state.lvl) return;
   if (!state.layers || !state.layers.length) return;
   const isTutManual = isManual && state.lvl && state.lvl.cfg.tutorial;
@@ -4453,8 +4464,22 @@ function showAbout(){
     + '<p style="font-size:13px; color:var(--ink-dim); margin:16px 0; line-height:1.6">The logo above is a digital recreation of a quilt pattern made by the developer\'s mother. The nested squares represent Chromoku\'s Double mechanic — two puzzles, one unified solution. A tribute to the art of patterns and the joy of puzzles.</p>'
     + '<p style="font-size:12px; color:var(--ink-faint); margin-top:20px"><b>Coming:</b> Nov 8 daily puzzle featuring this exact pattern — a homage to quilting and motherhood.</p>'
     + '<p style="font-size:11px; color:var(--ink-faint); margin-top:16px; font-family:var(--mono)">' + CHROMOKU_VERSION + '</p>'
-    + '<button class="btn ghost" onclick="closeModal()">Done</button>'
+    + '<div class="toggle-row" style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">'
+    + '<div><div class="toggle-lbl" style="font-size:12px">Admin tools</div>'
+    + '<div class="toggle-desc" style="font-size:10px">Level jump · date pin · progress reset</div></div>'
+    + '<button class="toggle-sw' + (adminMode ? " on" : "") + '" id="abtTogAdmin" aria-label="Admin tools"></button>'
+    + '</div>'
+    + '<button class="btn ghost" onclick="closeModal()" style="margin-top:12px">Done</button>'
   );
+  const abtBtn = document.getElementById("abtTogAdmin");
+  if (abtBtn) abtBtn.onclick = () => {
+    adminMode = !adminMode;
+    try { localStorage.setItem(LS_ADMIN, adminMode ? "1" : "0"); } catch {}
+    if (adminMode) document.documentElement.classList.add("dev");
+    else document.documentElement.classList.remove("dev");
+    toast(adminMode ? "Admin ON" : "Admin OFF");
+    showAbout();  // re-open to refresh toggle state
+  };
 }
 
 function showStats(){
@@ -4544,15 +4569,21 @@ function showWin(){
   fireConfetti();
   const st = load(LS_STATS, blankStats());
   const hintsUsed = totalHints();
+  const flashesUsed = state.hints.flashes;
   // Challenge info — if they beat a friend's time, celebrate it
   const challTime = getChallengeTime();
   const beatChall = challTime && elapsedMs() < challTime * 1000;
-  const badgeIcon = hintsUsed === 0
+  // Flash hint is free — shown as a separate 🔦 line below the main badge
+  const flashLine = flashesUsed > 0
+    ? '<div style="font-size:11px;color:var(--ink-dim);font-family:var(--mono);letter-spacing:.06em;margin-top:-6px;margin-bottom:8px">🔦×' + flashesUsed + ' FLASH</div>'
+    : '';
+  const badgeIcon = (hintsUsed === 0 && flashesUsed === 0)
     ? '<div style="font-size:30px;line-height:1;margin-bottom:2px">🧠</div>'
       + '<div style="font-size:10px;color:var(--ok);font-family:var(--mono);letter-spacing:.08em;margin-bottom:10px">CLEAN SOLVE</div>'
-    : '<div style="font-size:26px;line-height:1;margin-bottom:2px">' + '💡'.repeat(Math.min(hintsUsed, 3)) + '</div>'
-      + '<div style="font-size:10px;color:var(--ink-dim);font-family:var(--mono);letter-spacing:.08em;margin-bottom:10px">'
-      + hintsUsed + ' HINT' + (hintsUsed !== 1 ? 'S' : '') + ' USED</div>';
+    : '<div style="font-size:26px;line-height:1;margin-bottom:2px">' + (hintsUsed > 0 ? '💡'.repeat(Math.min(hintsUsed, 3)) : '🧠') + '</div>'
+      + '<div style="font-size:10px;color:var(--ink-dim);font-family:var(--mono);letter-spacing:.08em;margin-bottom:4px">'
+      + (hintsUsed > 0 ? hintsUsed + ' HINT' + (hintsUsed !== 1 ? 'S' : '') + ' USED' : 'CLEAN SOLVE') + '</div>'
+      + flashLine;
   openModal(
     "<h2>Solved</h2>"
     + '<p class="lede">' + SHARE_NAME + " #" + state.day + " · " + sizeOf(state.size).label + " " + diffOf2(state.diff, state.n).label + "</p>"
