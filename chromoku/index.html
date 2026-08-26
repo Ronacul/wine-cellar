@@ -98,11 +98,14 @@ h1{
 .diffs::-webkit-scrollbar{display:none}
 .tiers{display:flex; flex-direction:column; gap:4px; align-items:center; max-width:100%}
 .axis-row{display:flex; gap:8px; align-items:center; max-width:100%}
-/* Size row and diff row (Latin/Double/Scramble/Levels) are admin-only for regular players.
-   The level bar (#diffRow) is restored during active level play regardless. */
-#sizeRow, #diffRow{display:none}
-html.dev #sizeRow, html.dev #diffRow{display:flex}
-html.in-level #diffRow{display:flex !important}
+/* Admin-only controls: hide the whole .tiers block for regular players so no
+   empty gap appears in the layout. Admins (html.dev) see size + diff rows.
+   During active level play (html.in-level) .tiers reappears to show the level
+   bar, but the size row stays hidden — levels choose their own config. */
+.tiers{display:none}
+html.dev .tiers{display:flex}
+html.in-level .tiers{display:flex !important}
+html.in-level #sizeRow{display:none !important}
 /* Layering is its own axis, so it sits outside the size ladder rather than
    pretending to be one more step along it. */
 .dbl{
@@ -2326,9 +2329,7 @@ function updateRegenChip(){
 }
 
 function renderLevelBar(){
-  // Hide the size row in level mode — levels pick their own config
-  const sr = document.getElementById("sizeRow");
-  if (sr) sr.style.display = "none";
+  // sizeRow is hidden during level play by CSS: html.in-level #sizeRow{display:none!important}
   const lv = state.lvl, p = progress();
   const stars = p.stars[String(lv.cfg.level)] || 0;
   const c = lv.cfg;
@@ -4620,8 +4621,6 @@ function showAbout(){
   if (abtBtn) abtBtn.onclick = () => {
     adminMode = !adminMode;
     try { localStorage.setItem(LS_ADMIN, adminMode ? "1" : "0"); } catch {}
-    if (adminMode) document.documentElement.classList.add("dev");
-    else document.documentElement.classList.remove("dev");
     syncAdminControls();
     toast(adminMode ? "Admin ON" : "Admin OFF");
     showAbout();  // re-open to refresh toggle state
@@ -4895,8 +4894,6 @@ function showSettings(){
   m.querySelector("#togAdmin").onclick = () => {
     adminMode = !adminMode;
     try { localStorage.setItem(LS_ADMIN, adminMode ? "1" : "0"); } catch {}
-    if (adminMode) document.documentElement.classList.add("dev");
-    else document.documentElement.classList.remove("dev");
     syncAdminControls();
     showSettings();
   };
@@ -4969,8 +4966,6 @@ document.getElementById("btnQuit").onclick = confirmQuit;
       _st = null;
       adminMode = !adminMode;
       try { localStorage.setItem(LS_ADMIN, adminMode ? "1" : "0"); } catch {}
-      if (adminMode) document.documentElement.classList.add("dev");
-      else document.documentElement.classList.remove("dev");
       syncAdminControls();
       toast(adminMode ? "Admin ON" : "Admin OFF");
       showSettings();
@@ -5009,26 +5004,13 @@ updateAddsBadge();
 //  markTutorialSeen();
 //}
 
-if (adminMode) document.documentElement.classList.add("dev");
-
-// An uncaught error used to leave a blank page with no way back. Show a panel
-// Admin controls sync — size row, diff row (Latin/Double/Scramble/Levels) are admin-only.
-// The CSS already hides them by default; this function also keeps inline display in sync
-// (e.g. when renderLevelBar() clears them individually during level play).
+// Sync admin state: html.dev class drives CSS visibility of .tiers (size + diff rows).
+// Also redraws the day-nav strip so the Levels chip appears/disappears for admins.
 // Call whenever adminMode changes.
 function syncAdminControls(){
-  // sizeRow and diffRow visibility is handled entirely by CSS classes:
-  //   html.dev → shown; html.in-level → diffRow forced visible; otherwise hidden.
-  // Individual toggles inside diffRow that renderLevelBar hides inline:
-  for (const id of ["latinToggle","dblToggle","scrambleToggle"]){
-    const b = document.getElementById(id);
-    if (b && !document.documentElement.classList.contains("in-level")){
-      b.style.display = adminMode ? "" : "none";
-    }
-  }
-  // lvlToggle: still in diffRow (admin panel), and also in dayNav strip (renderDailyNav redraws it)
-  const lb = document.getElementById("lvlToggle");
-  if (lb) lb.style.display = adminMode ? "" : "none";
+  if (adminMode) document.documentElement.classList.add("dev");
+  else document.documentElement.classList.remove("dev");
+  renderDailyNav();
 }
 syncAdminControls();
 
