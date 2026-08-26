@@ -8,6 +8,14 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.10.5] 2026-08-26 — Full-screen levels, stars on share tile, win banner, 15s add, bundle offer
+
+- **Full-screen levels:** Header (logo, nav buttons) hides during active level play. The level bar takes over: ← Back, ↶ Undo, ↻ Reset now live in the level bar left section. Undo stays in sync (disabled when history is empty). Header restores on returning to daily.
+- **Stars on share tile:** In levels mode the earned star rating (★★★) appears between the title and subtitle lines on the canvas badge — so the shared image shows your score without needing to annotate it.
+- **Win banner:** A compact sponsored strip appears at the bottom of the win modal (both daily and levels). Natural break moment, non-intrusive, cycles through mock creatives.
+- **Level add-time → 15s:** `LEVEL_ADD_SECS = 15`. Watching the quick ad in levels now gives 15s (was 30s — same as daily, felt too generous for shorter puzzles).
+- **Premium bundle offer:** In the out-of-time modal, two ad tiers are shown side by side: ⏰ Watch 15s → +15s (N left), and 🎁 Watch 30s → +30s + 2 reveals. Bundle grants `BUNDLE_BONUS = 2` extra reveals via `state.bonusReveals`. Not aggressive — opt-in only at the natural fail-state moment.
+
 ### [v0.10.4] 2026-08-26 — Share tile redesign, 2-per-row win buttons, clock badge for time hints
 
 - **Share tile — no swatches:** Removed the swatch-dot row from the canvas badge. The completed puzzle already shows every colour — the dots were redundant. Footer is now: `[gap] hint line (if any) [URL]`.

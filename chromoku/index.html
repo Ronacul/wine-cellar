@@ -53,6 +53,10 @@ body{background:var(--bg);color:var(--ink)}
 button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer}
 
 /* ================= header ================= */
+/* Full-screen play: hide the header entirely during an active level. The level
+   bar (inside #diffs) shows Level N, theme, timer, and hearts. Undo and reset
+   move into that bar so nothing critical is lost. */
+html.in-level header { display:none }
 header{
   width:100%; max-width:min(460px,100%); display:grid;
   grid-template-columns:1fr auto 1fr; align-items:center; gap:4px;
@@ -1148,7 +1152,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.10.4";
+const CHROMOKU_VERSION = "v0.10.5";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -1829,6 +1833,7 @@ const state = {
   history:[],              // stack of { entries:[{L,i,prev}] } — one per user gesture
   bookmark:null,           // { layers:[grid, ...] } — single-slot board snapshot
   hints:{ reveals:0, freezes:0, adds:0, flashes:0 },   // hint usage this puzzle
+  bonusReveals:0,          // extra reveal capacity granted by the premium ad bundle
   adShown:false,           // true once the 5-hint interstitial has fired this puzzle
   frozenUntil:0,           // timestamp: clock display freezes until
 };
@@ -2023,7 +2028,7 @@ function loadPuzzle(sizeId, diffId, fresh){
     }
     state.elapsed = 0; state.mistakes = 0; state.done = false; state.started = false;
     state.bookmark = null;
-    state.hints = { reveals:0, freezes:0, adds:0, flashes:0 }; state.adShown = false;
+    state.hints = { reveals:0, freezes:0, adds:0, flashes:0 }; state.bonusReveals = 0; state.adShown = false;
   }
   state.since = null; state.sel = null; state.erase = false;
   state.history = []; state.frozenUntil = 0;
@@ -2084,7 +2089,7 @@ function loadLevel(n){
   state.elapsed = 0; state.since = null; state.started = false;
   state.mistakes = 0; state.done = false; state.sel = null; state.erase = false;
   state.history = []; state.bookmark = null;
-  state.hints = { reveals:0, freezes:0, adds:0, flashes:0 }; state.adShown = false; state.frozenUntil = 0;
+  state.hints = { reveals:0, freezes:0, adds:0, flashes:0 }; state.bonusReveals = 0; state.adShown = false; state.frozenUntil = 0;
 
   // Don't overwrite the player's highest-level progress when replaying tutorial.
   // Tutorial replay uses levels 0–6; we only advance, never regress.
@@ -2124,6 +2129,8 @@ function enterDaily(){
   // must not bleed into daily mode when the player quits mid-tutorial.
   if (state._hintTimer){ clearTimeout(state._hintTimer); state._hintTimer = null; }
   if (state._hintInterval){ clearInterval(state._hintInterval); state._hintInterval = null; }
+  // Restore header — full-screen play mode only applies during active levels
+  document.documentElement.classList.remove("in-level");
   // Apply today's scheduled config — size, diff, ruleset, mark set are all
   // determined by the day of the week. Player preference settings (scramble,
   // saved size/diff) are intentionally ignored for the daily puzzle so
@@ -2340,7 +2347,11 @@ function renderLevelBar(){
             + (c.layers > 1 ? " ×2" : "");
   document.getElementById("diffs").outerHTML =
     '<div class="levelbar" id="diffs">'
-    + '<div class="lvl-l"><button class="icon-btn" id="lvBack" aria-label="Back to daily">←</button></div>'
+    + '<div class="lvl-l">'
+    + '<button class="icon-btn" id="lvBack" aria-label="Back to daily">←</button>'
+    + '<button class="icon-btn" id="lvUndo" aria-label="Undo" title="Undo" disabled>↶</button>'
+    + '<button class="icon-btn" id="lvReset" aria-label="Reset puzzle" title="Reset">↻</button>'
+    + '</div>'
     + '<div class="lvl-c"><b>Level ' + c.level
     + (c.peek ? ' <span class="pk">' + (c.peekOf || "ahead") + "</span>" : "") + "</b>"
     + '<span class="lvl-sub">' + (c.peek ? "Preview" : c.theme.name) + " · " + tag
@@ -2352,7 +2363,11 @@ function renderLevelBar(){
     + "</div>";
   const tw = document.getElementById("tbarwrap");
   if (tw) tw.style.display = "";
+  // Enter full-screen play mode — header hidden, controls live in the level bar
+  document.documentElement.classList.add("in-level");
   document.getElementById("lvBack").onclick = confirmQuitLevel;
+  document.getElementById("lvUndo").onclick = undo;
+  document.getElementById("lvReset").onclick = confirmReset;
   renderPowerups();
   // The axis toggles belong to the daily; a level chooses its own config.
   for (const id of ["latinToggle", "dblToggle", "scrambleToggle", "lvlToggle"]){
@@ -2795,10 +2810,13 @@ function resumeTimer(){
   }
 }
 
-function showAddTimeModal(){
+function showAddTimeModal(useBundle){
   if (!state.lvl || !state.lvl.cfg) return;
   pauseTimer();
-  let secs = ADD_SECS;
+  // Level mode: quick = 15s, bundle = 30s+bonus. Daily always 30s.
+  const quickSecs = state.mode === "levels" ? LEVEL_ADD_SECS : ADD_SECS;
+  const rewardSecs = useBundle ? BUNDLE_ADD_SECS : quickSecs;
+  let secs = rewardSecs;
 
   // Randomly pick one of three mock ad creatives so it feels alive
   const mockAds = [
@@ -2826,7 +2844,8 @@ function showAddTimeModal(){
     +   '</div>'
     + '</div>'
     + '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px">'
-    +   '<div style="font-size:12px;color:var(--ink-dim)">Watch to earn <b>+' + ADD_SECS + 's</b></div>'
+    +   '<div style="font-size:12px;color:var(--ink-dim)">Watch to earn <b>+' + rewardSecs + 's'
+    +     (useBundle ? ' + ' + BUNDLE_BONUS + ' reveals 🎁' : '') + '</b></div>'
     +   '<div id="addCountdown" style="font-size:22px;font-weight:800;font-family:var(--mono);color:var(--ink);min-width:36px;text-align:right">' + secs + 's</div>'
     + '</div>'
   );
@@ -2838,7 +2857,8 @@ function showAddTimeModal(){
     if (secs <= 0){
       clearInterval(countdown);
       state.hints.adds++;
-      state.limitMs += ADD_SECS * 1000;
+      state.limitMs += rewardSecs * 1000;
+      if (useBundle) state.bonusReveals = (state.bonusReveals || 0) + BUNDLE_BONUS;
       // failLevel() sets state.done = true before calling this modal.
       // Clear it so the puzzle is actually playable again.
       state.done = false;
@@ -2849,7 +2869,10 @@ function showAddTimeModal(){
       saveProgress();
       closeModal();
       resumeTimer();
-      toast("⏰ +" + ADD_SECS + "s — keep going!");
+      const msg = useBundle
+        ? "🎁 +" + rewardSecs + "s + " + BUNDLE_BONUS + " reveals — go!"
+        : "⏰ +" + rewardSecs + "s — keep going!";
+      toast(msg);
     }
   }, 1000);
 }
@@ -2897,8 +2920,11 @@ function undo(){
 }
 
 function paintUndo(){
+  const disabled = state.done || state.history.length === 0;
   const b = document.getElementById("btnUndo");
-  if (b) b.disabled = state.done || state.history.length === 0;
+  if (b) b.disabled = disabled;
+  const lb = document.getElementById("lvUndo");
+  if (lb) lb.disabled = disabled;
 }
 
 // --------------- completion fade ---------------
@@ -3152,6 +3178,7 @@ function winLevel(){
       + '<button class="btn ghost" id="mRetry" style="margin:0">Replay</button>'
       + '<button class="btn ghost" id="mStop" style="margin:0">Done for now</button>'
       + '</div>'
+      + winBannerHTML()
     );
     try {
       const badge = renderShareBadge();
@@ -3185,7 +3212,15 @@ function failLevel(){
   setTimeout(() => board.classList.remove("shake"), 500);
 
   const out = p.lives <= 0;
-  const addTimeAvailable = state.hints.adds < HINT_LIMITS.adds;
+  const addLeft = HINT_LIMITS.adds - state.hints.adds;
+  const addTimeAvailable = addLeft > 0;
+
+  const adBtns = addTimeAvailable
+    ? '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">'
+      + '<button class="btn ghost" id="mAddTime" style="margin:0;font-size:12px">⏰ +' + LEVEL_ADD_SECS + 's<br><span style="font-size:10px;opacity:.6;font-weight:400">watch 15s · ' + addLeft + ' left</span></button>'
+      + '<button class="btn" id="mAddBundle" style="margin:0;font-size:12px">🎁 +' + BUNDLE_ADD_SECS + 's + ' + BUNDLE_BONUS + ' reveals<br><span style="font-size:10px;opacity:.8;font-weight:400">watch 30s</span></button>'
+      + '</div>'
+    : '';
 
   openModal(
     "<h2>Out of time</h2>"
@@ -3195,17 +3230,10 @@ function failLevel(){
     + (out
         ? '<p class="lede">No lives left. One returns in <b id="outLivesIn">'
           + fmtTime(nextLifeMs(p)) + "</b>.</p>"
-          + (addTimeAvailable
-              ? '<button class="btn" id="mAddTime">⏰ Watch ad for +' + ADD_SECS + 's</button>'
-                + '<p class="lede" style="margin-top:-4px;font-size:11px;color:var(--ink-dim)">'
-                + 'Uses 1 of ' + (HINT_LIMITS.adds - state.hints.adds) + ' remaining add views</p>'
-              : "")
-          + '<button class="btn ghost" id="mBack">Back to daily</button>'
+          + adBtns
+          + '<button class="btn ghost" id="mBack" style="margin-top:8px">Back to daily</button>'
         : '<button class="btn" id="mRetry">Try again</button>'
-          + (addTimeAvailable
-              ? '<button class="btn ghost" id="mAddTime">⏰ Watch ad for +' + ADD_SECS + 's'
-                + ' <span style="font-size:11px;opacity:.65">(' + (HINT_LIMITS.adds - state.hints.adds) + ' left)</span></button>'
-              : "")
+          + adBtns
           + '<button class="btn ghost" id="mBack">Back to daily</button>')
   );
 
@@ -3216,20 +3244,14 @@ function failLevel(){
   if (addBtn) {
     addBtn.onclick = () => {
       if (state.hints.adds >= HINT_LIMITS.adds) { toast("No adds left"); return; }
-      closeModal();
-      showAddTimeModal();
+      closeModal(); showAddTimeModal(false);
     };
   }
-
-  const adBtn = document.getElementById("mWatchAd");
-  if (adBtn) {
-    adBtn.onclick = () => {
-      // TODO: Integrate with ad network (Google AdMob, etc)
-      closeModal();
-      state.frozenUntil = 0;
-      startTimer();
-      saveProgress();
-      toast("⏰ +30s from ad");
+  const bundleBtn = document.getElementById("mAddBundle");
+  if (bundleBtn) {
+    bundleBtn.onclick = () => {
+      if (state.hints.adds >= HINT_LIMITS.adds) { toast("No adds left"); return; }
+      closeModal(); showAddTimeModal(true);
     };
   }
 
@@ -3612,6 +3634,24 @@ function recordLeaderboard(){
   save(LS_BOARD, board);
 }
 
+// Compact sponsored banner for win modals — natural break, non-intrusive.
+function winBannerHTML(){
+  const ads = [
+    { icon:"🎮", brand:"GameZone Plus",  line:"500+ brain puzzles — free to play" },
+    { icon:"☕", brand:"Morning Brew",    line:"News that doesn't suck" },
+    { icon:"🌿", brand:"NatureBox",       line:"Snacks you'll actually love" },
+  ];
+  const a = ads[Math.floor(Math.random() * ads.length)];
+  return '<div style="margin-top:14px;border-top:1px solid var(--line);padding-top:10px">'
+    + '<div style="font-size:9px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Sponsored</div>'
+    + '<div style="display:flex;align-items:center;gap:10px;background:var(--panel2);border-radius:10px;padding:10px 12px">'
+    + '<div style="font-size:26px;flex-shrink:0">' + a.icon + '</div>'
+    + '<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:700;color:var(--ink)">' + a.brand + '</div>'
+    + '<div style="font-size:11px;color:var(--ink-dim);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + a.line + '</div></div>'
+    + '<button style="flex-shrink:0;font-size:11px;font-weight:700;background:#4a8feb;color:#fff;border-radius:8px;padding:6px 12px;white-space:nowrap">Try it</button>'
+    + '</div></div>';
+}
+
 function leaderboardHTML(){
   const board = load(LS_BOARD, {});
   const today = dayNumber();
@@ -3650,7 +3690,10 @@ async function copyText(text){
 // dents the star rating so there is a reason not to, but never blocks progress.
 const HINT_LIMITS = { reveals:3, freezes:2, adds:2, flashes:5 };
 const FREEZE_SECS = 15;
-const ADD_SECS = 30;
+const ADD_SECS = 30;          // daily add-time (seconds)
+const LEVEL_ADD_SECS = 15;    // level add-time — shorter, same watch duration
+const BUNDLE_ADD_SECS = 30;   // premium bundle: watch 30s → +30s + extra reveals
+const BUNDLE_BONUS = 2;       // extra reveals granted by the bundle
 
 // Regenerating power-up pool — global across levels, stored in progress.
 // Pool recharges one unit every POOL_REGEN_MIN minutes, capped at POOL_MAX.
@@ -3800,7 +3843,7 @@ function renderPowerups(){
   // ── Daily / practice: flash + reveal only (no pool gate, no freeze/add) ──
   if (state.mode !== "levels"){
     el.style.display = "";
-    const revLeft = HINT_LIMITS.reveals - state.hints.reveals;
+    const revLeft = HINT_LIMITS.reveals + (state.bonusReveals || 0) - state.hints.reveals;
     const flsLeft = HINT_LIMITS.flashes - state.hints.flashes;
     el.innerHTML =
       '<span style="font-size:9px;color:var(--ink-dim);font-family:var(--mono)">Advantages</span> '
@@ -3817,7 +3860,7 @@ function renderPowerups(){
     return;
   }
   el.style.display = "";
-  const revLeft = HINT_LIMITS.reveals - state.hints.reveals;
+  const revLeft = HINT_LIMITS.reveals + (state.bonusReveals || 0) - state.hints.reveals;
   const frzLeft = HINT_LIMITS.freezes - state.hints.freezes;
   const addLeft = HINT_LIMITS.adds - state.hints.adds;
   const flsLeft = HINT_LIMITS.flashes - state.hints.flashes;
@@ -3893,7 +3936,7 @@ function confirmQuit(){
 function showHintModal(){
   if (state.done){ toast("Puzzle already solved"); return; }
   const isLvl = state.mode === "levels";
-  const revLeft = HINT_LIMITS.reveals - state.hints.reveals;
+  const revLeft = HINT_LIMITS.reveals + (state.bonusReveals || 0) - state.hints.reveals;
   const frzLeft = HINT_LIMITS.freezes - state.hints.freezes;
   const addLeft = HINT_LIMITS.adds - state.hints.adds;
   const flsLeft = HINT_LIMITS.flashes - state.hints.flashes;
@@ -3943,7 +3986,7 @@ function showHintModal(){
 
 function revealCell(){
   if (state.done) return;
-  if (state.hints.reveals >= HINT_LIMITS.reveals){ toast("No reveals left"); return; }
+  if (state.hints.reveals >= HINT_LIMITS.reveals + (state.bonusReveals || 0)){ toast("No reveals left"); return; }
   if (state.mode === "levels" && poolRemaining() <= 0){ toast("Power-up pool empty — recharges over time"); return; }
   // Collect all empty, non-given cells across all layers
   const empties = [];
@@ -4094,10 +4137,16 @@ function renderShareBadge(){
   const flashesUsedBadge = state.hints.flashes;
   const hasHintsBadge = hintsUsedBadge > 0 || flashesUsedBadge > 0;
 
-  // Header: two text lines + gap before board
-  const line1Y = pad + 22;   // title baseline
-  const line2Y = pad + 42;   // subtitle baseline
-  const headerH = line2Y + boardGap;   // board starts here
+  // Stars between lines for levels (non-tutorial)
+  const isLevelBadge = state.mode === "levels" && !!state.lvl && !isTutorialLevel(state.lvl.cfg.level);
+  const levelStarsBadge = isLevelBadge ? starsFor(Math.round(elapsedMs() / 1000), state.lvl.par) : 0;
+  const starsRowH = isLevelBadge ? 22 : 0;
+
+  // Header: title + optional star row + subtitle + gap before board
+  const line1Y  = pad + 22;       // title baseline
+  const starsY  = pad + 38;       // star row (only if level mode)
+  const line2Y  = pad + 38 + starsRowH;   // subtitle, pushed down when stars present
+  const headerH = line2Y + boardGap;      // board starts here
 
   // Footer: same gap + optional hint line + URL + bottom pad
   const footerH = boardGap + (hasHintsBadge ? 18 : 0) + 16 + 12;
@@ -4134,8 +4183,21 @@ function renderShareBadge(){
     ? SHARE_NAME + " · Level " + state.lvl.cfg.level
     : SHARE_NAME + " #" + state.day;
   ctx.fillText(title, W / 2, line1Y);
+
+  // Stars between title and subtitle (levels mode only)
+  if (isLevelBadge) {
+    const starGap = 24;
+    const starStartX = W / 2 - starGap;   // 3 stars centred
+    ctx.font = "bold 16px system-ui,-apple-system,sans-serif";
+    for (let i = 1; i <= 3; i++) {
+      ctx.fillStyle = i <= levelStarsBadge ? "#f1c40f" : (dark ? "#3a3a55" : "#d0d0e0");
+      ctx.fillText("★", starStartX + (i - 1) * starGap, starsY);
+    }
+  }
+
   ctx.fillStyle = dim;
   ctx.font = "12px ui-monospace,monospace";
+  ctx.textAlign = "center";
   const st = load(LS_STATS, blankStats());
   const streakStr = state.mode !== "levels" && st.streak > 1
     ? " · 🔥" + st.streak : "";
@@ -4675,6 +4737,7 @@ function showWin(){
     + '<button class="btn ghost" onclick="closeModal()" style="margin:0">Close</button>'
     + '</div>'
     + leaderboardHTML()
+    + winBannerHTML()
   );
   // Render the share badge canvas into the modal
   try {
