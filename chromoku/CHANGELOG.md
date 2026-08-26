@@ -8,6 +8,14 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.10.4] 2026-08-26 — Share tile redesign, 2-per-row win buttons, clock badge for time hints
+
+- **Share tile — no swatches:** Removed the swatch-dot row from the canvas badge. The completed puzzle already shows every colour — the dots were redundant. Footer is now: `[gap] hint line (if any) [URL]`.
+- **Share tile — symmetric spacing:** The gap between the subtitle and the board top now mirrors exactly below the board before the hint/URL block, giving the puzzle more visual breathing room.
+- **Share tile — compact hint line:** Single mono line showing only the hint types actually used: `💡×N` (reveals), `⏱×N` (freeze/add-time), `🔦×N` (flash). Nothing shown for a clean solve.
+- **Win modal — 2-per-row buttons:** Share / Copy text / ⚡ Challenge / Close arranged in a 2-column grid, roughly halving the modal height. Same layout in the levels win modal (Share / Next level / Replay / Done for now).
+- **Win modal badge — clock icon for time hints:** Freeze and add-time hints now show ⏱️ in the modal badge instead of being lumped into 💡. Reveals show 💡, time hints show ⏱️, flash shows 🔦 — each type visually distinct.
+
 ### [v0.10.3] 2026-08-26 — Win modal compact, clean-win minimalism, 300×250 banner, day navigation
 
 - **Win modal — stars inline (levels):** Stars moved next to the level title in a flex row instead of occupying their own full-height row. Saves ~40px of vertical space.

@@ -1148,7 +1148,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.10.3";
+const CHROMOKU_VERSION = "v0.10.4";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -3146,10 +3146,12 @@ function winLevel(){
       + '<div class="stat"><div class="n">' + fmtTime(lv.par * 1000) + '</div><div class="l">Par</div></div>'
       + '<div class="stat"><div class="n">' + progress().lives + '</div><div class="l">Lives</div></div>'
       + "</div>"
-      + '<button class="btn" id="shareBtn">Share badge</button>'
-      + '<button class="btn ghost" id="mNext">Next level</button>'
-      + '<button class="btn ghost" id="mRetry">Replay</button>'
-      + '<button class="btn ghost" id="mStop">Done for now</button>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">'
+      + '<button class="btn" id="shareBtn" style="margin:0">Share</button>'
+      + '<button class="btn ghost" id="mNext" style="margin:0">Next level</button>'
+      + '<button class="btn ghost" id="mRetry" style="margin:0">Replay</button>'
+      + '<button class="btn ghost" id="mStop" style="margin:0">Done for now</button>'
+      + '</div>'
     );
     try {
       const badge = renderShareBadge();
@@ -4074,7 +4076,7 @@ function renderShareBadge(){
   const cGap = n <= 4 ? 4 : n <= 9 ? 2 : 1;
   const bGap = state.latin ? cGap : (n <= 4 ? 10 : n <= 9 ? 7 : 4);
   const pad = 20;
-  const headerH = 56, footerH = 64;
+  const boardGap = 22;   // space between subtitle and board top (mirrored below)
 
   // Board pixel dimensions
   let boardW, boardH;
@@ -4087,8 +4089,21 @@ function renderShareBadge(){
     boardH = bpc * (bh * cellSz + (bh - 1) * cGap) + (bpc - 1) * bGap;
   }
 
+  // Hint counts needed for footer height calculation
+  const hintsUsedBadge = totalHints();
+  const flashesUsedBadge = state.hints.flashes;
+  const hasHintsBadge = hintsUsedBadge > 0 || flashesUsedBadge > 0;
+
+  // Header: two text lines + gap before board
+  const line1Y = pad + 22;   // title baseline
+  const line2Y = pad + 42;   // subtitle baseline
+  const headerH = line2Y + boardGap;   // board starts here
+
+  // Footer: same gap + optional hint line + URL + bottom pad
+  const footerH = boardGap + (hasHintsBadge ? 18 : 0) + 16 + 12;
+
   const W = boardW + pad * 2;
-  const H = headerH + boardH + footerH + pad;
+  const H = headerH + boardH + footerH;
   const canvas = document.createElement("canvas");
   canvas.width = Math.round(W * dpr);
   canvas.height = Math.round(H * dpr);
@@ -4118,7 +4133,7 @@ function renderShareBadge(){
   const title = state.mode === "levels"
     ? SHARE_NAME + " · Level " + state.lvl.cfg.level
     : SHARE_NAME + " #" + state.day;
-  ctx.fillText(title, W / 2, pad + 20);
+  ctx.fillText(title, W / 2, line1Y);
   ctx.fillStyle = dim;
   ctx.font = "12px ui-monospace,monospace";
   const st = load(LS_STATS, blankStats());
@@ -4129,7 +4144,7 @@ function renderShareBadge(){
     : (state.latin ? "Latin " : "") + sizeOf(state.size).label + " " + diffOf2(state.diff, state.n).label
       + (state.dbl ? " · Double" : "") + (state.scramble ? " · Scramble" : "")
       + " · " + fmtTime(elapsedMs()) + streakStr;
-  ctx.fillText(sub, W / 2, pad + 38);
+  ctx.fillText(sub, W / 2, line2Y);
 
   // Draw each cell
   const bx = pad, by = headerH;
@@ -4215,42 +4230,28 @@ function renderShareBadge(){
     }
   }
 
-  // ── Footer: palette swatch dots + hint/clean badge + game URL ────────────
-  const hintsUsed = totalHints();
-
-  // Row of small colour dots — one per mark, centred under the board
-  const swatchY  = by + boardH + 12;
-  const swatchR  = 5;
-  const swCount  = MARKS.length;          // all marks for this puzzle
-  const swSpan   = swCount * (swatchR * 2) + (swCount - 1) * 5;
-  let   swX      = (W - swSpan) / 2 + swatchR;
-  for (let i = 0; i < swCount; i++){
-    ctx.fillStyle = MARKS[i].hex || ink;
-    ctx.beginPath();
-    ctx.arc(swX, swatchY + swatchR, swatchR, 0, Math.PI * 2);
-    ctx.fill();
-    swX += swatchR * 2 + 5;
-  }
-
-  // Clean win: no badge text — the board + swatches are the share. Hint wins get a badge line.
-  const flashesUsed = state.hints.flashes;
-  const isCleanBadge = hintsUsed === 0 && flashesUsed === 0;
-  const urlY = swatchY + swatchR * 2 + (isCleanBadge ? 14 : 28);
+  // ── Footer: optional hint line + game URL ─────────────────────────────────
+  // The completed puzzle already shows every colour — no swatches needed.
   ctx.textAlign = "center";
-  if (!isCleanBadge){
-    const badgeY = swatchY + swatchR * 2 + 14;
-    ctx.font = "13px system-ui,-apple-system,sans-serif";
+  let footerY = headerH + boardH + boardGap;
+
+  if (hasHintsBadge){
+    ctx.font = "11px ui-monospace,monospace";
     ctx.fillStyle = dim;
-    let badgeTxt = "";
-    if (hintsUsed > 0) badgeTxt += "💡".repeat(Math.min(hintsUsed, 3)) + (hintsUsed > 3 ? "+" : "") + "  " + hintsUsed + " hint" + (hintsUsed !== 1 ? "s" : "");
-    if (flashesUsed > 0) badgeTxt += (badgeTxt ? "  " : "") + "🔦×" + flashesUsed;
-    ctx.fillText(badgeTxt, W / 2, badgeY);
+    let hintTxt = "";
+    const reveals = state.hints.reveals;
+    const timeHints = state.hints.freezes + state.hints.adds;
+    if (reveals > 0)   hintTxt += "💡×" + reveals;
+    if (timeHints > 0) hintTxt += (hintTxt ? "  " : "") + "⏱×" + timeHints;
+    if (flashesUsedBadge > 0) hintTxt += (hintTxt ? "  " : "") + "🔦×" + flashesUsedBadge;
+    ctx.fillText(hintTxt, W / 2, footerY);
+    footerY += 18;
   }
 
   // Game URL so recipients know where to play
   ctx.fillStyle = dim;
   ctx.font = "9px ui-monospace,monospace";
-  ctx.fillText("ronacul.github.io/wine-cellar/chromoku", W / 2, urlY);
+  ctx.fillText("ronacul.github.io/wine-cellar/chromoku", W / 2, footerY);
 
   return canvas;
 }
@@ -4645,16 +4646,15 @@ function showWin(){
   // Clean win: no badge icon — the board canvas is the share artefact.
   // Hint wins: 💡×N + optional 🔦×N flash line.
   const isClean = hintsUsed === 0 && flashesUsed === 0;
-  const flashLine = !isClean && flashesUsed > 0
-    ? '<div style="font-size:11px;color:var(--ink-dim);font-family:var(--mono);letter-spacing:.06em;margin-top:2px">🔦×' + flashesUsed + ' flash</div>'
-    : '';
+  // Build per-type hint chips for the modal badge
+  const reveals = state.hints.reveals;
+  const timeHints = state.hints.freezes + state.hints.adds;
+  let badgeChips = '';
+  if (reveals > 0)   badgeChips += '<span style="font-size:20px">💡</span><span style="font-size:11px;font-family:var(--mono);color:var(--ink-dim)">×' + reveals + '</span> ';
+  if (timeHints > 0) badgeChips += '<span style="font-size:20px">⏱️</span><span style="font-size:11px;font-family:var(--mono);color:var(--ink-dim)">×' + timeHints + '</span> ';
+  if (flashesUsed > 0) badgeChips += '<span style="font-size:18px">🔦</span><span style="font-size:11px;font-family:var(--mono);color:var(--ink-dim)">×' + flashesUsed + '</span>';
   const badgeIcon = isClean ? '' :
-    '<div style="text-align:center;margin:12px 0 0">'
-    + '<div style="font-size:26px;line-height:1;margin-bottom:2px">' + '💡'.repeat(Math.min(hintsUsed, 3)) + '</div>'
-    + '<div style="font-size:10px;color:var(--ink-dim);font-family:var(--mono);letter-spacing:.08em;margin-bottom:2px">'
-    + hintsUsed + ' HINT' + (hintsUsed !== 1 ? 'S' : '') + ' USED</div>'
-    + flashLine
-    + '</div>';
+    '<div style="text-align:center;margin:10px 0 0;line-height:1.6">' + badgeChips + '</div>';
   openModal(
     "<h2>Solved</h2>"
     + '<p class="lede">' + SHARE_NAME + " #" + state.day + " · " + sizeOf(state.size).label + " " + diffOf2(state.diff, state.n).label + "</p>"
@@ -4668,11 +4668,13 @@ function showWin(){
     + '<div class="stat"><div class="n">' + fmtTime((st.best[compositeId(state.size, state.diff)] || 0) * 1000)
     + '</div><div class="l">Best</div></div>'
     + "</div>"
-    + '<button class="btn" id="shareBtn">Share badge</button>'
-    + '<button class="btn ghost" id="shareTxt">Copy as text</button>'
-    + '<button class="btn ghost" id="challBtn">⚡ Challenge a friend</button>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">'
+    + '<button class="btn" id="shareBtn" style="margin:0">Share</button>'
+    + '<button class="btn ghost" id="shareTxt" style="margin:0">Copy text</button>'
+    + '<button class="btn ghost" id="challBtn" style="margin:0">⚡ Challenge</button>'
+    + '<button class="btn ghost" onclick="closeModal()" style="margin:0">Close</button>'
+    + '</div>'
     + leaderboardHTML()
-    + '<button class="btn ghost" onclick="closeModal()">Close</button>'
   );
   // Render the share badge canvas into the modal
   try {
