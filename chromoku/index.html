@@ -658,7 +658,6 @@ html.dev #adminBar{display:flex}
   <div class="hdr-l">
     <button class="icon-btn logo-btn" id="btnLogo" title="How to play" aria-label="Help" style="width:40px;height:40px;padding:0;border-radius:10px;overflow:hidden;background:#050505;flex-shrink:0"></button>
     <button class="icon-btn" id="btnUndo" title="Undo last move" aria-label="Undo" disabled>↶</button>
-    <button class="icon-btn" id="btnStats" title="Help &amp; stats" aria-label="Help and stats" style="font-size:17px;font-weight:700">?</button>
   </div>
   <div>
     <h1>Chromoku</h1>
@@ -666,9 +665,9 @@ html.dev #adminBar{display:flex}
   </div>
   <div class="hdr-r">
     <span class="timer" id="timer">0:00</span>
-    <button class="icon-btn hint" id="btnHint" title="Get hints" aria-label="Hints" style="position:relative">💡<span id="addsRemaining" style="position:absolute;top:-4px;right:-6px;background:#ff6800;color:white;border-radius:50%;width:18px;height:18px;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid var(--panel)">2</span></button>
-    <button class="icon-btn" id="btnReset" title="Reset puzzle" aria-label="Reset puzzle">↻</button>
+    <button class="icon-btn" id="btnStats" title="Help &amp; stats" aria-label="Help and stats" style="font-size:17px;font-weight:700">?</button>
     <button class="icon-btn" id="btnMark" title="Save bookmark" aria-label="Bookmark">☆</button>
+    <button class="icon-btn" id="btnReset" title="Reset puzzle" aria-label="Reset puzzle">↻</button>
     <button class="icon-btn" id="btnQuit" title="End session" aria-label="End session" style="display:none">✕</button>
     <button class="icon-btn dev-only" id="btnNew" title="New puzzle" aria-label="New practice puzzle">⟳</button>
     <button class="icon-btn" id="btnSettings" title="Settings" aria-label="Settings">⚙</button>
@@ -1152,7 +1151,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.10.5";
+const CHROMOKU_VERSION = "v0.10.6";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -3155,18 +3154,8 @@ function winLevel(){
   markWon();
   setTimeout(() => {
     fireConfetti();
-    const hintsUsed = totalHints();
-    // Stars inline with the title — saves vertical space
-    const starsHtml = '<span style="font-size:22px;letter-spacing:3px;color:var(--line-2)">'
-      + [1,2,3].map(i => '<span' + (i <= st ? ' style="color:#f1c40f"' : '') + '>★</span>').join("") + '</span>';
     openModal(
-      '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:2px">'
-      + '<h2 style="font-size:18px;margin:0">Level ' + lv.cfg.level + '</h2>'
-      + starsHtml + '</div>'
-      + '<p class="lede">' + lv.cfg.theme.name + " · stage " + lv.cfg.stage
-      + (lv.cfg.boss ? " · boss" : "")
-      + (hintsUsed ? ' · 💡×' + hintsUsed : '') + "</p>"
-      + '<div class="badge-wrap" id="badgeWrap"></div>'
+      '<div class="badge-wrap" id="badgeWrap"></div>'
       + '<div class="stats">'
       + '<div class="stat"><div class="n">' + fmtTime(secs * 1000) + '</div><div class="l">Your time</div></div>'
       + '<div class="stat"><div class="n">' + fmtTime(lv.par * 1000) + '</div><div class="l">Par</div></div>'
@@ -4609,6 +4598,7 @@ function showAbout(){
     try { localStorage.setItem(LS_ADMIN, adminMode ? "1" : "0"); } catch {}
     if (adminMode) document.documentElement.classList.add("dev");
     else document.documentElement.classList.remove("dev");
+    syncLvlToggle();
     toast(adminMode ? "Admin ON" : "Admin OFF");
     showAbout();  // re-open to refresh toggle state
   };
@@ -4719,7 +4709,6 @@ function showWin(){
     '<div style="text-align:center;margin:10px 0 0;line-height:1.6">' + badgeChips + '</div>';
   openModal(
     "<h2>Solved</h2>"
-    + '<p class="lede">' + SHARE_NAME + " #" + state.day + " · " + sizeOf(state.size).label + " " + diffOf2(state.diff, state.n).label + "</p>"
     + '<div class="win-time">' + fmtTime(elapsedMs()) + "</div>"
     + badgeIcon
     + '<div class="badge-wrap" id="badgeWrap" style="margin-top:' + (isClean ? '12' : '8') + 'px"></div>'
@@ -4884,6 +4873,7 @@ function showSettings(){
     try { localStorage.setItem(LS_ADMIN, adminMode ? "1" : "0"); } catch {}
     if (adminMode) document.documentElement.classList.add("dev");
     else document.documentElement.classList.remove("dev");
+    syncLvlToggle();
     showSettings();
   };
   if (adminMode) m.querySelector("#dbgDate").onchange = e => {
@@ -4940,7 +4930,6 @@ function showSettings(){
 })();
 document.getElementById("btnUndo").onclick  = undo;
 document.getElementById("btnStats").onclick = showStats;
-document.getElementById("btnHint").onclick  = showHintModal;
 document.getElementById("btnReset").onclick = confirmReset;
 document.getElementById("btnMark").onclick  = () => state.bookmark ? openMarkModal() : setBookmark();
 document.getElementById("btnNew").onclick = () => loadPuzzle(state.size, state.diff, true);
@@ -4958,6 +4947,7 @@ document.getElementById("btnQuit").onclick = confirmQuit;
       try { localStorage.setItem(LS_ADMIN, adminMode ? "1" : "0"); } catch {}
       if (adminMode) document.documentElement.classList.add("dev");
       else document.documentElement.classList.remove("dev");
+      syncLvlToggle();
       toast(adminMode ? "Admin ON" : "Admin OFF");
       showSettings();
     }, 800);
@@ -4999,6 +4989,10 @@ if (adminMode) document.documentElement.classList.add("dev");
 
 // An uncaught error used to leave a blank page with no way back. Show a panel
 // with an escape hatch instead.
+// Levels entry is admin-only — hide from regular players; synced on every admin toggle
+function syncLvlToggle(){ const lb = document.getElementById("lvlToggle"); if (lb) lb.style.display = adminMode ? "" : "none"; }
+syncLvlToggle();
+
 window.addEventListener("error", e => showCrash(e.message));
 window.addEventListener("unhandledrejection", e => showCrash(String(e.reason)));
 let crashed = false;

@@ -8,6 +8,14 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.10.6] 2026-08-26 — Header cleanup, levels admin-only, win modal de-cluttered
+
+- **💡 removed from header:** Lightbulb hint button gone — hints are in help (?) and the power-up bar below the board. `btnStats` (?) moved from left to right section so left is clean: logo · undo only.
+- **Right header order:** timer · ? · ☆ · ↻ · ✕ · ⟳ (dev) · ⚙. `?` and `☆` are the visible "helper icons"; neither appears on the share canvas (correct — they're navigation aids, not solve data).
+- **Levels → admin only:** `lvlToggle` button hidden for regular players; `syncLvlToggle()` helper keeps it in sync whenever admin mode is toggled. Levels remain fully functional for admins.
+- **Levels win modal de-cluttered:** Level N heading, stars row, and theme·stage lede removed — the canvas badge already shows all of that (level, stars, theme, time). Modal now opens directly with the badge, stats row, and buttons.
+- **Daily win modal:** Game info lede (Chromoku #N · size · diff) removed for same reason — badge shows it. Time stays large at the top as a quick reference.
+
 ### [v0.10.5] 2026-08-26 — Full-screen levels, stars on share tile, win banner, 15s add, bundle offer
 
 - **Full-screen levels:** Header (logo, nav buttons) hides during active level play. The level bar takes over: ← Back, ↶ Undo, ↻ Reset now live in the level bar left section. Undo stays in sync (disabled when history is empty). Header restores on returning to daily.
