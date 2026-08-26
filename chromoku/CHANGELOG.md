@@ -8,6 +8,13 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.9.9] 2026-08-26 — Share card: swatch dots, hint badge, game URL
+
+- **Canvas badge footer:** Replaced bare "💡×N" text with a full footer section — a row of coloured swatch dots (one per mark), a hint badge (🧠 Solved clean or 💡💡💡), and the game URL at the bottom so recipients know where to play.
+- **Text share (6×6 and smaller):** Now shows actual mark glyphs (`■ ● ▲ ◆ ★ ⬟`) instead of spoiler-free row-count emojis — far more interesting and gives a real preview of the puzzle. 9×9+ still uses row counts (too dense otherwise).
+- **Hint badge in text share:** Title line now ends with 🧠 for a clean solve or 💡 (repeated, capped at 3) for hints used.
+- **Game URL in text share:** `https://ronacul.github.io/wine-cellar/chromoku` appended so shareable text includes a link to play.
+
 ### [v0.9.8] 2026-08-26 — Fix palette swatch unevenness on 9×9 grid
 
 - **Swatch sizing fix:** 9-mark palette was split 5+4 across two rows; `flex:1 1 0` made the 4-swatch row's swatches visibly wider than the 5-swatch row. Short rows are now padded with invisible `.swatch.spacer` elements so all rows divide the same width by the same count — uniform swatch sizes at every grid size.

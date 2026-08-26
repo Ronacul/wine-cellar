@@ -1123,7 +1123,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.9.8";
+const CHROMOKU_VERSION = "v0.9.9";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -3253,11 +3253,18 @@ function spoilerFreeGrid(){
 function shareText(){
   const mods = (state.dbl ? " · Double" : "") + (state.scramble ? " · Scramble" : "");
   const st = load(LS_STATS, blankStats());
-  const streakLine = st.streak > 1 ? "🔥 " + st.streak + " day streak\n" : "";
-  return SHARE_NAME + " #" + state.day + " · " + sizeOf(state.size).label + " " + diffOf2(state.diff, state.n).label + mods + " ✨\n"
-       + "⏱️ " + fmtTime(elapsedMs()) + "\n"
-       + streakLine + "\n"
-       + spoilerFreeGrid() + "\n";
+  const hintsUsed = totalHints();
+  // 🧠 for clean solves; up to 3 💡 for hint use (capped so it stays compact)
+  const hintBadge = hintsUsed === 0 ? " 🧠" : " " + "💡".repeat(Math.min(hintsUsed, 3));
+  const streakBit = st.streak > 1 ? " · 🔥" + st.streak : "";
+  // Show actual mark glyphs on small grids — more interesting than row counts.
+  // 9×9 and up use spoiler-free row counts (9 rows of 9 glyphs is too dense).
+  const grid = state.n <= 6 ? emojiGrid(0) : spoilerFreeGrid();
+  return SHARE_NAME + " #" + state.day + " · " + sizeOf(state.size).label + " " + diffOf2(state.diff, state.n).label + mods + hintBadge + "\n"
+       + "⏱️ " + fmtTime(elapsedMs()) + streakBit + "\n"
+       + "\n"
+       + grid + "\n"
+       + "\nhttps://ronacul.github.io/wine-cellar/chromoku";
 }
 
 const copyShare = () => copyText(shareText());
@@ -3893,7 +3900,7 @@ function renderShareBadge(){
   const cGap = n <= 4 ? 4 : n <= 9 ? 2 : 1;
   const bGap = state.latin ? cGap : (n <= 4 ? 10 : n <= 9 ? 7 : 4);
   const pad = 20;
-  const headerH = 56, footerH = 32;
+  const headerH = 56, footerH = 64;
 
   // Board pixel dimensions
   let boardW, boardH;
@@ -4034,14 +4041,40 @@ function renderShareBadge(){
     }
   }
 
-  // Hints disclosure
+  // ── Footer: palette swatch dots + hint/clean badge + game URL ────────────
   const hintsUsed = totalHints();
-  if (hintsUsed > 0){
-    ctx.fillStyle = dim;
-    ctx.font = "10px ui-monospace,monospace";
-    ctx.textAlign = "center";
-    ctx.fillText("💡×" + hintsUsed, W / 2, H - 10);
+
+  // Row of small colour dots — one per mark, centred under the board
+  const swatchY  = by + boardH + 12;
+  const swatchR  = 5;
+  const swCount  = MARKS.length;          // all marks for this puzzle
+  const swSpan   = swCount * (swatchR * 2) + (swCount - 1) * 5;
+  let   swX      = (W - swSpan) / 2 + swatchR;
+  for (let i = 0; i < swCount; i++){
+    ctx.fillStyle = MARKS[i].hex || ink;
+    ctx.beginPath();
+    ctx.arc(swX, swatchY + swatchR, swatchR, 0, Math.PI * 2);
+    ctx.fill();
+    swX += swatchR * 2 + 5;
   }
+
+  // Hint badge or clean-solve indicator
+  const badgeY = swatchY + swatchR * 2 + 14;
+  ctx.textAlign = "center";
+  ctx.font = "13px system-ui,-apple-system,sans-serif";
+  if (hintsUsed === 0){
+    ctx.fillStyle = ink;
+    ctx.fillText("🧠 Solved clean", W / 2, badgeY);
+  } else {
+    ctx.fillStyle = dim;
+    ctx.fillText("💡".repeat(Math.min(hintsUsed, 3)) + (hintsUsed > 3 ? "+" : "")
+                 + "  " + hintsUsed + " hint" + (hintsUsed !== 1 ? "s" : ""), W / 2, badgeY);
+  }
+
+  // Game URL so recipients know where to play
+  ctx.fillStyle = dim;
+  ctx.font = "9px ui-monospace,monospace";
+  ctx.fillText("ronacul.github.io/wine-cellar/chromoku", W / 2, badgeY + 18);
 
   return canvas;
 }
