@@ -251,22 +251,44 @@ h1{
 }
 
 /* ================= ad banner mockup ================= */
+/* Targeting 300×250 medium rectangle — highest CPM format for mobile in-content */
 .ad-banner{
-  width:100%; max-width:400px; display:flex; align-items:center; gap:8px;
-  background:var(--panel2); border-radius:10px; padding:8px 12px;
-  font-size:12px; border:1px solid var(--line);
+  width:min(300px,100%); min-height:100px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:10px; background:var(--panel2); border-radius:12px; padding:20px 16px;
+  border:1px solid var(--line); align-self:center; margin:0 auto;
 }
 .ad-label{
   font-family:var(--mono); font-size:9px; font-weight:700; letter-spacing:.06em;
   text-transform:uppercase; color:var(--ink-faint); border:1px solid var(--line);
-  border-radius:4px; padding:2px 5px; white-space:nowrap; flex:0 0 auto;
+  border-radius:4px; padding:2px 5px; align-self:flex-start;
 }
-.ad-copy{flex:1; color:var(--ink-dim); line-height:1.3}
+.ad-copy{
+  color:var(--ink); font-size:14px; font-weight:600; text-align:center; line-height:1.4;
+}
+.ad-sub{
+  font-size:11px; color:var(--ink-dim); text-align:center; line-height:1.4;
+}
 .ad-cta{
-  font-size:11px; font-weight:700; color:var(--ink);
-  background:var(--panel); border-radius:7px; padding:5px 10px;
-  white-space:nowrap; flex:0 0 auto; border:1px solid var(--line);
+  font-size:13px; font-weight:700; color:#fff;
+  background:#4a8feb; border-radius:9px; padding:8px 20px;
+  white-space:nowrap; border:none; cursor:pointer;
 }
+/* ── Previous-day navigation strip ── */
+.day-nav{
+  display:flex; gap:5px; overflow-x:auto; scrollbar-width:none;
+  padding:4px 0 2px; width:100%; max-width:min(460px,100%);
+}
+.day-nav::-webkit-scrollbar{display:none}
+.day-nav button{
+  flex:0 0 auto; font-size:10px; font-family:var(--mono); padding:4px 9px;
+  border-radius:8px; background:var(--panel2); border:1px solid var(--line);
+  color:var(--ink-dim); cursor:pointer; white-space:nowrap; line-height:1.2;
+}
+.day-nav button.today{
+  background:var(--ink); color:var(--bg); border-color:var(--ink); font-weight:700;
+}
+.day-nav button.past:hover{background:var(--panel); color:var(--ink)}
 
 /* ================= tutorial tip ================= */
 .tut-tip{
@@ -683,12 +705,15 @@ html.dev #adminBar{display:flex}
   <div class="tut-tip" id="tutTip" style="display:none"></div>
   <div class="board-wrap"><div class="board" id="board"></div></div>
   <div class="palette pal-pad" id="palette"></div>
-  <!-- Ad banner mockup — shown only in level mode, hidden in daily -->
+  <!-- Ad banner — 300×250 medium-rectangle format (highest mobile CPM) -->
   <div class="ad-banner" id="adBanner" style="display:none">
-    <span class="ad-label">Ad</span>
-    <span class="ad-copy">🎮 Try <b>PuzzleVault</b> — 500+ brain games</span>
-    <span class="ad-cta">Free →</span>
+    <span class="ad-label">Ad · 300×250</span>
+    <div class="ad-copy">🎮 PuzzleVault</div>
+    <div class="ad-sub">500+ brain games — free to play</div>
+    <button class="ad-cta">Try it free →</button>
   </div>
+  <!-- Day navigation — rendered by renderDailyNav() -->
+  <div class="day-nav" id="dayNav" style="display:none"></div>
 </div>
 
 <div class="vignette" id="vignette"></div>
@@ -1123,7 +1148,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.10.2";
+const CHROMOKU_VERSION = "v0.10.3";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -2149,10 +2174,43 @@ function isSolved(){
 
 /* ================= rendering ================= */
 
+// Render the previous-days navigation strip below the board in daily mode.
+// Shows 6 past days as chips; today chip highlighted. Past day taps load that
+// day's scheduled puzzle with the banner active.
+function renderDailyNav(){
+  const el = document.getElementById("dayNav");
+  if (!el) return;
+  if (state.mode !== "daily" || state.practice){
+    el.style.display = "none"; return;
+  }
+  const today = dayNumber();
+  el.style.display = "";
+  const DAYS_BACK = 6;
+  let html = '<button class="' + (state.day === today ? "today" : "past") + '" id="dnToday">Today</button>';
+  const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  for (let i = 1; i <= DAYS_BACK; i++){
+    const d = today - i;
+    if (d < 1) break;
+    const dt = new Date(EPOCH + (d - 1) * 86400000);
+    const dow = DOW[dt.getUTCDay()];
+    const sc = DAILY_SCHEDULE[dt.getUTCDay()];
+    html += '<button class="' + (state.day === d ? "today" : "past") + '" data-day="' + d + '">'
+          + dow + '<br><span style="font-size:8px;color:inherit;opacity:.7">' + sc.tier + '</span>'
+          + '</button>';
+  }
+  el.innerHTML = html;
+  el.querySelector("#dnToday").onclick = () => {
+    if (state.day !== today){ state.day = today; enterDaily(); }
+  };
+  el.querySelectorAll("[data-day]").forEach(btn => {
+    btn.onclick = () => { state.day = +btn.dataset.day; enterDaily(); };
+  });
+}
+
 function render(){
   if (state.mode === "levels") renderLevelBar();
   else { renderSizes(); renderDiffs(); renderPowerups(); }
-  renderBoard(); renderPalette(); renderSub();
+  renderBoard(); renderPalette(); renderSub(); renderDailyNav();
   paintCompletedUnits();
   applySharp();
   renderChallengeBar();
@@ -3072,13 +3130,16 @@ function winLevel(){
   setTimeout(() => {
     fireConfetti();
     const hintsUsed = totalHints();
+    // Stars inline with the title — saves vertical space
+    const starsHtml = '<span style="font-size:22px;letter-spacing:3px;color:var(--line-2)">'
+      + [1,2,3].map(i => '<span' + (i <= st ? ' style="color:#f1c40f"' : '') + '>★</span>').join("") + '</span>';
     openModal(
-      "<h2>Level " + lv.cfg.level + " cleared</h2>"
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:2px">'
+      + '<h2 style="font-size:18px;margin:0">Level ' + lv.cfg.level + '</h2>'
+      + starsHtml + '</div>'
       + '<p class="lede">' + lv.cfg.theme.name + " · stage " + lv.cfg.stage
       + (lv.cfg.boss ? " · boss" : "")
       + (hintsUsed ? ' · 💡×' + hintsUsed : '') + "</p>"
-      + '<div class="stars-big">' + [1,2,3].map(i =>
-          '<span class="' + (i <= st ? "on" : "") + '">★</span>').join("") + "</div>"
       + '<div class="badge-wrap" id="badgeWrap"></div>'
       + '<div class="stats">'
       + '<div class="stat"><div class="n">' + fmtTime(secs * 1000) + '</div><div class="l">Your time</div></div>'
@@ -3635,16 +3696,25 @@ function totalHints(){ return state.hints.reveals + state.hints.freezes + state.
 // without opening a modal. The hint modal still exists for daily mode
 // (where only Reveal applies) and as a fallback info panel.
 // ── Banner visibility ─────────────────────────────────────────────────────
-// Rules: today's daily (no hints) = clean/no banner.
-// Past dailies = banner always. Daily + 2+ real hints = banner.
-// Levels (non-tutorial) = banner. Tutorial = never.
+// Banner rules (never on today's clean daily):
+// · Past daily (day < today)                → always show
+// · Today's daily, 2+ real hints used      → show
+// · Today's daily, off-schedule size/diff  → show (player customised away from today's puzzle)
+// · Levels (non-tutorial)                  → show
+// · Tutorial                               → never
+// · Today's scheduled daily, no hints      → never (keep it clean)
 function updateAdBanner(){
   const ab = document.getElementById("adBanner");
   if (!ab) return;
-  const isTutNow = state.mode === "levels" && state.lvl && state.lvl.cfg.tutorial;
-  const isPastDaily = state.mode !== "levels" && !state.practice && state.day < dayNumber();
-  const dailyWithHints = state.mode !== "levels" && !state.practice && totalHints() >= 2;
-  const show = (state.mode === "levels" && !isTutNow) || isPastDaily || dailyWithHints;
+  const isTutNow   = state.mode === "levels" && state.lvl && state.lvl.cfg.tutorial;
+  const today      = dayNumber();
+  const isDaily    = state.mode !== "levels" && !state.practice;
+  const isPastDay  = isDaily && state.day < today;
+  const withHints  = isDaily && totalHints() >= 2;
+  const todayCfg   = dailyConfig();
+  const offSched   = isDaily && state.day === today
+                     && (state.size !== todayCfg.sizeId || state.diff !== todayCfg.diffId);
+  const show = (state.mode === "levels" && !isTutNow) || isPastDay || withHints || offSched;
   ab.style.display = show ? "" : "none";
 }
 
@@ -4162,15 +4232,14 @@ function renderShareBadge(){
     swX += swatchR * 2 + 5;
   }
 
-  // Hint badge or clean-solve indicator (💡 = real hints, 🔦 = flash, shown separately)
+  // Clean win: no badge text — the board + swatches are the share. Hint wins get a badge line.
   const flashesUsed = state.hints.flashes;
-  const badgeY = swatchY + swatchR * 2 + 14;
+  const isCleanBadge = hintsUsed === 0 && flashesUsed === 0;
+  const urlY = swatchY + swatchR * 2 + (isCleanBadge ? 14 : 28);
   ctx.textAlign = "center";
-  ctx.font = "13px system-ui,-apple-system,sans-serif";
-  if (hintsUsed === 0 && flashesUsed === 0){
-    ctx.fillStyle = ink;
-    ctx.fillText("🧠 Solved clean", W / 2, badgeY);
-  } else {
+  if (!isCleanBadge){
+    const badgeY = swatchY + swatchR * 2 + 14;
+    ctx.font = "13px system-ui,-apple-system,sans-serif";
     ctx.fillStyle = dim;
     let badgeTxt = "";
     if (hintsUsed > 0) badgeTxt += "💡".repeat(Math.min(hintsUsed, 3)) + (hintsUsed > 3 ? "+" : "") + "  " + hintsUsed + " hint" + (hintsUsed !== 1 ? "s" : "");
@@ -4181,7 +4250,7 @@ function renderShareBadge(){
   // Game URL so recipients know where to play
   ctx.fillStyle = dim;
   ctx.font = "9px ui-monospace,monospace";
-  ctx.fillText("ronacul.github.io/wine-cellar/chromoku", W / 2, badgeY + 18);
+  ctx.fillText("ronacul.github.io/wine-cellar/chromoku", W / 2, urlY);
 
   return canvas;
 }
@@ -4573,23 +4642,25 @@ function showWin(){
   // Challenge info — if they beat a friend's time, celebrate it
   const challTime = getChallengeTime();
   const beatChall = challTime && elapsedMs() < challTime * 1000;
-  // Flash hint is free — shown as a separate 🔦 line below the main badge
-  const flashLine = flashesUsed > 0
-    ? '<div style="font-size:11px;color:var(--ink-dim);font-family:var(--mono);letter-spacing:.06em;margin-top:-6px;margin-bottom:8px">🔦×' + flashesUsed + ' FLASH</div>'
+  // Clean win: no badge icon — the board canvas is the share artefact.
+  // Hint wins: 💡×N + optional 🔦×N flash line.
+  const isClean = hintsUsed === 0 && flashesUsed === 0;
+  const flashLine = !isClean && flashesUsed > 0
+    ? '<div style="font-size:11px;color:var(--ink-dim);font-family:var(--mono);letter-spacing:.06em;margin-top:2px">🔦×' + flashesUsed + ' flash</div>'
     : '';
-  const badgeIcon = (hintsUsed === 0 && flashesUsed === 0)
-    ? '<div style="font-size:30px;line-height:1;margin-bottom:2px">🧠</div>'
-      + '<div style="font-size:10px;color:var(--ok);font-family:var(--mono);letter-spacing:.08em;margin-bottom:10px">CLEAN SOLVE</div>'
-    : '<div style="font-size:26px;line-height:1;margin-bottom:2px">' + (hintsUsed > 0 ? '💡'.repeat(Math.min(hintsUsed, 3)) : '🧠') + '</div>'
-      + '<div style="font-size:10px;color:var(--ink-dim);font-family:var(--mono);letter-spacing:.08em;margin-bottom:4px">'
-      + (hintsUsed > 0 ? hintsUsed + ' HINT' + (hintsUsed !== 1 ? 'S' : '') + ' USED' : 'CLEAN SOLVE') + '</div>'
-      + flashLine;
+  const badgeIcon = isClean ? '' :
+    '<div style="text-align:center;margin:12px 0 0">'
+    + '<div style="font-size:26px;line-height:1;margin-bottom:2px">' + '💡'.repeat(Math.min(hintsUsed, 3)) + '</div>'
+    + '<div style="font-size:10px;color:var(--ink-dim);font-family:var(--mono);letter-spacing:.08em;margin-bottom:2px">'
+    + hintsUsed + ' HINT' + (hintsUsed !== 1 ? 'S' : '') + ' USED</div>'
+    + flashLine
+    + '</div>';
   openModal(
     "<h2>Solved</h2>"
     + '<p class="lede">' + SHARE_NAME + " #" + state.day + " · " + sizeOf(state.size).label + " " + diffOf2(state.diff, state.n).label + "</p>"
     + '<div class="win-time">' + fmtTime(elapsedMs()) + "</div>"
-    + '<div style="text-align:center;margin:14px 0 4px">' + badgeIcon + '</div>'
-    + '<div class="badge-wrap" id="badgeWrap" style="margin-top:8px"></div>'
+    + badgeIcon
+    + '<div class="badge-wrap" id="badgeWrap" style="margin-top:' + (isClean ? '12' : '8') + 'px"></div>'
     + (beatChall ? '<p class="lede" style="color:var(--ok)">⚡ Beat the challenge time!</p>' : '')
     + '<div class="stats">'
     + '<div class="stat"><div class="n">' + st.streak + '</div><div class="l">Streak</div></div>'

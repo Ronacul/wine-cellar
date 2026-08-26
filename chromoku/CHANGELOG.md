@@ -8,6 +8,15 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.10.3] 2026-08-26 — Win modal compact, clean-win minimalism, 300×250 banner, day navigation
+
+- **Win modal — stars inline (levels):** Stars moved next to the level title in a flex row instead of occupying their own full-height row. Saves ~40px of vertical space.
+- **Clean win minimalism:** For a clean daily solve (no hints, no flash), the 🧠 badge icon is removed from the win modal entirely. The board canvas is the share — no annotation needed. Badge text is also removed from the canvas share for clean wins; swatch dots + URL remain.
+- **Hint wins:** 💡 badge still shows in the modal; canvas still shows the hint count line. Flash-only (🔦) uses the same clean treatment as full clean.
+- **Banner → 300×250 Medium Rectangle:** Replaced the 320×50 strip mockup with a 300×250 vertical rectangle — the format that earns 3–5× higher CPM on mobile. HTML + CSS updated.
+- **Previous-days navigation strip:** Six day chips appear below the board in daily mode (Today highlighted + Mon–Sun going back 6 days, with tier label). Tapping any past chip loads that day's scheduled puzzle. Banner shows immediately for all past days.
+- **Off-schedule banner trigger:** If a player changes the size or difficulty in daily mode away from today's scheduled config, the banner appears. Today's default puzzle stays clean.
+
 ### [v0.10.2] 2026-08-26 — Fix tutorial auto-flash bleeding, flash count in share, admin in About modal
 
 - **Fix tutorial flash timer bleed:** Tutorial auto-hint interval was not cleared when entering daily mode — the timer kept calling `flashHint(false)`, which now runs in daily mode too (my v0.10.1 regression). Two-part fix: (1) `enterDaily()` now clears `_hintTimer` / `_hintInterval`; (2) auto-hint path in `flashHint()` guards against non-tutorial contexts.
