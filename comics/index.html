@@ -2156,6 +2156,7 @@ function renderForm(){
       }
 
       /* fill form fields */
+      let filled = 0;
       const fieldMap = {
         title:"f-title", issueNumber:"f-issue", variant:"f-variant",
         year:"f-year", coverArtist:"f-artist", writer:"f-writer", characters:"f-chars",
@@ -2181,7 +2182,6 @@ function renderForm(){
         document.getElementById("f-price-custom").style.display = isCustom ? "block" : "none";
         filled++;
       }
-      let filled = 0;
       /* publisher needs normalisation — AI returns "Marvel Comics" but select has "Marvel" */
       if(rec.publisher){
         const pubEl = document.getElementById("f-pub");
