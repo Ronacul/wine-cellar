@@ -8,6 +8,17 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.10.8] 2026-08-27 — Fit-one-screen pass: no scrolling on daily or win card
+
+- **Root cause of the blank space:** `.play` had `justify-content:center` with `flex:1` — short content got centred, splitting the leftover height into dead bands above and below the stack. Now `flex-start`, and the `.play` gap drops from `clamp(10px,3.5vw,22px)` to `clamp(6px,1.8vw,12px)`.
+- **Day chips — 4×2 grid:** `.day-nav` was a single `overflow-x:auto` flex row, so chips scrolled off. Now `grid-template-columns:repeat(4,1fr)` — all 8 chips visible in two rows, every chip the same width. "Today" gained a tier line so all cells are the same height.
+- **Levels chip recoloured:** gold (`.lvl-chip`, `#c9a227`) instead of another grey day chip — it's a different destination, so it reads as one.
+- **Board absorbs the reclaimed space:** `max-width:min(92vw,46vh,400px)` (was `min(84vw,340px)`) — the board grows into the freed height instead of leaving a gap. 328px → 359px on a 390×844 screen.
+- **Admin view yields it back:** admin chrome adds ~100px, so `html.dev .board-wrap` caps at `34vh` and the admin bar is now one compact scrollable row (88px → 28px) instead of wrapping to three.
+- **Win card no longer scrolls:** the share badge is capped by height (`max-height:30vh`), not just width — it was the tallest block at 340–358px. Modal padding 24px → 18px, stats margin 18px → 12px. Short screens get a further pass (badge 20vh, smaller win time) declared *after* the base rules so it actually wins the cascade.
+- **Stale negative margins removed:** `.powerups` (`margin-top:-8px`) and `.tbarwrap` (`margin-top:-16px`) were compensating for the old 22px gap and had started over-pulling into the row above.
+- **Verified:** 0px overflow on iPhone SE / 12 / 14 Pro Max / Pixel 7 / iPad Mini, in both player and admin views; win card fits without internal scroll on all of them, clean and hint-used states.
+
 ### [v0.10.7] 2026-08-26 — Level bar compact, admin controls tidy, day-nav to top, banner shorter
 
 - **Level bar ~50% shorter:** `.lvl-l` is now `display:flex` so the ← ↶ ↻ buttons sit in a horizontal row instead of stacking vertically. Buttons shrink to 28×28 px. Right section uses `.lvl-r` (column-flex) — hearts sit above the countdown timer. Stage path preserved in `.lvl-c`.
