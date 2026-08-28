@@ -1608,7 +1608,12 @@ function renderDetail(){
   };
 
   /* bind events */
-  document.getElementById("back").onclick = ()=> history.back();
+  document.getElementById("back").onclick = ()=>{
+    /* if there's a real history entry below us, go back normally;
+       otherwise fall back to collection so we never navigate out of the app */
+    if(history.length > 1){ history.back(); }
+    else { tab="collection"; history.replaceState({tab:"collection"}, ""); render(); window.scrollTo(0, collectionScrollY); }
+  };
   document.getElementById("edit").onclick = ()=>{
     editingId = c.id; tab = "add"; render();
   };
@@ -3338,6 +3343,10 @@ document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click", (
   editingId = null;
   pendingImage = null; originalImage = null;
   pendingAiFields = {}; /* free memory when leaving Add tab */
+  /* replaceState so any open detail entry doesn't linger in history — if the
+     user taps a tab instead of the ← Back button, back should still return
+     to the collection/tab they were on, not a previous detail card */
+  history.replaceState({tab: b.dataset.tab}, "");
   setTab(b.dataset.tab);
 }));
 
