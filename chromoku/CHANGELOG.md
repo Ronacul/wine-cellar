@@ -8,6 +8,14 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.11.0] 2026-08-29 — Daily nav: Levels for all, device-aware day, persistent completions, ad bonus, share fix
+
+- **Levels button visible to all** — 🏆 Levels chip in the daily nav is no longer admin-only. Every player can reach Levels mode directly from the day strip.
+- **Device-calendar-aware Today chip** — The "Today" chip now shows the actual local day name (e.g. "Sat") instead of "Today", so players can verify the app is reading the right calendar day. `dailyConfig()` uses `new Date().getDay()` (device-local DOW) when computing today's schedule, avoiding any UTC/local mismatch.
+- **Completed dailies persist across day switches** — Daily progress is now stored in `chromoku.daily.v3`, a per-day keyed object that retains up to 30 days of history. Switching to a past or future day no longer wipes completed puzzles. A ✓ badge appears on day chips with at least one completed slot. Existing v2 saves are migrated automatically on first load.
+- **"Buy a reveal" ad bonus** — When reveals run out on the daily, a gold `+💡` button appears. Tapping it opens a simulated rewarded-ad flow (5-second countdown + cancel option). On completion the player gets +1 reveal. Capped at 2 bonus reveals per puzzle so it stays a nudge, not unlimited. Not available in practice mode.
+- **Share tracks the completed puzzle** — `win()` now stores the timer reference. Tapping a day chip during the 1.1-second pre-win animation cancels the pending win modal (instead of letting it fire from the wrong day's state), preventing the bug where Share would render the newly-loaded (incomplete) puzzle instead of the one just solved.
+
 ### [v0.10.8] 2026-08-27 — Fit-one-screen pass: no scrolling on daily or win card
 
 - **Root cause of the blank space:** `.play` had `justify-content:center` with `flex:1` — short content got centred, splitting the leftover height into dead bands above and below the stack. Now `flex-start`, and the `.play` gap drops from `clamp(10px,3.5vw,22px)` to `clamp(6px,1.8vw,12px)`.

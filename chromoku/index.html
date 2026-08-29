@@ -1148,7 +1148,15 @@ const DAILY_SCHEDULE = [
 ];
 
 // Returns the DAILY_SCHEDULE entry for the current state.day.
+// For today we use the device's local day-of-week directly; for past/future
+// days we derive it from the UTC timestamp (which matches since dayNumber()
+// builds its day count from local calendar date components).
 function dailyConfig(){
+  const today = dayNumber();
+  if (state.day === today){
+    // Use local calendar DOW — matches what the user's device says.
+    return DAILY_SCHEDULE[new Date().getDay()];
+  }
   const date = new Date(EPOCH + (state.day - 1) * 86400000);
   return DAILY_SCHEDULE[date.getUTCDay()];
 }
@@ -1184,7 +1192,8 @@ const LEGACY_SLOTS = {
   l4:"l4-easy", l5:"l5-easy", l7:"l7-easy", l10:"l10-easy",
 };
 
-const LS_DAILY = "chromoku.daily.v2";   // v2: per-layer state
+const LS_DAILY = "chromoku.daily.v2";   // v2: per-layer state (single-day, kept for migration)
+const LS_DAILY3 = "chromoku.daily.v3"; // v3: per-day keyed store — keeps last 30 days
 const LS_STATS = "chromoku.stats.v1";
 const LS_THEME = "chromoku.theme.v1";
 const LS_HELP  = "chromoku.seen-help.v1";
@@ -1202,7 +1211,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.10.8";
+const CHROMOKU_VERSION = "v0.11.0";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -1888,6 +1897,7 @@ const state = {
   frozenUntil:0,           // timestamp: clock display freezes until
 };
 const HISTORY_MAX = 50;
+let _winTimer = null;   // pending setTimeout before the win modal appears
 
 /* ================= persistence ================= */
 
@@ -1919,19 +1929,45 @@ function save(key, val){
 }
 const blankStats = () => ({ played:0, streak:0, maxStreak:0, lastWinDay:null, best:{} });
 
-function loadDaily(){
-  const d = load(LS_DAILY, null);
-  if (!d || d.day !== state.day) return { day:state.day };
-  // One-time migration: old single-axis tier IDs → new composite IDs
-  if (!d._mig){
-    for (const [old, nk] of Object.entries(LEGACY_SLOTS)){
-      if (d[old] && !d[nk])           { d[nk]         = d[old]; }
-      if (d[old+"-x2"] && !d[nk+"-x2"]) { d[nk+"-x2"] = d[old+"-x2"]; }
+// ── v3 multi-day helpers ─────────────────────────────────────────────────────
+// Returns the per-day slot record for a given day (defaults to {}), migrating
+// v2 single-day data into the v3 store on first access.
+function loadDayRecord(day){
+  // One-time migration: if v3 is empty and v2 has data for today, seed v3.
+  const store = load(LS_DAILY3, null);
+  if (!store){
+    const v2 = load(LS_DAILY, null);
+    if (v2 && v2.day){
+      // Apply v2 legacy-slot migration before importing.
+      if (!v2._mig){
+        for (const [old, nk] of Object.entries(LEGACY_SLOTS)){
+          if (v2[old] && !v2[nk])               { v2[nk]       = v2[old]; }
+          if (v2[old+"-x2"] && !v2[nk+"-x2"])   { v2[nk+"-x2"] = v2[old+"-x2"]; }
+        }
+      }
+      const migrated = {};
+      for (const k of Object.keys(v2)){
+        if (k !== "day" && k !== "_mig") migrated[k] = v2[k];
+      }
+      const newStore = { [String(v2.day)]: migrated };
+      save(LS_DAILY3, newStore);
+      return (day === v2.day) ? migrated : {};
     }
-    d._mig = true; save(LS_DAILY, d);
+    save(LS_DAILY3, {});
+    return {};
   }
-  return d;
+  return store[String(day)] || {};
 }
+function saveDayRecord(day, record){
+  const store = load(LS_DAILY3, {});
+  store[String(day)] = record;
+  // Prune to last 30 days to keep localStorage lean.
+  const keys = Object.keys(store).map(Number).sort((a, b) => b - a);
+  if (keys.length > 30){ keys.slice(30).forEach(k => delete store[String(k)]); }
+  save(LS_DAILY3, store);
+}
+// ── compatibility wrappers (called by existing code) ─────────────────────────
+function loadDaily(){ return loadDayRecord(state.day); }
 function saveProgress(){
   if (state.practice) return;   // practice never enters the daily record
   const d = loadDaily();
@@ -1943,7 +1979,7 @@ function saveProgress(){
     bookmark:state.bookmark,
     hints:state.hints,
   };
-  save(LS_DAILY, d);
+  saveDayRecord(state.day, d);
 }
 
 /* ================= timer ================= */
@@ -2078,7 +2114,7 @@ function loadPuzzle(sizeId, diffId, fresh){
     }
     state.elapsed = 0; state.mistakes = 0; state.done = false; state.started = false;
     state.bookmark = null;
-    state.hints = { reveals:0, freezes:0, adds:0, flashes:0 }; state.bonusReveals = 0; state.adShown = false;
+    state.hints = { reveals:0, freezes:0, adds:0, flashes:0 }; state.bonusReveals = 0; state.adShown = false; state._adReveals = 0;
   }
   state.since = null; state.sel = null; state.erase = false;
   state.history = []; state.frozenUntil = 0;
@@ -2139,7 +2175,7 @@ function loadLevel(n){
   state.elapsed = 0; state.since = null; state.started = false;
   state.mistakes = 0; state.done = false; state.sel = null; state.erase = false;
   state.history = []; state.bookmark = null;
-  state.hints = { reveals:0, freezes:0, adds:0, flashes:0 }; state.bonusReveals = 0; state.adShown = false; state.frozenUntil = 0;
+  state.hints = { reveals:0, freezes:0, adds:0, flashes:0 }; state.bonusReveals = 0; state.adShown = false; state._adReveals = 0; state.frozenUntil = 0;
 
   // Don't overwrite the player's highest-level progress when replaying tutorial.
   // Tutorial replay uses levels 0–6; we only advance, never regress.
@@ -2231,9 +2267,15 @@ function isSolved(){
 
 /* ================= rendering ================= */
 
+// Returns true if any slot for the given day is marked done.
+function isDayDone(day){
+  const rec = loadDayRecord(day);
+  return Object.values(rec).some(v => v && v.done);
+}
+
 // Render the previous-days navigation strip below the board in daily mode.
-// Shows 6 past days as chips; today chip highlighted. Past day taps load that
-// day's scheduled puzzle with the banner active.
+// Shows 6 past days as chips; today chip highlighted with the device day name.
+// Completed days show a ✓ indicator. Levels button always visible.
 function renderDailyNav(){
   const el = document.getElementById("dayNav");
   if (!el) return;
@@ -2243,11 +2285,15 @@ function renderDailyNav(){
   const today = dayNumber();
   el.style.display = "";
   const DAYS_BACK = 6;
+  // Use local DOW from device calendar — matches what dayNumber() computed.
+  const localDOW = new Date().getDay(); // 0=Sun … 6=Sat
   const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-  // Today carries a tier line like every other chip so all grid cells are the
-  // same height — a one-line cell here would make the row sit unevenly.
-  const todayTier = DAILY_SCHEDULE[new Date(EPOCH + (today - 1) * 86400000).getUTCDay()].tier;
-  let html = '<button class="' + (state.day === today ? "today" : "past") + '" id="dnToday">Today'
+  const todayDowName = DOW[localDOW];
+  const todayTier = DAILY_SCHEDULE[localDOW].tier;
+  const todayDone = isDayDone(today);
+  // Today chip: show local day name so users can verify the app's calendar reading.
+  let html = '<button class="' + (state.day === today ? "today" : "past") + '" id="dnToday">'
+           + todayDowName + (todayDone ? ' ✓' : '')
            + '<br><span style="font-size:8px;color:inherit;opacity:.7">' + todayTier + '</span>'
            + '</button>';
   for (let i = 1; i <= DAYS_BACK; i++){
@@ -2256,25 +2302,28 @@ function renderDailyNav(){
     const dt = new Date(EPOCH + (d - 1) * 86400000);
     const dow = DOW[dt.getUTCDay()];
     const sc = DAILY_SCHEDULE[dt.getUTCDay()];
+    const done = isDayDone(d);
     html += '<button class="' + (state.day === d ? "today" : "past") + '" data-day="' + d + '">'
-          + dow + '<br><span style="font-size:8px;color:inherit;opacity:.7">' + sc.tier + '</span>'
+          + dow + (done ? ' ✓' : '')
+          + '<br><span style="font-size:8px;color:inherit;opacity:.7">' + sc.tier + '</span>'
           + '</button>';
   }
-  // Admin-only Levels chip — last cell of the grid, gold so it reads as a
-  // different destination rather than an eighth day.
-  if (adminMode){
-    html += '<button class="lvl-chip" id="dnLevels">🏆<br>'
-          + '<span style="font-size:8px;opacity:.8">Levels</span></button>';
-  }
+  // Levels chip — gold, always visible so everyone can reach the Levels mode.
+  html += '<button class="lvl-chip" id="dnLevels">🏆<br>'
+        + '<span style="font-size:8px;opacity:.8">Levels</span></button>';
   el.innerHTML = html;
   el.querySelector("#dnToday").onclick = () => {
+    if (_winTimer){ clearTimeout(_winTimer); _winTimer = null; }
     if (state.day !== today){ state.day = today; enterDaily(); }
   };
   el.querySelectorAll("[data-day]").forEach(btn => {
-    btn.onclick = () => { state.day = +btn.dataset.day; enterDaily(); };
+    btn.onclick = () => {
+      if (_winTimer){ clearTimeout(_winTimer); _winTimer = null; }
+      state.day = +btn.dataset.day; enterDaily();
+    };
   });
   const dnLvl = el.querySelector("#dnLevels");
-  if (dnLvl) dnLvl.onclick = () => loadLevel(progress().level);
+  if (dnLvl) dnLvl.onclick = () => { closeModal(); loadLevel(progress().level); };
 }
 
 function render(){
@@ -3123,7 +3172,7 @@ function win(){
   if (vig) vig.className = "vignette";
 
   if (state.mode === "levels"){ winLevel(); return; }
-  if (state.practice){ markWon(); setTimeout(showWin, 1100); return; }
+  if (state.practice){ markWon(); if (_winTimer) clearTimeout(_winTimer); _winTimer = setTimeout(() => { _winTimer = null; showWin(); }, 1100); return; }
 
   const st = load(LS_STATS, blankStats());
   st.played++;
@@ -3140,7 +3189,8 @@ function win(){
 
   markWon();
   renderDiffs();
-  setTimeout(showWin, 1100);
+  if (_winTimer) clearTimeout(_winTimer);
+  _winTimer = setTimeout(() => { _winTimer = null; showWin(); }, 1100);
 }
 
 // Stars reward beating par, so there is a reason to replay a cleared level.
@@ -3901,6 +3951,10 @@ function renderPowerups(){
     el.style.display = "";
     const revLeft = HINT_LIMITS.reveals + (state.bonusReveals || 0) - state.hints.reveals;
     const flsLeft = HINT_LIMITS.flashes - state.hints.flashes;
+    // Max bonus reveals purchasable per puzzle (so it stays a fair nudge, not unlimited)
+    const MAX_AD_REVEALS = 2;
+    const adRevealsLeft = MAX_AD_REVEALS - (state._adReveals || 0);
+    const canBuyReveal = revLeft <= 0 && adRevealsLeft > 0 && !state.practice;
     el.innerHTML =
       '<span style="font-size:9px;color:var(--ink-dim);font-family:var(--mono)">Advantages</span> '
       + '<button class="pu" id="puFlash"' + (flsLeft <= 0 ? " disabled" : "")
@@ -3908,11 +3962,17 @@ function renderPowerups(){
       + '<span class="pu-icon">🔦</span><span class="pu-n">' + flsLeft + '</span></button>'
       + '<button class="pu" id="puReveal"' + (revLeft <= 0 ? " disabled" : "")
       + ' title="Reveal a cell — counts toward hint badge">'
-      + '<span class="pu-icon">💡</span><span class="pu-n">' + revLeft + '</span></button>';
+      + '<span class="pu-icon">💡</span><span class="pu-n">' + revLeft + '</span></button>'
+      + (canBuyReveal
+          ? '<button class="pu" id="puBuyReveal" title="Watch a short ad to unlock +1 reveal" style="background:rgba(201,162,39,.13);border-color:rgba(201,162,39,.45);color:#c9a227;font-weight:700">'
+            + '<span class="pu-icon" style="font-size:11px">+💡</span></button>'
+          : '');
     const pFl = document.getElementById("puFlash");
     if (pFl) pFl.onclick = () => { flashHint(true); renderPowerups(); };
     const pR = document.getElementById("puReveal");
     if (pR) pR.onclick = () => { revealCell(); renderPowerups(); };
+    const pBuy = document.getElementById("puBuyReveal");
+    if (pBuy) pBuy.onclick = () => watchAdForBonus();
     return;
   }
   el.style.display = "";
@@ -4038,6 +4098,48 @@ function showHintModal(){
   if (hF) hF.onclick = () => { closeModal(); freezeClock(); };
   const hA = document.getElementById("hAdd");
   if (hA) hA.onclick = () => { closeModal(); addTime(); };
+}
+
+// Simulated "watch an ad" flow to earn +1 reveal on the daily puzzle.
+// In a real app this would gate on a rewarded ad SDK; here we show a countdown
+// modal that the player must wait through, then grant the bonus.
+function watchAdForBonus(){
+  if (state.done || state.practice) return;
+  const AD_SECS = 5;
+  let remaining = AD_SECS;
+  function buildHTML(){
+    return '<h2>🎁 Free reveal</h2>'
+      + '<p class="lede">Support Chromoku by watching a short ad. Your reveal will unlock in '
+      + '<b id="adCountdown">' + remaining + '</b>s…</p>'
+      + '<div style="height:80px;background:var(--panel2);border-radius:10px;display:grid;place-items:center;margin:12px 0;color:var(--ink-faint);font-size:11px;font-family:var(--mono)">[Ad placeholder]</div>'
+      + '<button class="btn ghost" id="adSkip">Cancel</button>';
+  }
+  openModal(buildHTML());
+  // Block overlay-tap close during countdown so user has to wait.
+  const overlay = document.getElementById("overlay");
+  const savedClick = overlay.onclick;
+  overlay.onclick = null;
+  let timer = setInterval(() => {
+    remaining--;
+    const el = document.getElementById("adCountdown");
+    if (el) el.textContent = remaining;
+    if (remaining <= 0){
+      clearInterval(timer);
+      overlay.onclick = savedClick;
+      closeModal();
+      // Grant the bonus reveal.
+      state.bonusReveals = (state.bonusReveals || 0) + 1;
+      state._adReveals = (state._adReveals || 0) + 1;
+      saveProgress();
+      renderPowerups();
+      toast("💡 +1 reveal unlocked!");
+    }
+  }, 1000);
+  document.getElementById("adSkip").onclick = () => {
+    clearInterval(timer);
+    overlay.onclick = savedClick;
+    closeModal();
+  };
 }
 
 function revealCell(){
@@ -5047,7 +5149,6 @@ updateAddsBadge();
 //}
 
 // Sync admin state: html.dev class drives CSS visibility of .tiers (size + diff rows).
-// Also redraws the day-nav strip so the Levels chip appears/disappears for admins.
 // Call whenever adminMode changes.
 function syncAdminControls(){
   if (adminMode) document.documentElement.classList.add("dev");
