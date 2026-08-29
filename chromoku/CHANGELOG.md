@@ -8,6 +8,13 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.11.1] 2026-08-29 — Fix: win badge aspect ratio in modal
+
+- **Root cause:** `renderShareBadge()` sets `canvas.style.width` and `canvas.style.height` as absolute pixel values; CSS `max-height:30vh` then clipped one axis without adjusting the other, squashing the image. Setting both dimensions independently with a CSS cap is always ratio-breaking.
+- **Fix:** Added `fitBadgeInModal(badge)` helper that reads the canvas's logical dimensions (`_logW`/`_logH` set on the element inside `renderShareBadge()`) and computes a scale factor that satisfies both a `maxW` (≈320px) and a `maxH` (30 % of viewport height) constraint, then writes back both dimensions proportionally. Called from `showWin()` and `winLevel()` before appending the canvas.
+- **CSS simplified:** `.badge-wrap canvas` no longer needs `max-height`, `width:auto`, or `height:auto` — those rules fought the inline styles anyway; replaced with a simple `max-width:100%` safety net.
+- The shared image itself is unaffected — `shareAsImage()` calls `renderShareBadge()` fresh at full DPR resolution.
+
 ### [v0.11.0] 2026-08-29 — Daily nav: Levels for all, device-aware day, persistent completions, ad bonus, share fix
 
 - **Levels button visible to all** — 🏆 Levels chip in the daily nav is no longer admin-only. Every player can reach Levels mode directly from the day strip.
