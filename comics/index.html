@@ -180,6 +180,24 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
 .series-issues{display:none;padding:0 12px 10px}
 .series-row.open .series-issues{display:block}
 
+/* ---------- price field ---------- */
+.price-mode-row{display:flex;gap:4px;margin-bottom:8px}
+.price-mode-btn{
+  flex:1;padding:7px 4px;font-family:"IBM Plex Mono",monospace;font-size:11px;
+  border:1px solid var(--line);border-radius:4px;background:none;
+  color:var(--ink-dim);cursor:pointer;text-align:center;
+}
+.price-mode-btn.active{color:var(--accent);border-color:var(--accent);background:rgba(232,200,64,.07)}
+.price-amount-row{display:flex;align-items:center;gap:6px}
+.price-amount-row .dollar{font-size:15px;color:var(--ink-dim);flex-shrink:0}
+.price-amount-row input{flex:1;min-width:0}
+.curr-toggle{display:flex;border:1px solid var(--line);border-radius:4px;overflow:hidden;flex-shrink:0}
+.curr-btn{
+  padding:8px 10px;font-family:"IBM Plex Mono",monospace;font-size:11px;
+  background:none;border:none;color:var(--ink-dim);cursor:pointer;
+}
+.curr-btn.active{background:var(--panel2);color:var(--ink);font-weight:600}
+
 /* ---------- value band (the signature) ---------- */
 .vband-wrap{margin-top:auto; padding-top:6px}
 .vband-labels{
@@ -626,6 +644,26 @@ function parsePrice(p){
 function fmtPrice(p){
   if(!p) return "—";
   return p;
+}
+
+/* parse a stored price string back into {mode, amount, currency, custom} for the form */
+function parsePriceField(p){
+  if(!p) return {mode:"cover", amount:"", currency:"CAD"};
+  const isEst = p.includes("est.") || p.startsWith("~");
+  if(isEst) return {mode:"custom", amount:"", currency:"CAD", custom:p};
+  const isCover = p.includes("(cover)");
+  const currency = p.includes("USD") ? "USD" : "CAD";
+  const amt = parsePrice(p);
+  return {mode: isCover ? "cover" : "paid", amount: amt != null ? amt.toString() : "", currency};
+}
+
+/* compose a price string from form values */
+function composePriceStr(mode, amount, currency, custom){
+  if(mode === "custom") return (custom||"").trim();
+  const n = parseFloat(amount);
+  if(!amount || isNaN(n)) return "";
+  const s = `$${n % 1 === 0 ? n.toFixed(2) : n.toFixed(2)} ${currency}`;
+  return mode === "cover" ? `${s} (cover)` : s;
 }
 
 function getSource(c){
@@ -1570,7 +1608,12 @@ function renderDetail(){
   };
 
   /* bind events */
-  document.getElementById("back").onclick = ()=> history.back();
+  document.getElementById("back").onclick = ()=>{
+    /* if there's a real history entry below us, go back normally;
+       otherwise fall back to collection so we never navigate out of the app */
+    if(history.length > 1){ history.back(); }
+    else { tab="collection"; history.replaceState({tab:"collection"}, ""); render(); window.scrollTo(0, collectionScrollY); }
+  };
   document.getElementById("edit").onclick = ()=>{
     editingId = c.id; tab = "add"; render();
   };
@@ -1922,7 +1965,29 @@ function renderForm(){
     <div class="field"><label>Characters</label><input id="f-chars" value="${esc(c.characters||"")}" placeholder="Spider-Man, Venom"></div>
 
     <div class="row2">
-      <div class="field"><label>Price paid</label><input id="f-price" value="${esc(c.price||"")}" placeholder="$25"></div>
+      <div class="field">
+        <label>Price</label>
+        ${(()=>{
+          const pf = parsePriceField(c.price||"");
+          return `
+            <div class="price-mode-row">
+              <button class="price-mode-btn${pf.mode==="cover"?" active":""}" data-pm="cover">Cover price</button>
+              <button class="price-mode-btn${pf.mode==="paid"?" active":""}" data-pm="paid">Paid</button>
+              <button class="price-mode-btn${pf.mode==="custom"?" active":""}" data-pm="custom">Custom</button>
+            </div>
+            <div class="price-amount-row" id="price-numeric-row" style="display:${pf.mode!=="custom"?"flex":"none"}">
+              <span class="dollar">$</span>
+              <input id="f-price-amount" type="number" min="0" step="0.01" placeholder="0.75"
+                value="${esc(pf.amount)}" inputmode="decimal">
+              <div class="curr-toggle">
+                <button class="curr-btn${pf.currency==="CAD"?" active":""}" data-curr="CAD">CAD</button>
+                <button class="curr-btn${pf.currency==="USD"?" active":""}" data-curr="USD">USD</button>
+              </div>
+            </div>
+            <input id="f-price-custom" value="${esc(pf.custom||"")}" placeholder="e.g. ~$50 CAD (est.)"
+              style="display:${pf.mode==="custom"?"block":"none"};margin-top:0">`;
+        })()}
+      </div>
       <div class="field"><label>Source</label>
         <select id="f-source-quick">
           <option value="">— quick pick —</option>
@@ -1963,6 +2028,25 @@ function renderForm(){
     btn.onclick = ()=>{
       selectedFire = parseInt(btn.dataset.fl);
       document.querySelectorAll(".fire-tier-btn").forEach(b => b.classList.toggle("active", parseInt(b.dataset.fl) === selectedFire));
+    };
+  });
+
+  /* price mode picker */
+  let selectedPriceMode = parsePriceField(c.price||"").mode;
+  let selectedCurrency   = parsePriceField(c.price||"").currency;
+  document.querySelectorAll(".price-mode-btn").forEach(btn => {
+    btn.onclick = () => {
+      selectedPriceMode = btn.dataset.pm;
+      document.querySelectorAll(".price-mode-btn").forEach(b => b.classList.toggle("active", b.dataset.pm === selectedPriceMode));
+      const isCustom = selectedPriceMode === "custom";
+      document.getElementById("price-numeric-row").style.display = isCustom ? "none" : "flex";
+      document.getElementById("f-price-custom").style.display = isCustom ? "block" : "none";
+    };
+  });
+  document.querySelectorAll(".curr-btn").forEach(btn => {
+    btn.onclick = () => {
+      selectedCurrency = btn.dataset.curr;
+      document.querySelectorAll(".curr-btn").forEach(b => b.classList.toggle("active", b.dataset.curr === selectedCurrency));
     };
   });
 
@@ -2077,12 +2161,32 @@ function renderForm(){
       }
 
       /* fill form fields */
+      let filled = 0;
       const fieldMap = {
         title:"f-title", issueNumber:"f-issue", variant:"f-variant",
         year:"f-year", coverArtist:"f-artist", writer:"f-writer", characters:"f-chars",
-        keyStatus:"f-key", price:"f-price", notes:"f-notes"
+        keyStatus:"f-key", notes:"f-notes"
       };
-      let filled = 0;
+      /* AI price → fill into custom field (AI returns formatted string) */
+      if(rec.price && !document.getElementById("f-price-amount").value && !document.getElementById("f-price-custom").value){
+        const aiPf = parsePriceField(rec.price);
+        if(aiPf.mode === "custom" || aiPf.amount === ""){
+          selectedPriceMode = "custom";
+          document.getElementById("f-price-custom").value = rec.price;
+          document.getElementById("f-price-custom").classList.add("needs-att");
+        } else {
+          selectedPriceMode = aiPf.mode;
+          selectedCurrency = aiPf.currency;
+          document.getElementById("f-price-amount").value = aiPf.amount;
+          document.getElementById("f-price-amount").classList.add("needs-att");
+        }
+        document.querySelectorAll(".price-mode-btn").forEach(b => b.classList.toggle("active", b.dataset.pm === selectedPriceMode));
+        document.querySelectorAll(".curr-btn").forEach(b => b.classList.toggle("active", b.dataset.curr === selectedCurrency));
+        const isCustom = selectedPriceMode === "custom";
+        document.getElementById("price-numeric-row").style.display = isCustom ? "none" : "flex";
+        document.getElementById("f-price-custom").style.display = isCustom ? "block" : "none";
+        filled++;
+      }
       /* publisher needs normalisation — AI returns "Marvel Comics" but select has "Marvel" */
       if(rec.publisher){
         const pubEl = document.getElementById("f-pub");
@@ -2149,7 +2253,12 @@ function renderForm(){
       coverArtist: document.getElementById("f-artist").value.trim(),
       writer: document.getElementById("f-writer").value.trim(),
       characters: document.getElementById("f-chars").value.trim(),
-      price: document.getElementById("f-price").value.trim(),
+      price: composePriceStr(
+        selectedPriceMode,
+        document.getElementById("f-price-amount").value.trim(),
+        selectedCurrency,
+        document.getElementById("f-price-custom").value
+      ),
       source: document.getElementById("f-source").value.trim(),
       location: document.getElementById("f-location").value.trim(),
       qty: parseInt(document.getElementById("f-qty").value) || 1,
@@ -2809,6 +2918,9 @@ function renderSync(){
       <summary>What's new</summary>
       <div class="collapse-body">
         <ul class="changelog">
+          <li><span class="cl-ver">Aug 27 2026</span>
+            <span class="cl-title">💰 Price field redesign</span><br>
+            <span class="cl-desc">Price entry now has three modes: Cover price (default) · Paid · Custom. Cover price and Paid modes use a numeric input with a separate CAD/USD toggle — no more mixing currency into the value. Custom mode accepts any freeform string for AI estimates. AI identification fills the price field correctly in all modes. Demo book defaults to cover price.</span></li>
           <li><span class="cl-ver">Aug 25 2026</span>
             <span class="cl-title">📚 Series view + gap detection</span><br>
             <span class="cl-desc">New "Series" view in the Collection tab groups all issues by title. Each row shows issue count, range (#2–179), and gaps in your run (e.g. "Gaps: #3–19, #73, #75–78"). Fire and key issue badges on series headers. Tap any series to expand its issues inline. Search and filters still apply — matching series are shown, non-matching hidden.</span></li>
@@ -3200,7 +3312,7 @@ const SEED = [{
   coverArtist:"Gil Kane",
   writer:"Gerry Conway",
   characters:"Spider-Man, Punisher, Jackal",
-  price:"",
+  price:"$0.20 USD (cover)",
   source:"",
   location:"",
   qty:1,
@@ -3231,6 +3343,10 @@ document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click", (
   editingId = null;
   pendingImage = null; originalImage = null;
   pendingAiFields = {}; /* free memory when leaving Add tab */
+  /* replaceState so any open detail entry doesn't linger in history — if the
+     user taps a tab instead of the ← Back button, back should still return
+     to the collection/tab they were on, not a previous detail card */
+  history.replaceState({tab: b.dataset.tab}, "");
   setTab(b.dataset.tab);
 }));
 

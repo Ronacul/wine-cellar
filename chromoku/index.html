@@ -179,7 +179,7 @@ html.in-level #sizeRow{display:none !important}
 /* The clock is the only way to lose, so it gets a bar rather than just digits. */
 .tbarwrap{
   width:100%; max-width:400px; height:5px; border-radius:3px;
-  background:var(--panel2); overflow:hidden; margin-top:-16px;
+  background:var(--panel2); overflow:hidden;
 }
 .tbar-fill{
   height:100%; width:100%; border-radius:3px; background:var(--ink-dim);
@@ -191,8 +191,8 @@ html.in-level #sizeRow{display:none !important}
 .timer.danger{color:var(--error); font-weight:600}
 /* Power-up bar — always visible during levels, not buried in a modal. */
 .powerups{
-  display:flex; gap:6px; justify-content:center; width:100%; max-width:400px;
-  margin-top:-8px; margin-bottom:2px;
+  display:flex; gap:6px; justify-content:center; align-items:center;
+  width:100%; max-width:400px;
 }
 .pu{
   display:flex; align-items:center; gap:4px; padding:4px 10px;
@@ -295,16 +295,25 @@ html.in-level #sizeRow{display:none !important}
   white-space:nowrap; border:none; cursor:pointer;
 }
 /* ── Previous-day navigation strip ── */
+/* Two rows of four rather than one scrolling row — every chip is reachable
+   without a swipe and they all share one column width, so the strip reads as
+   a block instead of a ragged queue. */
 .day-nav{
-  display:flex; gap:5px; overflow-x:auto; scrollbar-width:none;
-  padding:4px 0 2px; width:100%; max-width:min(460px,100%);
+  display:grid; grid-template-columns:repeat(4,1fr); gap:4px;
+  padding:2px 0; width:100%; max-width:min(460px,100%);
 }
-.day-nav::-webkit-scrollbar{display:none}
 .day-nav button{
-  flex:0 0 auto; font-size:10px; font-family:var(--mono); padding:4px 9px;
+  font-size:10px; font-family:var(--mono); padding:4px 2px;
   border-radius:8px; background:var(--panel2); border:1px solid var(--line);
   color:var(--ink-dim); cursor:pointer; white-space:nowrap; line-height:1.2;
+  min-width:0; overflow:hidden; text-overflow:ellipsis;
 }
+/* Levels is a different destination, not another day — colour says so. */
+.day-nav button.lvl-chip{
+  background:rgba(201,162,39,.15); border-color:rgba(201,162,39,.45); color:#c9a227;
+  font-weight:700;
+}
+.day-nav button.lvl-chip:hover{background:rgba(201,162,39,.26); color:#c9a227}
 .day-nav button.today{
   background:var(--ink); color:var(--bg); border-color:var(--ink); font-weight:700;
 }
@@ -319,18 +328,29 @@ html.in-level #sizeRow{display:none !important}
 }
 
 /* ================= board ================= */
+/* justify-content:flex-start, not center — centring splits leftover height into
+   dead space above and below the stack. Content packs from the top and the
+   board-wrap's auto margins do the optical centring instead. */
 .play{
   flex:1; width:100%; display:flex; flex-direction:column;
-  align-items:center; justify-content:center; gap:clamp(10px,3.5vw,22px);
+  align-items:center; justify-content:flex-start; gap:clamp(6px,1.8vw,12px);
 }
-.board-wrap{width:100%; max-width:min(84vw,340px)}
+/* The board is the hero — leftover height goes into making it bigger rather
+   than into a dead gap. vh cap keeps it from overflowing on short screens. */
+.board-wrap{width:100%; max-width:min(92vw,46vh,400px)}
+/* Admin view carries ~100px of extra chrome (admin bar + size/diff rows), so
+   the board gives that height back rather than pushing the palette off-screen. */
+html.dev .board-wrap{max-width:min(92vw,34vh,400px)}
 
 /* Tighten header and layout on short screens (e.g. iPhone SE) */
 @media (max-height:680px){
   .app{ padding-top:calc(var(--safe-t) + 4px); padding-bottom:calc(var(--safe-b) + 6px) }
   header{ padding-bottom:6px; margin-bottom:8px }
-  .play{ gap:clamp(6px,2.5vw,14px) }
-  .board-wrap{ max-width:min(80vw,300px) }
+  .play{ gap:clamp(4px,1.5vw,9px) }
+  .board-wrap{ max-width:min(86vw,40vh,300px) }
+  /* Short screen + admin chrome is the tightest case there is — the board
+     yields the most here so the palette still clears the fold. */
+  html.dev .board-wrap{ max-width:min(86vw,24vh,300px) }
   .pal-pad{ padding-bottom:10px }
 }
 /* Gap between boxes is 3x the gap inside them — that ratio is the only thing
@@ -392,10 +412,10 @@ html.in-level #sizeRow{display:none !important}
 
 /* ================= palette ================= */
 /* Palette matches the board width so swatches scale with the puzzle. */
-.palette{display:flex; flex-direction:column; gap:26px; align-items:stretch;
+.palette{display:flex; flex-direction:column; gap:clamp(10px,3vw,18px); align-items:stretch;
   width:100%; max-width:min(86vw,360px)}
 /* No number labels past 4 marks, so rows can sit closer. */
-.palette.tight{gap:10px}
+.palette.tight{gap:7px}
 /* Prow fills the palette width; swatches flex to divide it evenly. */
 .prow{display:flex; gap:clamp(5px,1.5vw,8px); align-items:center; flex-wrap:nowrap}
 /* Past four marks we split into separate prow divs via JS (no CSS wrap needed). */
@@ -511,6 +531,8 @@ html.in-level #sizeRow{display:none !important}
 .dev-only{display:none}
 html.dev .dev-only{display:grid}
 html.dev #adminBar{display:flex}
+.admin-bar::-webkit-scrollbar{display:none}
+.admin-bar > *{flex:0 0 auto}
 .dbg input{
   flex:1; font-family:var(--mono); font-size:12px; padding:8px 10px; border-radius:8px;
   border:1px solid var(--line-2); background:var(--panel2); color:var(--ink);
@@ -551,7 +573,7 @@ html.dev #adminBar{display:flex}
 }
 .overlay.hide{display:none}
 .modal{
-  background:var(--panel); border-radius:18px; padding:24px 22px;
+  background:var(--panel); border-radius:18px; padding:18px 20px;
   width:100%; max-width:360px; box-shadow:0 20px 60px rgba(0,0,0,.28);
   max-height:86vh; overflow-y:auto;
 }
@@ -569,7 +591,7 @@ html.dev #adminBar{display:flex}
 }
 .btn:hover{opacity:.85}
 .btn.ghost{background:var(--panel2); color:var(--ink); margin-top:8px}
-.stats{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:18px}
+.stats{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:12px}
 .stat{text-align:center}
 .stat .n{font-family:var(--mono); font-size:24px; font-weight:600; letter-spacing:-.03em}
 .stat .l{font-size:9.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.07em; margin-top:3px; line-height:1.3}
@@ -657,8 +679,21 @@ html.dev #adminBar{display:flex}
 /* revealed-cell glow */
 .cell.revealed{background:rgba(241,196,15,.18)!important; transition:background .6s}
 /* share badge canvas */
-.badge-wrap{display:flex; justify-content:center; margin-bottom:16px}
-.badge-wrap canvas{max-width:100%; height:auto; border-radius:12px}
+.badge-wrap{display:flex; justify-content:center; margin-bottom:10px}
+/* Height cap, not just width — the badge is the tallest element in the win
+   card, so bounding it by vh is what keeps the card on one screen. The shared
+   image is rendered from the canvas at full resolution regardless. */
+.badge-wrap canvas{max-width:100%; max-height:30vh; width:auto; height:auto; border-radius:12px}
+/* Short-screen win card. Declared after the base rules above so it actually
+   wins — an equal-specificity media query earlier in the sheet would not. */
+@media (max-height:680px){
+  .modal{ padding:14px 16px }
+  .win-time{ font-size:24px; margin:2px 0 8px }
+  .badge-wrap{ margin-bottom:6px }
+  .badge-wrap canvas{ max-height:20vh }
+  .stats{ margin-bottom:8px }
+  .stat .n{ font-size:19px }
+}
 /* timer frozen effect */
 .timer.frozen{color:#3498db!important; font-weight:700}
 @media (min-width:520px){
@@ -691,7 +726,7 @@ html.dev #adminBar{display:flex}
 </header>
 
 <!-- Admin bar — visible only in dev/admin mode (html.dev class), never in release -->
-<div class="dev-only" id="adminBar" style="background:#1a3a1a;border-bottom:1px solid #3a6a3a;padding:6px 12px;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;color:#9fdf9f;flex-wrap:wrap">
+<div class="dev-only admin-bar" id="adminBar" style="background:#1a3a1a;border-bottom:1px solid #3a6a3a;padding:3px 8px;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:#9fdf9f;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;white-space:nowrap">
   <span style="font-weight:700;color:#6fcf6f;letter-spacing:.05em">🛠 ADMIN</span>
   <label style="display:flex;align-items:center;gap:4px">Level
     <input type="number" id="adminLevel" min="1" max="500" style="width:52px;background:#0d1f0d;border:1px solid #3a6a3a;border-radius:4px;color:#9fdf9f;font-family:var(--mono);font-size:11px;padding:2px 4px" value="1">
@@ -1113,7 +1148,15 @@ const DAILY_SCHEDULE = [
 ];
 
 // Returns the DAILY_SCHEDULE entry for the current state.day.
+// For today we use the device's local day-of-week directly; for past/future
+// days we derive it from the UTC timestamp (which matches since dayNumber()
+// builds its day count from local calendar date components).
 function dailyConfig(){
+  const today = dayNumber();
+  if (state.day === today){
+    // Use local calendar DOW — matches what the user's device says.
+    return DAILY_SCHEDULE[new Date().getDay()];
+  }
   const date = new Date(EPOCH + (state.day - 1) * 86400000);
   return DAILY_SCHEDULE[date.getUTCDay()];
 }
@@ -1149,7 +1192,8 @@ const LEGACY_SLOTS = {
   l4:"l4-easy", l5:"l5-easy", l7:"l7-easy", l10:"l10-easy",
 };
 
-const LS_DAILY = "chromoku.daily.v2";   // v2: per-layer state
+const LS_DAILY = "chromoku.daily.v2";   // v2: per-layer state (single-day, kept for migration)
+const LS_DAILY3 = "chromoku.daily.v3"; // v3: per-day keyed store — keeps last 30 days
 const LS_STATS = "chromoku.stats.v1";
 const LS_THEME = "chromoku.theme.v1";
 const LS_HELP  = "chromoku.seen-help.v1";
@@ -1167,7 +1211,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.10.7";
+const CHROMOKU_VERSION = "v0.11.0";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -1853,6 +1897,7 @@ const state = {
   frozenUntil:0,           // timestamp: clock display freezes until
 };
 const HISTORY_MAX = 50;
+let _winTimer = null;   // pending setTimeout before the win modal appears
 
 /* ================= persistence ================= */
 
@@ -1884,19 +1929,45 @@ function save(key, val){
 }
 const blankStats = () => ({ played:0, streak:0, maxStreak:0, lastWinDay:null, best:{} });
 
-function loadDaily(){
-  const d = load(LS_DAILY, null);
-  if (!d || d.day !== state.day) return { day:state.day };
-  // One-time migration: old single-axis tier IDs → new composite IDs
-  if (!d._mig){
-    for (const [old, nk] of Object.entries(LEGACY_SLOTS)){
-      if (d[old] && !d[nk])           { d[nk]         = d[old]; }
-      if (d[old+"-x2"] && !d[nk+"-x2"]) { d[nk+"-x2"] = d[old+"-x2"]; }
+// ── v3 multi-day helpers ─────────────────────────────────────────────────────
+// Returns the per-day slot record for a given day (defaults to {}), migrating
+// v2 single-day data into the v3 store on first access.
+function loadDayRecord(day){
+  // One-time migration: if v3 is empty and v2 has data for today, seed v3.
+  const store = load(LS_DAILY3, null);
+  if (!store){
+    const v2 = load(LS_DAILY, null);
+    if (v2 && v2.day){
+      // Apply v2 legacy-slot migration before importing.
+      if (!v2._mig){
+        for (const [old, nk] of Object.entries(LEGACY_SLOTS)){
+          if (v2[old] && !v2[nk])               { v2[nk]       = v2[old]; }
+          if (v2[old+"-x2"] && !v2[nk+"-x2"])   { v2[nk+"-x2"] = v2[old+"-x2"]; }
+        }
+      }
+      const migrated = {};
+      for (const k of Object.keys(v2)){
+        if (k !== "day" && k !== "_mig") migrated[k] = v2[k];
+      }
+      const newStore = { [String(v2.day)]: migrated };
+      save(LS_DAILY3, newStore);
+      return (day === v2.day) ? migrated : {};
     }
-    d._mig = true; save(LS_DAILY, d);
+    save(LS_DAILY3, {});
+    return {};
   }
-  return d;
+  return store[String(day)] || {};
 }
+function saveDayRecord(day, record){
+  const store = load(LS_DAILY3, {});
+  store[String(day)] = record;
+  // Prune to last 30 days to keep localStorage lean.
+  const keys = Object.keys(store).map(Number).sort((a, b) => b - a);
+  if (keys.length > 30){ keys.slice(30).forEach(k => delete store[String(k)]); }
+  save(LS_DAILY3, store);
+}
+// ── compatibility wrappers (called by existing code) ─────────────────────────
+function loadDaily(){ return loadDayRecord(state.day); }
 function saveProgress(){
   if (state.practice) return;   // practice never enters the daily record
   const d = loadDaily();
@@ -1908,7 +1979,7 @@ function saveProgress(){
     bookmark:state.bookmark,
     hints:state.hints,
   };
-  save(LS_DAILY, d);
+  saveDayRecord(state.day, d);
 }
 
 /* ================= timer ================= */
@@ -2043,7 +2114,7 @@ function loadPuzzle(sizeId, diffId, fresh){
     }
     state.elapsed = 0; state.mistakes = 0; state.done = false; state.started = false;
     state.bookmark = null;
-    state.hints = { reveals:0, freezes:0, adds:0, flashes:0 }; state.bonusReveals = 0; state.adShown = false;
+    state.hints = { reveals:0, freezes:0, adds:0, flashes:0 }; state.bonusReveals = 0; state.adShown = false; state._adReveals = 0;
   }
   state.since = null; state.sel = null; state.erase = false;
   state.history = []; state.frozenUntil = 0;
@@ -2104,7 +2175,7 @@ function loadLevel(n){
   state.elapsed = 0; state.since = null; state.started = false;
   state.mistakes = 0; state.done = false; state.sel = null; state.erase = false;
   state.history = []; state.bookmark = null;
-  state.hints = { reveals:0, freezes:0, adds:0, flashes:0 }; state.bonusReveals = 0; state.adShown = false; state.frozenUntil = 0;
+  state.hints = { reveals:0, freezes:0, adds:0, flashes:0 }; state.bonusReveals = 0; state.adShown = false; state._adReveals = 0; state.frozenUntil = 0;
 
   // Don't overwrite the player's highest-level progress when replaying tutorial.
   // Tutorial replay uses levels 0–6; we only advance, never regress.
@@ -2196,9 +2267,15 @@ function isSolved(){
 
 /* ================= rendering ================= */
 
+// Returns true if any slot for the given day is marked done.
+function isDayDone(day){
+  const rec = loadDayRecord(day);
+  return Object.values(rec).some(v => v && v.done);
+}
+
 // Render the previous-days navigation strip below the board in daily mode.
-// Shows 6 past days as chips; today chip highlighted. Past day taps load that
-// day's scheduled puzzle with the banner active.
+// Shows 6 past days as chips; today chip highlighted with the device day name.
+// Completed days show a ✓ indicator. Levels button always visible.
 function renderDailyNav(){
   const el = document.getElementById("dayNav");
   if (!el) return;
@@ -2208,31 +2285,45 @@ function renderDailyNav(){
   const today = dayNumber();
   el.style.display = "";
   const DAYS_BACK = 6;
-  let html = '<button class="' + (state.day === today ? "today" : "past") + '" id="dnToday">Today</button>';
+  // Use local DOW from device calendar — matches what dayNumber() computed.
+  const localDOW = new Date().getDay(); // 0=Sun … 6=Sat
   const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  const todayDowName = DOW[localDOW];
+  const todayTier = DAILY_SCHEDULE[localDOW].tier;
+  const todayDone = isDayDone(today);
+  // Today chip: show local day name so users can verify the app's calendar reading.
+  let html = '<button class="' + (state.day === today ? "today" : "past") + '" id="dnToday">'
+           + todayDowName + (todayDone ? ' ✓' : '')
+           + '<br><span style="font-size:8px;color:inherit;opacity:.7">' + todayTier + '</span>'
+           + '</button>';
   for (let i = 1; i <= DAYS_BACK; i++){
     const d = today - i;
     if (d < 1) break;
     const dt = new Date(EPOCH + (d - 1) * 86400000);
     const dow = DOW[dt.getUTCDay()];
     const sc = DAILY_SCHEDULE[dt.getUTCDay()];
+    const done = isDayDone(d);
     html += '<button class="' + (state.day === d ? "today" : "past") + '" data-day="' + d + '">'
-          + dow + '<br><span style="font-size:8px;color:inherit;opacity:.7">' + sc.tier + '</span>'
+          + dow + (done ? ' ✓' : '')
+          + '<br><span style="font-size:8px;color:inherit;opacity:.7">' + sc.tier + '</span>'
           + '</button>';
   }
-  // Admin-only Levels chip — gives admins quick access from the day strip
-  if (adminMode){
-    html += '<button class="past" id="dnLevels" style="margin-left:auto">🏆 Levels</button>';
-  }
+  // Levels chip — gold, always visible so everyone can reach the Levels mode.
+  html += '<button class="lvl-chip" id="dnLevels">🏆<br>'
+        + '<span style="font-size:8px;opacity:.8">Levels</span></button>';
   el.innerHTML = html;
   el.querySelector("#dnToday").onclick = () => {
+    if (_winTimer){ clearTimeout(_winTimer); _winTimer = null; }
     if (state.day !== today){ state.day = today; enterDaily(); }
   };
   el.querySelectorAll("[data-day]").forEach(btn => {
-    btn.onclick = () => { state.day = +btn.dataset.day; enterDaily(); };
+    btn.onclick = () => {
+      if (_winTimer){ clearTimeout(_winTimer); _winTimer = null; }
+      state.day = +btn.dataset.day; enterDaily();
+    };
   });
   const dnLvl = el.querySelector("#dnLevels");
-  if (dnLvl) dnLvl.onclick = () => loadLevel(progress().level);
+  if (dnLvl) dnLvl.onclick = () => { closeModal(); loadLevel(progress().level); };
 }
 
 function render(){
@@ -3081,7 +3172,7 @@ function win(){
   if (vig) vig.className = "vignette";
 
   if (state.mode === "levels"){ winLevel(); return; }
-  if (state.practice){ markWon(); setTimeout(showWin, 1100); return; }
+  if (state.practice){ markWon(); if (_winTimer) clearTimeout(_winTimer); _winTimer = setTimeout(() => { _winTimer = null; showWin(); }, 1100); return; }
 
   const st = load(LS_STATS, blankStats());
   st.played++;
@@ -3098,7 +3189,8 @@ function win(){
 
   markWon();
   renderDiffs();
-  setTimeout(showWin, 1100);
+  if (_winTimer) clearTimeout(_winTimer);
+  _winTimer = setTimeout(() => { _winTimer = null; showWin(); }, 1100);
 }
 
 // Stars reward beating par, so there is a reason to replay a cleared level.
@@ -3859,6 +3951,10 @@ function renderPowerups(){
     el.style.display = "";
     const revLeft = HINT_LIMITS.reveals + (state.bonusReveals || 0) - state.hints.reveals;
     const flsLeft = HINT_LIMITS.flashes - state.hints.flashes;
+    // Max bonus reveals purchasable per puzzle (so it stays a fair nudge, not unlimited)
+    const MAX_AD_REVEALS = 2;
+    const adRevealsLeft = MAX_AD_REVEALS - (state._adReveals || 0);
+    const canBuyReveal = revLeft <= 0 && adRevealsLeft > 0 && !state.practice;
     el.innerHTML =
       '<span style="font-size:9px;color:var(--ink-dim);font-family:var(--mono)">Advantages</span> '
       + '<button class="pu" id="puFlash"' + (flsLeft <= 0 ? " disabled" : "")
@@ -3866,11 +3962,17 @@ function renderPowerups(){
       + '<span class="pu-icon">🔦</span><span class="pu-n">' + flsLeft + '</span></button>'
       + '<button class="pu" id="puReveal"' + (revLeft <= 0 ? " disabled" : "")
       + ' title="Reveal a cell — counts toward hint badge">'
-      + '<span class="pu-icon">💡</span><span class="pu-n">' + revLeft + '</span></button>';
+      + '<span class="pu-icon">💡</span><span class="pu-n">' + revLeft + '</span></button>'
+      + (canBuyReveal
+          ? '<button class="pu" id="puBuyReveal" title="Watch a short ad to unlock +1 reveal" style="background:rgba(201,162,39,.13);border-color:rgba(201,162,39,.45);color:#c9a227;font-weight:700">'
+            + '<span class="pu-icon" style="font-size:11px">+💡</span></button>'
+          : '');
     const pFl = document.getElementById("puFlash");
     if (pFl) pFl.onclick = () => { flashHint(true); renderPowerups(); };
     const pR = document.getElementById("puReveal");
     if (pR) pR.onclick = () => { revealCell(); renderPowerups(); };
+    const pBuy = document.getElementById("puBuyReveal");
+    if (pBuy) pBuy.onclick = () => watchAdForBonus();
     return;
   }
   el.style.display = "";
@@ -3996,6 +4098,48 @@ function showHintModal(){
   if (hF) hF.onclick = () => { closeModal(); freezeClock(); };
   const hA = document.getElementById("hAdd");
   if (hA) hA.onclick = () => { closeModal(); addTime(); };
+}
+
+// Simulated "watch an ad" flow to earn +1 reveal on the daily puzzle.
+// In a real app this would gate on a rewarded ad SDK; here we show a countdown
+// modal that the player must wait through, then grant the bonus.
+function watchAdForBonus(){
+  if (state.done || state.practice) return;
+  const AD_SECS = 5;
+  let remaining = AD_SECS;
+  function buildHTML(){
+    return '<h2>🎁 Free reveal</h2>'
+      + '<p class="lede">Support Chromoku by watching a short ad. Your reveal will unlock in '
+      + '<b id="adCountdown">' + remaining + '</b>s…</p>'
+      + '<div style="height:80px;background:var(--panel2);border-radius:10px;display:grid;place-items:center;margin:12px 0;color:var(--ink-faint);font-size:11px;font-family:var(--mono)">[Ad placeholder]</div>'
+      + '<button class="btn ghost" id="adSkip">Cancel</button>';
+  }
+  openModal(buildHTML());
+  // Block overlay-tap close during countdown so user has to wait.
+  const overlay = document.getElementById("overlay");
+  const savedClick = overlay.onclick;
+  overlay.onclick = null;
+  let timer = setInterval(() => {
+    remaining--;
+    const el = document.getElementById("adCountdown");
+    if (el) el.textContent = remaining;
+    if (remaining <= 0){
+      clearInterval(timer);
+      overlay.onclick = savedClick;
+      closeModal();
+      // Grant the bonus reveal.
+      state.bonusReveals = (state.bonusReveals || 0) + 1;
+      state._adReveals = (state._adReveals || 0) + 1;
+      saveProgress();
+      renderPowerups();
+      toast("💡 +1 reveal unlocked!");
+    }
+  }, 1000);
+  document.getElementById("adSkip").onclick = () => {
+    clearInterval(timer);
+    overlay.onclick = savedClick;
+    closeModal();
+  };
 }
 
 function revealCell(){
@@ -5005,7 +5149,6 @@ updateAddsBadge();
 //}
 
 // Sync admin state: html.dev class drives CSS visibility of .tiers (size + diff rows).
-// Also redraws the day-nav strip so the Levels chip appears/disappears for admins.
 // Call whenever adminMode changes.
 function syncAdminControls(){
   if (adminMode) document.documentElement.classList.add("dev");
