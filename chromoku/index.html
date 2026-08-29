@@ -678,19 +678,16 @@ html.dev #adminBar{display:flex}
 }
 /* revealed-cell glow */
 .cell.revealed{background:rgba(241,196,15,.18)!important; transition:background .6s}
-/* share badge canvas */
+/* share badge canvas — display size and aspect ratio are set by fitBadgeInModal()
+   in JS, so CSS here only needs a visual default; max-width:100% is a safety net
+   in case the canvas is appended without going through fitBadgeInModal(). */
 .badge-wrap{display:flex; justify-content:center; margin-bottom:10px}
-/* Height cap, not just width — the badge is the tallest element in the win
-   card, so bounding it by vh is what keeps the card on one screen. The shared
-   image is rendered from the canvas at full resolution regardless. */
-.badge-wrap canvas{max-width:100%; max-height:30vh; width:auto; height:auto; border-radius:12px}
-/* Short-screen win card. Declared after the base rules above so it actually
-   wins — an equal-specificity media query earlier in the sheet would not. */
+.badge-wrap canvas{max-width:100%; border-radius:12px; display:block}
+/* Short-screen win card */
 @media (max-height:680px){
   .modal{ padding:14px 16px }
   .win-time{ font-size:24px; margin:2px 0 8px }
   .badge-wrap{ margin-bottom:6px }
-  .badge-wrap canvas{ max-height:20vh }
   .stats{ margin-bottom:8px }
   .stat .n{ font-size:19px }
 }
@@ -1211,7 +1208,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.11.0";
+const CHROMOKU_VERSION = "v0.11.1";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -3288,6 +3285,7 @@ function winLevel(){
     );
     try {
       const badge = renderShareBadge();
+      fitBadgeInModal(badge);
       document.getElementById("badgeWrap").appendChild(badge);
     } catch { /* canvas unavailable */ }
     document.getElementById("shareBtn").onclick = shareAsImage;
@@ -4316,6 +4314,9 @@ function renderShareBadge(){
   canvas.height = Math.round(H * dpr);
   canvas.style.width = W + "px";
   canvas.style.height = H + "px";
+  // Expose logical dimensions so callers can scale the display size correctly.
+  canvas._logW = W;
+  canvas._logH = H;
   const ctx = canvas.getContext("2d");
   ctx.scale(dpr, dpr);
 
@@ -4854,6 +4855,25 @@ function miniBoard(){
        + ",1fr);grid-template-rows:repeat(" + (n / bh) + ',1fr)">' + html + "</div>";
 }
 
+// Scale a share-badge canvas to fit inside the win modal while preserving
+// its exact aspect ratio. CSS max-height/max-width alone break the ratio
+// when both inline width and height are set as absolute pixels — so we
+// compute the correct display size here and write both dimensions back.
+function fitBadgeInModal(badge){
+  const W = badge._logW || parseFloat(badge.style.width)  || badge.width;
+  const H = badge._logH || parseFloat(badge.style.height) || badge.height;
+  // Modal inner width ≈ min(360, viewport) − 40px padding.
+  const maxW = Math.min(window.innerWidth - 48, 320);
+  // Reserve ≈ 30 % of viewport height for the badge.
+  const maxH = Math.round(window.innerHeight * 0.30);
+  const scale = Math.min(maxW / W, maxH / H, 1);
+  badge.style.width  = Math.round(W * scale) + "px";
+  badge.style.height = Math.round(H * scale) + "px";
+  badge.style.display = "block";
+  badge.style.margin  = "0 auto";
+  badge.style.borderRadius = "12px";
+}
+
 function showWin(){
   fireConfetti();
   const st = load(LS_STATS, blankStats());
@@ -4895,9 +4915,12 @@ function showWin(){
     + leaderboardHTML()
     + winBannerHTML()
   );
-  // Render the share badge canvas into the modal
+  // Render the share badge canvas into the modal, scaled to fit while
+  // preserving aspect ratio — CSS max-height alone breaks the ratio when
+  // both width and height are set as inline pixels, so we do it in JS.
   try {
     const badge = renderShareBadge();
+    fitBadgeInModal(badge);
     document.getElementById("badgeWrap").appendChild(badge);
   } catch { /* canvas rendering failed, mini board fallback */
     document.getElementById("badgeWrap").innerHTML = '<div class="mini-wrap">' + miniBoard() + '</div>';
