@@ -353,6 +353,9 @@ When the user mentions either league by name, load the relevant repo and files w
 - **Roster:** 18 players (2QB/5RB/5WR/2TE/2K/2DST), start 9 (1QB, 6 flex min 2WR/1RB/1TE, 1K, 1DST)
 - **Contract escalation:** 1.5× per year (rounded up); FINAL option = 2× last salary; buyout = half remaining contracted salary
 - **Lesson learned (2026):** Rival keeper predictions skewed toward over-retention. In practice, owners were not willing to pay inflated 1.5×/2× salaries and risk a high cap hit on uncertain players — more stars hit the auction pool than predicted. Trust actual CBS roster data over predictions when they conflict.
+- **Tool rule:** Always load WebSearch at the start of any HPFL discussion involving player analysis, injury status, projections, or trade values. Knowledge cutoff is Aug 2025 — 2026 player news, injuries, depth charts, and auction values require live search. Never analyse a player's trade or auction value without verifying current status first.
+- **Trade cost formula:** When a player is traded below their contracted salary, the trading team's cap hit = contracted salary − trade price (not 50% of contract). Cut cost = 50% of contracted salary rounded up. A trade is only better than cutting when trade price > contracted salary / 2.
+- **Bigsby rule:** Never trade Tank Bigsby. He is the Barkley handcuff — his value as insurance far exceeds his $3 keeper salary or standalone RB48 ranking.
 
 ### Hockey Night in Ottawa — fantasy hockey
 - **My team:** TBD / ask user
