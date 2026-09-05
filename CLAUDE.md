@@ -338,3 +338,24 @@ git push origin release --tags
 - 🧪 **Playtest** (live on `main`): https://ronacul.github.io/wine-cellar/chromoku/
 
 Always push to `main` at the end of every Chromoku session so phone/other devices can test the latest version.
+
+## Personal leagues (shorthand recognition)
+
+When the user mentions either league by name, load the relevant repo and files without asking for context.
+
+### HPFL — fantasy football
+- Full name: HPFL (hosted on CBS Sports)
+- **My team:** Xavier's Force
+- **Format:** 16-team salary auction draft, $200 cap, keeper contracts
+- **Repo:** `Ronacul/hpfl-fantasy-football` — contains league rules, keeper plans, auction strategy, rival rosters
+- **Key files:** `league-rules.md`, `keeper-plan-2026.md`, `auction_plan_2026.md`, `auction-strategy-2026.md`, `rival_keeper_predictions_2026.md`, `contract_decisions_2026.md`
+- **Scoring highlights:** 6-pt TDs, **+3 bonus for TDs of 40+ yards** (makes big-play receivers more valuable), 0.1 pt/rushing+receiving yard
+- **Roster:** 18 players (2QB/5RB/5WR/2TE/2K/2DST), start 9 (1QB, 6 flex min 2WR/1RB/1TE, 1K, 1DST)
+- **Contract escalation:** 1.5× per year (rounded up); FINAL option = 2× last salary; buyout = half remaining contracted salary
+- **Lesson learned (2026):** Rival keeper predictions skewed toward over-retention. In practice, owners were not willing to pay inflated 1.5×/2× salaries and risk a high cap hit on uncertain players — more stars hit the auction pool than predicted. Trust actual CBS roster data over predictions when they conflict.
+
+### Hockey Night in Ottawa — fantasy hockey
+- **My team:** TBD / ask user
+- **Format:** TBD / ask user
+- **Platform:** TBD / ask user
+- When the user mentions this league, ask for the platform and any repo/files before proceeding
