@@ -63,7 +63,7 @@
     "name": "Bourgogne Passetoutgrains",
     "vintage": "1983",
     "type": "Red",
-    "qty": 1,
+    "qty": 0,
     "region": "Bourgogne Passetoutgrains AOC, Burgundy, France",
     "drinkFrom": "1985",
     "drinkTo": "1990",
@@ -75,7 +75,20 @@
     "price": "~$20 CAD (est.)",
     "location": "",
     "notes": "A traditional blend of Pinot Noir and Gamay. As a light Bourgogne Passetoutgrains intended for youthful consumption, this 1983 vintage is now well past its prime drinking window.",
-    "imagePath": "images/ms2pzkigeux4z.jpg"
+    "imagePath": "images/ms2pzkigeux4z.jpg",
+    "tastingHistory": [
+      {
+        "date": "2026-08-28",
+        "rating": 5,
+        "notes": "Beautiful, thin...slight decant",
+        "bottleNum": 1
+      }
+    ],
+    "drankDate": "2026-08-28",
+    "rating": 5,
+    "drinkNotes": "Beautiful, thin...slight decant",
+    "buyAgain": null,
+    "giftedTo": null
   },
   {
     "id": "6a693529e829da8f",
@@ -5543,7 +5556,7 @@
     "name": "Francs Côtes de Bordeaux Élevé en Fût de Chên",
     "vintage": "2010",
     "type": "Red",
-    "qty": 2,
+    "qty": 1,
     "region": "Francs Côtes de Bordeaux, France",
     "drinkFrom": "2014",
     "drinkTo": "2022",
@@ -5556,7 +5569,13 @@
     "price": "~$28 CAD (est.)",
     "location": "N",
     "notes": "A Merlot-dominant Right Bank blend with Cabernet Franc and Cabernet Sauvignon. Offers ripe plum, blackberry, earthy undertones, and toasted oak notes.",
-    "imagePath": "images/msm0bascg9oui.jpg"
+    "imagePath": "images/msm0bascg9oui.jpg",
+    "tastingHistory": [
+      {
+        "date": "2026-08-19",
+        "bottleNum": 1
+      }
+    ]
   },
   {
     "id": "msm0d3m4y5vpz",
@@ -6175,5 +6194,40 @@
     "drinkNotes": "Early Birthday for me, with Cordelia.\nGood, very thin texture, and nice smooth taste, even so far past window",
     "buyAgain": null,
     "giftedTo": null
+  },
+  {
+    "id": "mtrvs3awsi16e",
+    "added": "2026-09-07",
+    "producer": "Bodegas Montecillo",
+    "name": "Viña Monty Graciano Reserva",
+    "vintage": "2016",
+    "type": "Red",
+    "qty": 0,
+    "region": "Rioja, Spain",
+    "drinkFrom": "2022",
+    "drinkTo": "2032",
+    "shelfSection": "",
+    "binCode": "",
+    "titi": false,
+    "fire": 0,
+    "pairings": "Roasted lamb, grilled ribeye steak, venison, rich stews, aged Manchego cheese",
+    "source": "Gift - Martin/petrillos (09/26)",
+    "price": "~$55 CAD (est.)",
+    "location": "",
+    "notes": "100% Graciano. A premium, single-varietal Rioja Reserva offering intense aromas of dark bramble fruit, violet, and black pepper, backed by vibrant acidity and well-structured tannins.",
+    "tastingHistory": [
+      {
+        "date": "2026-09-07",
+        "rating": 5,
+        "notes": "Delicious, rich full body",
+        "bottleNum": 1
+      }
+    ],
+    "drankDate": "2026-09-06",
+    "rating": 5,
+    "drinkNotes": "Delicious, rich full body",
+    "buyAgain": null,
+    "giftedTo": null,
+    "imagePath": "images/mtrvs3awsi16e.jpg"
   }
 ]
