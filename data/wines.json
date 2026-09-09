@@ -3246,7 +3246,7 @@
     "name": "Château Les Ormes Sorbet",
     "vintage": "1985",
     "type": "Red",
-    "qty": 3,
+    "qty": 2,
     "region": "Médoc, France",
     "drinkFrom": "1990",
     "drinkTo": "1995",
@@ -3259,7 +3259,15 @@
     "price": "~$45 CAD (est.)",
     "location": "D",
     "notes": "Blend of Cabernet Sauvignon, Merlot, and Cabernet Franc; this bottle is past its peak, displaying tertiary notes of dried fruit and forest floor typical of a 1985 Médoc.",
-    "imagePath": "images/msi8qqfnvnsak.jpg"
+    "imagePath": "images/msi8qqfnvnsak.jpg",
+    "tastingHistory": [
+      {
+        "date": "2026-09-09",
+        "rating": 5,
+        "notes": "Delicious, great nose...smooth\nFor Marcus's birthday",
+        "bottleNum": 1
+      }
+    ]
   },
   {
     "id": "msi8s5m3hf1hx",
