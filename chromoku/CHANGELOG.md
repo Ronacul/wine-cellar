@@ -8,6 +8,11 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.11.3] 2026-09-15 — Fix: header width, upcoming day feedback
+
+- **Header width regression:** Sub-header text no longer includes the grid size (e.g. "Tuesday · Symbol · #32" instead of "Tuesday · 6×6 · Symbol · #32"). The header uses `grid-template-columns:1fr auto 1fr` — the `auto` center column expands to fit its content, squeezing the side columns. The longer text was pushing the right icon cluster off-screen on narrow phones. Tier label already conveys difficulty; grid size was redundant.
+- **Upcoming day chips now respond:** Tapping a future-day chip (Wed–Sun when it's Monday) previously did nothing silently. The chips now show a brief toast — "Wednesday's puzzle isn't available yet" — so players get feedback instead of a dead tap. Future chips are also marked with a 🔒 sub-label instead of the tier name to make their locked state immediately clear.
+
 ### [v0.11.2] 2026-09-15 — Weekly nav, reset discoverability, sub-header grid size
 
 - **Weekly schedule nav:** Day navigation strip now shows a fixed Mon–Sun week instead of a rolling 6-past-days window. All 7 day types are always visible — future days appear greyed with their tier label so the weekly schedule is legible at a glance. Tapping a future chip does nothing; past days and today remain fully interactive. Today's chip is marked with ◆. This fixes the "no Tuesday" confusion where today's chip (the only Tuesday) was styled differently and players wouldn't register it.

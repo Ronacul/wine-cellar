@@ -320,7 +320,7 @@ html.in-level #sizeRow{display:none !important}
 .day-nav button.past:hover{background:var(--panel); color:var(--ink)}
 /* Upcoming days: shown so the weekly schedule is always visible, but not yet playable. */
 .day-nav button.upcoming{
-  opacity:.38; cursor:default; pointer-events:none;
+  opacity:.38; cursor:default;
 }
 
 /* ================= tutorial tip ================= */
@@ -1212,7 +1212,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.11.2";
+const CHROMOKU_VERSION = "v0.11.3";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -2317,12 +2317,12 @@ function renderDailyNav(){
 
     const dayAttr = (!isFuture && !isPreEpoch)
       ? ' data-day="' + d + '"'
-      : ' disabled';
+      : (isFuture ? ' data-future="' + DOW_ABBR[dow] + '"' : ' disabled');
 
     html += '<button class="' + cls + '"' + dayAttr + '>'
           + DOW_ABBR[dow]
           + (done ? ' ✓' : (isToday ? ' ◆' : ''))
-          + '<br><span style="font-size:8px;color:inherit;opacity:.7">' + sc.tier + '</span>'
+          + '<br><span style="font-size:8px;color:inherit;opacity:.7">' + (isFuture ? '🔒' : sc.tier) + '</span>'
           + '</button>';
   }
   // Levels chip — gold, always visible so everyone can reach Levels mode.
@@ -2336,6 +2336,9 @@ function renderDailyNav(){
       state.day = +btn.dataset.day;
       enterDaily();
     };
+  });
+  el.querySelectorAll("[data-future]").forEach(btn => {
+    btn.onclick = () => toast(btn.dataset.future + "'s puzzle isn't available yet");
   });
   const dnLvl = el.querySelector("#dnLevels");
   if (dnLvl) dnLvl.onclick = () => { closeModal(); loadLevel(progress().level); };
@@ -2542,11 +2545,9 @@ function renderSub(){
       + (state.dbl ? " · Double" : "")
       + (state.scramble ? " · Scramble" : "");
   } else {
-    // Daily: show day name + grid size + tier + puzzle number
+    // Daily: show day name + tier + puzzle number
     const dc = dailyConfig();
-    const dSizeObj = CURR_SIZES().find(s => s.id === dc.sizeId);
-    const sizeLabel = dSizeObj ? dSizeObj.label : "";
-    base = dc.label + " · " + sizeLabel + " · " + dc.tier + " · #" + state.day;
+    base = dc.label + " · " + dc.tier + " · #" + state.day;
   }
 
   // Streak chip — visible at a glance, not buried in the win modal
