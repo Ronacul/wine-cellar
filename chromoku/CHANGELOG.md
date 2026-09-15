@@ -8,6 +8,13 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.11.2] 2026-09-15 — Weekly nav, reset discoverability, sub-header grid size
+
+- **Weekly schedule nav:** Day navigation strip now shows a fixed Mon–Sun week instead of a rolling 6-past-days window. All 7 day types are always visible — future days appear greyed with their tier label so the weekly schedule is legible at a glance. Tapping a future chip does nothing; past days and today remain fully interactive. Today's chip is marked with ◆. This fixes the "no Tuesday" confusion where today's chip (the only Tuesday) was styled differently and players wouldn't register it.
+- **Reset discoverability — in-progress:** The ↻ Reset button is now shown in the Advantages bar alongside the flash (🔦) and reveal (💡) buttons during daily and practice play. Previously, Reset was only available as a tiny icon-only button in the header with no text label.
+- **Reset discoverability — after completion:** When the puzzle is done, the Advantages bar now shows a "↻ Try again" button instead of disappearing entirely. This makes re-trying obvious without needing to hunt for the header icon.
+- **Sub-header grid size:** Daily mode sub-header now includes the grid size: e.g. "Tuesday · 6×6 · Symbol · #32" instead of "Tuesday · Symbol · #32", so the tier name is no longer the only difficulty signal.
+
 ### [v0.11.1] 2026-08-29 — Fix: win badge aspect ratio in modal
 
 - **Root cause:** `renderShareBadge()` sets `canvas.style.width` and `canvas.style.height` as absolute pixel values; CSS `max-height:30vh` then clipped one axis without adjusting the other, squashing the image. Setting both dimensions independently with a CSS cap is always ratio-breaking.
