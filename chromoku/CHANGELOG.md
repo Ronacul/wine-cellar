@@ -8,6 +8,11 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.11.4] 2026-09-15 — Day nav: rolling lookback, Levels nudge
+
+- **Rolling 7-day lookback:** Day nav now shows the last 7 days (today plus 6 days back), oldest on the left, today on the right. Every chip is playable — no locked/future chips at all. The previous Mon–Sun fixed-week design meant early in the week most chips were locked.
+- **Levels nudge:** When all 7 days in the window are completed, the 🏆 Levels chip pulses gold and reads "Levels!" to signal there's more to play.
+
 ### [v0.11.3] 2026-09-15 — Fix: header width, upcoming day feedback
 
 - **Header width regression:** Sub-header text no longer includes the grid size (e.g. "Tuesday · Symbol · #32" instead of "Tuesday · 6×6 · Symbol · #32"). The header uses `grid-template-columns:1fr auto 1fr` — the `auto` center column expands to fit its content, squeezing the side columns. The longer text was pushing the right icon cluster off-screen on narrow phones. Tier label already conveys difficulty; grid size was redundant.

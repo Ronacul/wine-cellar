@@ -318,9 +318,11 @@ html.in-level #sizeRow{display:none !important}
   background:var(--ink); color:var(--bg); border-color:var(--ink); font-weight:700;
 }
 .day-nav button.past:hover{background:var(--panel); color:var(--ink)}
-/* Upcoming days: shown so the weekly schedule is always visible, but not yet playable. */
-.day-nav button.upcoming{
-  opacity:.38; cursor:default;
+/* All 7 recent days completed — pulse the Levels chip as a nudge. */
+@keyframes lvl-pulse{0%,100%{box-shadow:0 0 0 0 rgba(201,162,39,.5)}50%{box-shadow:0 0 0 5px rgba(201,162,39,0)}}
+.day-nav button.lvl-nudge{
+  animation:lvl-pulse 1.8s ease-in-out infinite;
+  border-color:rgba(201,162,39,.8);
 }
 
 /* ================= tutorial tip ================= */
@@ -1212,7 +1214,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.11.3";
+const CHROMOKU_VERSION = "v0.11.4";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -2287,47 +2289,37 @@ function renderDailyNav(){
   el.style.display = "";
 
   const today = dayNumber();
-  // Use local device calendar for the current day-of-week.
-  const localDOW = new Date().getDay(); // 0=Sun … 6=Sat
-  // Days since Monday in the current week (Mon=0 … Sun=6).
-  const daysFromMon = (localDOW + 6) % 7;
-  // Day-number of this week's Monday.
-  const mondayDay = today - daysFromMon;
+  const DOW_ABBR = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
-  // JS getDay() indices for Mon → Sun (the order we render chips).
-  const WEEK_DOW  = [1, 2, 3, 4, 5, 6, 0];
-  const DOW_ABBR  = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-
+  // Rolling 7-day lookback: oldest on left, today on right.
+  // Every chip is a real past or present day — no locked/future chips.
   let html = "";
-  for (let i = 0; i < 7; i++){
-    const d   = mondayDay + i;           // day-number for this chip
-    const dow = WEEK_DOW[i];             // JS day-of-week index (0=Sun … 6=Sat)
-    const sc  = DAILY_SCHEDULE[dow];
-    const isFuture  = d > today;
-    const isPreEpoch = d < 1;
-    const isToday   = d === today;
+  let allDone = true;
+  for (let i = 6; i >= 0; i--){
+    const d = today - i;
+    if (d < 1){ allDone = false; continue; } // pre-epoch: skip slot
+
+    // Derive day-of-week for this day-number.
+    const dow = (d === today)
+      ? new Date().getDay()
+      : new Date(EPOCH + (d - 1) * 86400000).getUTCDay();
+    const sc = DAILY_SCHEDULE[dow];
+    const isToday    = d === today;
     const isSelected = d === state.day;
+    const done       = isDayDone(d);
+    if (!done) allDone = false;
 
-    const done = (!isFuture && !isPreEpoch) ? isDayDone(d) : false;
-
-    let cls;
-    if (isFuture || isPreEpoch) cls = "upcoming";
-    else if (isSelected)        cls = "today";
-    else                        cls = "past";
-
-    const dayAttr = (!isFuture && !isPreEpoch)
-      ? ' data-day="' + d + '"'
-      : (isFuture ? ' data-future="' + DOW_ABBR[dow] + '"' : ' disabled');
-
-    html += '<button class="' + cls + '"' + dayAttr + '>'
+    const cls = isSelected ? "today" : "past";
+    html += '<button class="' + cls + '" data-day="' + d + '">'
           + DOW_ABBR[dow]
           + (done ? ' ✓' : (isToday ? ' ◆' : ''))
-          + '<br><span style="font-size:8px;color:inherit;opacity:.7">' + (isFuture ? '🔒' : sc.tier) + '</span>'
+          + '<br><span style="font-size:8px;color:inherit;opacity:.7">' + sc.tier + '</span>'
           + '</button>';
   }
-  // Levels chip — gold, always visible so everyone can reach Levels mode.
-  html += '<button class="lvl-chip" id="dnLevels">🏆<br>'
-        + '<span style="font-size:8px;opacity:.8">Levels</span></button>';
+
+  // Levels chip — pulse when all 7 recent days are done to nudge players onward.
+  html += '<button class="lvl-chip' + (allDone ? ' lvl-nudge' : '') + '" id="dnLevels">🏆<br>'
+        + '<span style="font-size:8px;opacity:.8">' + (allDone ? 'Levels!' : 'Levels') + '</span></button>';
 
   el.innerHTML = html;
   el.querySelectorAll("[data-day]").forEach(btn => {
@@ -2336,9 +2328,6 @@ function renderDailyNav(){
       state.day = +btn.dataset.day;
       enterDaily();
     };
-  });
-  el.querySelectorAll("[data-future]").forEach(btn => {
-    btn.onclick = () => toast(btn.dataset.future + "'s puzzle isn't available yet");
   });
   const dnLvl = el.querySelector("#dnLevels");
   if (dnLvl) dnLvl.onclick = () => { closeModal(); loadLevel(progress().level); };
