@@ -294,10 +294,9 @@ html.in-level #sizeRow{display:none !important}
   background:#4a8feb; border-radius:9px; padding:7px 20px;
   white-space:nowrap; border:none; cursor:pointer;
 }
-/* ── Previous-day navigation strip ── */
-/* Two rows of four rather than one scrolling row — every chip is reachable
-   without a swipe and they all share one column width, so the strip reads as
-   a block instead of a ragged queue. */
+/* ── Weekly schedule navigation strip ── */
+/* Two rows of four — fixed Mon–Sun schedule so every day type is always visible.
+   Future days are shown grayed; past and today are interactive. */
 .day-nav{
   display:grid; grid-template-columns:repeat(4,1fr); gap:4px;
   padding:2px 0; width:100%; max-width:min(460px,100%);
@@ -314,10 +313,15 @@ html.in-level #sizeRow{display:none !important}
   font-weight:700;
 }
 .day-nav button.lvl-chip:hover{background:rgba(201,162,39,.26); color:#c9a227}
+/* Today / selected day: inverted — you are here. */
 .day-nav button.today{
   background:var(--ink); color:var(--bg); border-color:var(--ink); font-weight:700;
 }
 .day-nav button.past:hover{background:var(--panel); color:var(--ink)}
+/* Upcoming days: shown so the weekly schedule is always visible, but not yet playable. */
+.day-nav button.upcoming{
+  opacity:.38; cursor:default; pointer-events:none;
+}
 
 /* ================= tutorial tip ================= */
 .tut-tip{
@@ -1208,7 +1212,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.11.1";
+const CHROMOKU_VERSION = "v0.11.2";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -2270,53 +2274,67 @@ function isDayDone(day){
   return Object.values(rec).some(v => v && v.done);
 }
 
-// Render the previous-days navigation strip below the board in daily mode.
-// Shows 6 past days as chips; today chip highlighted with the device day name.
-// Completed days show a ✓ indicator. Levels button always visible.
+// Render the weekly schedule navigation strip in daily mode.
+// Always shows Mon–Sun for the current week (7 chips + Levels = 8, 4×2 grid).
+// Past days and today are interactive; future/pre-epoch days are greyed out.
+// Completed days show a ✓ badge; today's chip shows a ◆ marker.
 function renderDailyNav(){
   const el = document.getElementById("dayNav");
   if (!el) return;
   if (state.mode !== "daily" || state.practice){
     el.style.display = "none"; return;
   }
-  const today = dayNumber();
   el.style.display = "";
-  const DAYS_BACK = 6;
-  // Use local DOW from device calendar — matches what dayNumber() computed.
+
+  const today = dayNumber();
+  // Use local device calendar for the current day-of-week.
   const localDOW = new Date().getDay(); // 0=Sun … 6=Sat
-  const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-  const todayDowName = DOW[localDOW];
-  const todayTier = DAILY_SCHEDULE[localDOW].tier;
-  const todayDone = isDayDone(today);
-  // Today chip: show local day name so users can verify the app's calendar reading.
-  let html = '<button class="' + (state.day === today ? "today" : "past") + '" id="dnToday">'
-           + todayDowName + (todayDone ? ' ✓' : '')
-           + '<br><span style="font-size:8px;color:inherit;opacity:.7">' + todayTier + '</span>'
-           + '</button>';
-  for (let i = 1; i <= DAYS_BACK; i++){
-    const d = today - i;
-    if (d < 1) break;
-    const dt = new Date(EPOCH + (d - 1) * 86400000);
-    const dow = DOW[dt.getUTCDay()];
-    const sc = DAILY_SCHEDULE[dt.getUTCDay()];
-    const done = isDayDone(d);
-    html += '<button class="' + (state.day === d ? "today" : "past") + '" data-day="' + d + '">'
-          + dow + (done ? ' ✓' : '')
+  // Days since Monday in the current week (Mon=0 … Sun=6).
+  const daysFromMon = (localDOW + 6) % 7;
+  // Day-number of this week's Monday.
+  const mondayDay = today - daysFromMon;
+
+  // JS getDay() indices for Mon → Sun (the order we render chips).
+  const WEEK_DOW  = [1, 2, 3, 4, 5, 6, 0];
+  const DOW_ABBR  = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+  let html = "";
+  for (let i = 0; i < 7; i++){
+    const d   = mondayDay + i;           // day-number for this chip
+    const dow = WEEK_DOW[i];             // JS day-of-week index (0=Sun … 6=Sat)
+    const sc  = DAILY_SCHEDULE[dow];
+    const isFuture  = d > today;
+    const isPreEpoch = d < 1;
+    const isToday   = d === today;
+    const isSelected = d === state.day;
+
+    const done = (!isFuture && !isPreEpoch) ? isDayDone(d) : false;
+
+    let cls;
+    if (isFuture || isPreEpoch) cls = "upcoming";
+    else if (isSelected)        cls = "today";
+    else                        cls = "past";
+
+    const dayAttr = (!isFuture && !isPreEpoch)
+      ? ' data-day="' + d + '"'
+      : ' disabled';
+
+    html += '<button class="' + cls + '"' + dayAttr + '>'
+          + DOW_ABBR[dow]
+          + (done ? ' ✓' : (isToday ? ' ◆' : ''))
           + '<br><span style="font-size:8px;color:inherit;opacity:.7">' + sc.tier + '</span>'
           + '</button>';
   }
-  // Levels chip — gold, always visible so everyone can reach the Levels mode.
+  // Levels chip — gold, always visible so everyone can reach Levels mode.
   html += '<button class="lvl-chip" id="dnLevels">🏆<br>'
         + '<span style="font-size:8px;opacity:.8">Levels</span></button>';
+
   el.innerHTML = html;
-  el.querySelector("#dnToday").onclick = () => {
-    if (_winTimer){ clearTimeout(_winTimer); _winTimer = null; }
-    if (state.day !== today){ state.day = today; enterDaily(); }
-  };
   el.querySelectorAll("[data-day]").forEach(btn => {
     btn.onclick = () => {
       if (_winTimer){ clearTimeout(_winTimer); _winTimer = null; }
-      state.day = +btn.dataset.day; enterDaily();
+      state.day = +btn.dataset.day;
+      enterDaily();
     };
   });
   const dnLvl = el.querySelector("#dnLevels");
@@ -2524,9 +2542,11 @@ function renderSub(){
       + (state.dbl ? " · Double" : "")
       + (state.scramble ? " · Scramble" : "");
   } else {
-    // Daily: show day name + tier label so the difficulty is immediately legible
+    // Daily: show day name + grid size + tier + puzzle number
     const dc = dailyConfig();
-    base = dc.label + " · " + dc.tier + " · #" + state.day;
+    const dSizeObj = CURR_SIZES().find(s => s.id === dc.sizeId);
+    const sizeLabel = dSizeObj ? dSizeObj.label : "";
+    base = dc.label + " · " + sizeLabel + " · " + dc.tier + " · #" + state.day;
   }
 
   // Streak chip — visible at a glance, not buried in the win modal
@@ -3930,8 +3950,17 @@ function renderPowerups(){
   const isTutNow = state.mode === "levels" && state.lvl && state.lvl.cfg.tutorial;
   const tutLvl   = isTutNow ? (state.lvl.cfg.level || 0) : -1;
 
-  // Always hide when done
-  if (state.done){ el.style.display = "none"; return; }
+  // In levels mode, hide when done — the win modal handles next steps.
+  // In daily / practice, show a "Try again" reset prompt instead of hiding.
+  if (state.done && state.mode === "levels"){ el.style.display = "none"; return; }
+  if (state.done && state.mode !== "levels"){
+    el.style.display = "";
+    el.innerHTML = '<button class="pu" id="puReset" title="Reset puzzle to starting givens" style="padding:4px 10px;font-size:11px;font-family:var(--mono);color:var(--ink-dim)">'
+      + '↻ Try again</button>';
+    const pR2 = document.getElementById("puReset");
+    if (pR2) pR2.onclick = confirmReset;
+    return;
+  }
 
   // Tutorial levels 0–2: no bar. Tutorial 3+: flash only.
   if (isTutNow && tutLvl < 3){ el.style.display = "none"; return; }
@@ -3944,7 +3973,7 @@ function renderPowerups(){
     return;
   }
 
-  // ── Daily / practice: flash + reveal only (no pool gate, no freeze/add) ──
+  // ── Daily / practice: flash + reveal + reset (no pool gate, no freeze/add) ──
   if (state.mode !== "levels"){
     el.style.display = "";
     const revLeft = HINT_LIMITS.reveals + (state.bonusReveals || 0) - state.hints.reveals;
@@ -3964,13 +3993,17 @@ function renderPowerups(){
       + (canBuyReveal
           ? '<button class="pu" id="puBuyReveal" title="Watch a short ad to unlock +1 reveal" style="background:rgba(201,162,39,.13);border-color:rgba(201,162,39,.45);color:#c9a227;font-weight:700">'
             + '<span class="pu-icon" style="font-size:11px">+💡</span></button>'
-          : '');
+          : '')
+      + '<button class="pu" id="puReset" title="Reset puzzle to starting givens" style="margin-left:4px">'
+      + '<span class="pu-icon">↻</span></button>';
     const pFl = document.getElementById("puFlash");
     if (pFl) pFl.onclick = () => { flashHint(true); renderPowerups(); };
     const pR = document.getElementById("puReveal");
     if (pR) pR.onclick = () => { revealCell(); renderPowerups(); };
     const pBuy = document.getElementById("puBuyReveal");
     if (pBuy) pBuy.onclick = () => watchAdForBonus();
+    const pRst = document.getElementById("puReset");
+    if (pRst) pRst.onclick = confirmReset;
     return;
   }
   el.style.display = "";
