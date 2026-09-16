@@ -1214,7 +1214,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.11.4";
+const CHROMOKU_VERSION = "v0.12.0";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -1235,6 +1235,9 @@ let adminMode = _savedAdminVal === "1" || (_savedAdminVal === null && (DEV || !!
 const LS_DAY   = "chromoku.debug-day.v1";   // debug: pin the daily puzzle to a date
 
 // Box dimensions for a given grid size. 4→2x2, 6→3x2, 9→3x3.
+// activeBoxRotate() unifies level cfg and daily state.boxRotate so every
+// rendering and logic path gets the correct orientation automatically.
+const activeBoxRotate = () => state.lvl ? !!state.lvl.cfg.boxRotate : !!state.boxRotate;
 function boxDims(n, rotate){
   const h = Math.floor(Math.sqrt(n));
   for (let bh = h; bh >= 1; bh--) if (n % bh === 0) {
@@ -1887,6 +1890,7 @@ const state = {
   latin:false,             // ruleset axis: no boxes, rows and columns only
   dbl:false,               // layering axis: applies to whichever tier is selected
   scramble:false,           // Stroop axis: cross colours/shapes to mislead the eye
+  boxRotate:false,          // rotate box orientation (e.g. 6×6: 2×3 → 3×2)
   practice:false,          // a re-rollable puzzle, outside the daily record
   mistakes:0,              // foundation for a lives/ads gate later
   done:false,
@@ -2112,7 +2116,7 @@ function loadPuzzle(sizeId, diffId, fresh){
                          + si * 10 + di * 2 + (state.dbl ? 1 : 0);
     state.layers = [];
     for (let L = 0; L < layerCount(); L++){
-      const p = generatePuzzle(base + L * 7919, sObj.n, dObj.givens, state.latin);
+      const p = generatePuzzle(base + L * 7919, sObj.n, dObj.givens, state.latin, state.boxRotate);
       state.layers.push({ grid:p.puzzle.slice(), solution:p.solution.slice(), givens:p.givens.slice() });
     }
     state.elapsed = 0; state.mistakes = 0; state.done = false; state.started = false;
@@ -2212,6 +2216,58 @@ function loadLevel(n){
   }
 }
 
+// 7-day arc: each day has a pool of equivalent-difficulty configs that rotate
+// week-to-week so the puzzle never feels stale. getDailyConfig() is
+// deterministic: same day number always returns the same config.
+function getDailyConfig(){
+  const date = new Date(EPOCH + (state.day - 1) * 86400000);
+  const dow  = date.getUTCDay();                   // 0=Sun, 1=Mon, …, 6=Sat
+  const week = Math.floor((state.day - 1) / 7);
+  // Helper — builds a full config from a size/diff pair + optional overrides.
+  const C = (sizeId, diffId, opts) =>
+    Object.assign({ sizeId, diffId, dbl:false, latin:false, scramble:false, boxRotate:false, markSet:"classic" }, opts);
+  const pools = {
+    1: [ // Monday — Easy warmup, 4×4, mark sets rotate
+      C("s4","easy"),
+      C("s4","easy",{ markSet:"shapes" }),
+      C("s4","easy",{ markSet:"ink" }),
+    ],
+    2: [ // Tuesday — Easy+, 4×4 Medium or 6×6 Easy
+      C("s4","medium"),
+      C("s6","easy"),
+      C("s6","easy",{ boxRotate:true }),
+    ],
+    3: [ // Wednesday — Medium/Tricky, Double mechanic or Latin intro
+      C("s4","hard",  { dbl:true }),
+      C("s6","easy",  { dbl:true }),
+      C("l4","medium",{ latin:true }),
+      C("s6","medium"),
+    ],
+    4: [ // Thursday — 9×9 Easy, sudoku crowd, mark sets rotate
+      C("s9","easy"),
+      C("s9","easy",{ markSet:"shapes" }),
+      C("s9","easy",{ markSet:"ink" }),
+    ],
+    5: [ // Friday — 6×6 Double Medium, box orientation alternates
+      C("s6","medium",{ dbl:true }),
+      C("s6","medium",{ dbl:true, boxRotate:true }),
+    ],
+    6: [ // Saturday — 9×9 Classic Medium, variety through mark set + scramble
+      C("s9","medium"),
+      C("s9","medium",{ markSet:"shapes" }),
+      C("s6","hard",  { dbl:true }),
+      C("s9","medium",{ scramble:true }),
+    ],
+    0: [ // Sunday — 9×9 Double Medium, epic weekend
+      C("s9","medium",{ dbl:true }),
+      C("s9","medium",{ dbl:true, scramble:true }),
+      C("l7","medium",{ latin:true }),
+    ],
+  };
+  const pool = pools[dow] || pools[1];
+  return pool[week % pool.length];
+}
+
 function enterDaily(){
   state.mode = "daily"; state.lvl = null; state.practice = false;
   // Clear tutorial auto-hint timers — they fire flashHint(false) on a loop and
@@ -2220,15 +2276,12 @@ function enterDaily(){
   if (state._hintInterval){ clearInterval(state._hintInterval); state._hintInterval = null; }
   // Restore header — full-screen play mode only applies during active levels
   document.documentElement.classList.remove("in-level");
-  // Apply today's scheduled config — size, diff, ruleset, mark set are all
-  // determined by the day of the week. Player preference settings (scramble,
-  // saved size/diff) are intentionally ignored for the daily puzzle so
-  // everyone solves the same board.
-  const cfg = dailyConfig();
-  state.latin   = cfg.latin;
-  state.dbl     = cfg.dbl;
-  state.scramble = false;
-  if (cfg.markSet) activePalette = cfg.markSet;
+  const cfg = getDailyConfig();
+  state.latin    = cfg.latin;
+  state.dbl      = cfg.dbl;
+  state.scramble = cfg.scramble;
+  state.boxRotate = cfg.boxRotate;
+  if (cfg.markSet && MARKSETS[cfg.markSet]) activePalette = cfg.markSet;
   loadPuzzle(cfg.sizeId, cfg.diffId);
 }
 
@@ -2238,7 +2291,7 @@ function conflictsAt(L, idx){
   const n = state.n, g = state.layers[L].grid, v = g[idx];
   const out = new Set();
   if (v === null || v === undefined) return out;
-  const rotate = !!(state.lvl && state.lvl.cfg.boxRotate);
+  const rotate = activeBoxRotate();
   const { bw, bh } = boxDims(n, rotate);
   const r = Math.floor(idx / n), c = idx % n;
   for (let i = 0; i < n; i++){
@@ -2532,6 +2585,7 @@ function renderSub(){
     base = "Practice · "
       + (state.latin ? "Latin " : "") + sObj.label + " " + dObj.label
       + (state.dbl ? " · Double" : "")
+      + (state.boxRotate ? " ⤾" : "")
       + (state.scramble ? " · Scramble" : "");
   } else {
     // Daily: show day name + tier + puzzle number
@@ -2637,7 +2691,7 @@ function renderDiffs(){
 // box separation at any n without border bookkeeping.
 function renderBoard(){
   const n = state.n;
-  const rotate = !!(state.lvl && state.lvl.cfg.boxRotate);
+  const rotate = activeBoxRotate();
   const { bw, bh } = boxDims(n, rotate);
   const boxesPerRow = state.latin ? n : n / bw, boxRows = state.latin ? n : n / bh;
   let html = "";
@@ -3061,7 +3115,7 @@ function paintCompletedUnits(){
   board.classList.toggle("fade-done", fadePref);
 
   const n = state.n;
-  const rotate = !!(state.lvl && state.lvl.cfg.boxRotate);
+  const rotate = activeBoxRotate();
   const U = unitsOf(n, state.latin, rotate);
 
   // For each layer, find which cells belong to at least one complete unit.
@@ -4290,7 +4344,7 @@ function drawBadgePattern(ctx, idx, x, y, sz, ink, cellBg, rad){
 // in a copy-pasteable way.
 function renderShareBadge(){
   const n = state.n;
-  const rotate = !!(state.lvl && state.lvl.cfg.boxRotate);
+  const rotate = activeBoxRotate();
   const { bw, bh } = boxDims(n, rotate);
   const dpr = Math.min(window.devicePixelRatio || 1, 3);
 
@@ -4844,7 +4898,7 @@ function showStats(){
 // a stack of separate grids. This is the thing worth showing off.
 function miniBoard(){
   const n = state.n;
-  const rotate = !!(state.lvl && state.lvl.cfg.boxRotate);
+  const rotate = activeBoxRotate();
   const { bw, bh } = boxDims(n, rotate);
   let html = "";
   const marksAt = i => {
