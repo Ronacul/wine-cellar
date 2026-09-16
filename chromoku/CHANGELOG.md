@@ -8,6 +8,13 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.12.0] 2026-09-15 — 7-day arc: rotating weekly difficulty pools
+
+- **getDailyConfig():** Daily puzzle is now driven by a curated pool per weekday that rotates week-to-week. Each week a different variant fires — mark set, box orientation, or ruleset — so the same weekday never feels repetitive.
+- **Arc:** Mon easy 4×4 → Tue easy+ (4×4 Med / 6×6 Easy / 6×6 Rotated) → Wed medium/tricky (4×4 Double Hard / 6×6 Double Easy / 4×4 Latin Med / 6×6 Med) → Thu 9×9 Easy (Colour/Shapes/Ink) → Fri 6×6 Double Med (normal/rotated boxes) → Sat 9×9 Med (Colour/Shapes/6×6 Double Hard/Scramble) → Sun 9×9 Double Med (normal/Scramble/7×7 Latin).
+- **6×6 daily mode:** Added s6 as a daily-mode size (givens easy=20, medium=15, hard=11).
+- **state.boxRotate:** New state flag for daily mode box orientation; `activeBoxRotate()` helper unifies level + daily box rotation in all rendering and logic paths. Subtitle shows ⤾ when active.
+
 ### [v0.11.4] 2026-09-15 — Day nav: rolling lookback, Levels nudge
 
 - **Rolling 7-day lookback:** Day nav now shows the last 7 days (today plus 6 days back), oldest on the left, today on the right. Every chip is playable — no locked/future chips at all. The previous Mon–Sun fixed-week design meant early in the week most chips were locked.
