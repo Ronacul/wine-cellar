@@ -1224,7 +1224,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.12.5";
+const CHROMOKU_VERSION = "v0.12.6";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -2426,7 +2426,11 @@ function render(){
   if (tip){
     if (isTutNow && state.lvl.cfg.desc){
       tip.style.display = "";
-      tip.textContent = state.lvl.cfg.desc;
+      tip.innerHTML = state.lvl.cfg.desc
+        + '<div style="margin-top:8px;text-align:right">'
+        + '<button onclick="enterDaily()" style="background:none;border:none;cursor:pointer;'
+        + 'font-size:11px;color:var(--ink-faint);text-decoration:underline;padding:0">'
+        + 'Skip tutorial ×</button></div>';
     } else {
       tip.style.display = "none";
     }

@@ -8,6 +8,10 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.12.6] 2026-09-19 — Tutorial: "Skip tutorial ×" link in the tip box
+
+- Added a **Skip tutorial ×** link at the bottom-right of the tutorial tip card. Tapping it calls `enterDaily()` immediately — no confirmation, no life penalty. The existing ✕ header button still works too but is easy to miss; this puts the escape route right where the player is reading.
+
 ### [v0.12.5] 2026-09-19 — Fix: Levels counter shows real-level progress (0–500), not tutorial offset
 
 - **Levels counter corrected:** `progress().level` counts tutorial levels (1–6) before the 500 real levels begin at level 7. The `X/500` display now subtracts the tutorial count, so a fresh player sees `0/500` and the first real level shows `1/500`. Previously a fresh player saw `1/500` which implied they were already one step into a hard 9×9 progression — the 9×9 they saw was Sunday's Epic daily puzzle, not the Levels track.
