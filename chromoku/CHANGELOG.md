@@ -8,6 +8,30 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.12.0] 2026-09-15 — 7-day arc: rotating weekly difficulty pools
+
+- **getDailyConfig():** Daily puzzle is now driven by a curated pool per weekday that rotates week-to-week. Each week a different variant fires — mark set, box orientation, or ruleset — so the same weekday never feels repetitive.
+- **Arc:** Mon easy 4×4 → Tue easy+ (4×4 Med / 6×6 Easy / 6×6 Rotated) → Wed medium/tricky (4×4 Double Hard / 6×6 Double Easy / 4×4 Latin Med / 6×6 Med) → Thu 9×9 Easy (Colour/Shapes/Ink) → Fri 6×6 Double Med (normal/rotated boxes) → Sat 9×9 Med (Colour/Shapes/6×6 Double Hard/Scramble) → Sun 9×9 Double Med (normal/Scramble/7×7 Latin).
+- **6×6 daily mode:** Added s6 as a daily-mode size (givens easy=20, medium=15, hard=11).
+- **state.boxRotate:** New state flag for daily mode box orientation; `activeBoxRotate()` helper unifies level + daily box rotation in all rendering and logic paths. Subtitle shows ⤾ when active.
+
+### [v0.11.4] 2026-09-15 — Day nav: rolling lookback, Levels nudge
+
+- **Rolling 7-day lookback:** Day nav now shows the last 7 days (today plus 6 days back), oldest on the left, today on the right. Every chip is playable — no locked/future chips at all. The previous Mon–Sun fixed-week design meant early in the week most chips were locked.
+- **Levels nudge:** When all 7 days in the window are completed, the 🏆 Levels chip pulses gold and reads "Levels!" to signal there's more to play.
+
+### [v0.11.3] 2026-09-15 — Fix: header width, upcoming day feedback
+
+- **Header width regression:** Sub-header text no longer includes the grid size (e.g. "Tuesday · Symbol · #32" instead of "Tuesday · 6×6 · Symbol · #32"). The header uses `grid-template-columns:1fr auto 1fr` — the `auto` center column expands to fit its content, squeezing the side columns. The longer text was pushing the right icon cluster off-screen on narrow phones. Tier label already conveys difficulty; grid size was redundant.
+- **Upcoming day chips now respond:** Tapping a future-day chip (Wed–Sun when it's Monday) previously did nothing silently. The chips now show a brief toast — "Wednesday's puzzle isn't available yet" — so players get feedback instead of a dead tap. Future chips are also marked with a 🔒 sub-label instead of the tier name to make their locked state immediately clear.
+
+### [v0.11.2] 2026-09-15 — Weekly nav, reset discoverability, sub-header grid size
+
+- **Weekly schedule nav:** Day navigation strip now shows a fixed Mon–Sun week instead of a rolling 6-past-days window. All 7 day types are always visible — future days appear greyed with their tier label so the weekly schedule is legible at a glance. Tapping a future chip does nothing; past days and today remain fully interactive. Today's chip is marked with ◆. This fixes the "no Tuesday" confusion where today's chip (the only Tuesday) was styled differently and players wouldn't register it.
+- **Reset discoverability — in-progress:** The ↻ Reset button is now shown in the Advantages bar alongside the flash (🔦) and reveal (💡) buttons during daily and practice play. Previously, Reset was only available as a tiny icon-only button in the header with no text label.
+- **Reset discoverability — after completion:** When the puzzle is done, the Advantages bar now shows a "↻ Try again" button instead of disappearing entirely. This makes re-trying obvious without needing to hunt for the header icon.
+- **Sub-header grid size:** Daily mode sub-header now includes the grid size: e.g. "Tuesday · 6×6 · Symbol · #32" instead of "Tuesday · Symbol · #32", so the tier name is no longer the only difficulty signal.
+
 ### [v0.11.1] 2026-08-29 — Fix: win badge aspect ratio in modal
 
 - **Root cause:** `renderShareBadge()` sets `canvas.style.width` and `canvas.style.height` as absolute pixel values; CSS `max-height:30vh` then clipped one axis without adjusting the other, squashing the image. Setting both dimensions independently with a CSS cap is always ratio-breaking.
