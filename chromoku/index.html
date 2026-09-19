@@ -1012,7 +1012,13 @@ function rotatedMarkSet(level, n){
 }
 let MARKS = [];                                   // built for the current grid size
 function buildMarks(){
-  MARKS = MARKSETS[activePalette].build(state.n) || MARKSETS.classic.build(state.n);
+  // On 9×9+ or in double mode the clip-path shapes (triangle, star, …) are too
+  // small / geometrically odd (triangular donuts) to tell apart — fall back the
+  // outer marks to plain colours (same build as classic). Player's preference is
+  // preserved: it still applies for small single-layer grids.
+  const squarify = (state.n >= 9 || state.dbl) && activePalette === "shapes";
+  const outerPal  = squarify ? "classic" : activePalette;
+  MARKS = MARKSETS[outerPal].build(state.n) || MARKSETS.classic.build(state.n);
   INNER = MARKSETS.classic.build(state.n);
 }
 const palette = () => MARKS;
@@ -1214,7 +1220,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.12.1";
+const CHROMOKU_VERSION = "v0.12.2";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in

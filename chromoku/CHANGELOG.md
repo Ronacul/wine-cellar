@@ -8,6 +8,10 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.12.2] 2026-09-19 — Fix: shapes fall back to squares on 9×9+ and double mode
+
+- **buildMarks() guard:** When the active mark set is "Shapes" and the grid is 9×9 or larger, OR double mode is on, the outer marks now build as plain colours (same path as classic) instead of applying clip-path geometry. Tiny triangles/stars at 9×9 cell sizes are illegible, and a triangular or star-shaped donut in double mode is visually confusing. The player's saved shape preference is still respected on smaller single-layer grids.
+
 ### [v0.12.1] 2026-09-19 — Fix: difficulty label mismatch, d/mm in day chips
 
 - **getDailyConfig() unified:** `dailyConfig()` (old `DAILY_SCHEDULE`-based lookup) is no longer used for display. All label and tier text now comes from `getDailyConfig()`, so what the chip and sub-header say is exactly what the puzzle delivers. Saturday showing "Expert" while loading a 9×9 Medium is fixed.
