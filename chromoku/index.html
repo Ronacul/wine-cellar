@@ -1224,7 +1224,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.12.6";
+const CHROMOKU_VERSION = "v0.12.7";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -1654,7 +1654,7 @@ const TUNE = {
 };
 // ---------------------------------------------------------------------------
 
-const LEVELS_PER_STAGE = 10, STAGES_PER_WORLD = 10, PEEK_STEP = 5;
+const LEVELS_PER_STAGE = 20, STAGES_PER_WORLD = 5, PEEK_STEP = 15;
 // Step-3 inner peek is retired: mark rotation now carries the variety role.
 
 const LEVELS_PER_WORLD = LEVELS_PER_STAGE * STAGES_PER_WORLD;
@@ -1706,68 +1706,65 @@ function hasSeenTutorial(){ return load(LS_SEEN_TUTORIAL, false); }
 // Deliberately absent: 16x16 below ~140 givens and 12x12 Latin. Both sit past a
 // generation-cost cliff (seconds, not milliseconds) — see CHROMOKU.md.
 const WORLDS = [
-  // `pool` lists a world's configurations easiest-first; `ramp` maps each of
-  // the ten stages onto one of them. The explicit ramp is the level design —
-  // a proportional mapping spread new mechanics too thinly and left whole
-  // worlds sitting below the previous world's difficulty.
-  // Something changes every ten levels rather than every twenty: the first
-  // twenty used to be one identical 4x4, which is the worst possible place for
-  // the ladder to stand still.
-  { name:"Sunrise", tint:"#f5a623", unlock:"4×4 up to 9×9",
-    // Hook early: 6×6 arrives at stage 2 (level 11) so the player sees a
-    // bigger board before they lose interest. Then alternate between harder
-    // 4×4 and 6×6 to build both muscles, with 9×9 landing at stage 8.
-    // Stage 7 slips a 2×3-box variant in between the regular 6×6s.
-    ramp:[0,3,1,3,2,4,6,4,5,5], pool:[
-      { n:4, boxless:false, layers:1, givens:8  },
-      { n:4, boxless:false, layers:1, givens:6  },
-      { n:4, boxless:false, layers:1, givens:4  },
-      { n:6, boxless:false, layers:1, givens:16 },
-      { n:6, boxless:false, layers:1, givens:13 },
-      { n:9, boxless:false, layers:1, givens:40 },
-      { n:6, boxless:false, layers:1, givens:14, boxRotate:true },  // 2×3 boxes
+  // 5 worlds × 5 stages × 20 levels = 500 real levels.
+  // Each stage is one config for ~20 levels (stage 1 shares its early slots
+  // with the 6 tutorial levels, so delivers ~14 new levels). ramp[i] is the
+  // pool index for stage i+1; with simple [0,1,2,3,4] each stage is distinct.
+  // Boss (step 20) jumps to pool[base+1] — one tier harder for the finale.
+  // Peek (step 15) sneak-previews the next world's mechanic.
+
+  // World 1: THE BASICS — 4×4 up to first 6×6
+  { name:"Sunrise", tint:"#f5a623", unlock:"4×4, then 6×6",
+    ramp:[0,1,2,3,4], pool:[
+      { n:4, boxless:false, layers:1, givens:8  },  // 0: 4×4 easy
+      { n:4, boxless:false, layers:1, givens:6  },  // 1: 4×4 medium
+      { n:4, boxless:false, layers:1, givens:4  },  // 2: 4×4 hard
+      { n:4, boxless:false, layers:2, givens:6  },  // 3: 4×4 double
+      { n:6, boxless:false, layers:1, givens:16 },  // 4: 6×6 easy
   ]},
-  { name:"Tide", tint:"#3498db", unlock:"9×9 and shape marks",
-    // Tide's novelty a beginner can appreciate is the mark set, not the size.
-    preview:{ n:4, boxless:false, layers:1, givens:8, markSet:"shapes" },
-    ramp:[0,0,1,1,2,2,2,3,3,3], pool:[
-      { n:9, boxless:false, layers:1, givens:38 },
-      { n:9, boxless:false, layers:1, givens:34 },
-      { n:9, boxless:false, layers:1, givens:31 },
-      { n:9, boxless:false, layers:1, givens:28 },
+
+  // World 2: SIX COLOURS — 6×6 progressions including double and rotated boxes
+  { name:"Tide", tint:"#3498db", unlock:"6×6 in all its forms",
+    preview:{ n:6, boxless:false, layers:2, givens:14 },
+    ramp:[0,1,2,3,4], pool:[
+      { n:6, boxless:false, layers:1, givens:13 },              // 0: 6×6 medium
+      { n:6, boxless:false, layers:1, givens:10 },              // 1: 6×6 hard
+      { n:6, boxless:false, layers:2, givens:14 },              // 2: 6×6 double easy
+      { n:6, boxless:false, layers:2, givens:12 },              // 3: 6×6 double medium
+      { n:6, boxless:false, layers:1, givens:13, boxRotate:true }, // 4: 6×6 rotated boxes
   ]},
-  // Latin lands here, not earlier: measured harder than Sudoku at equal size
-  // (85% vs 100% solvable by singles at 9x9), despite needing more givens.
-  { name:"Lattice", tint:"#7d5fff", unlock:"Latin rules",
+
+  // World 3: LATIN — rows & columns only, climbing from 5×5 to 9×9
+  { name:"Lattice", tint:"#7d5fff", unlock:"Latin rules (no boxes)",
     preview:{ n:5, boxless:true, layers:1, givens:14 },
-    ramp:[0,1,2,3,3,4,4,5,5,6], pool:[
-      { n:5,  boxless:true, layers:1, givens:12 },
-      { n:7,  boxless:true, layers:1, givens:24 },
-      { n:7,  boxless:true, layers:1, givens:21 },
-      { n:9,  boxless:true, layers:1, givens:38 },
-      { n:9,  boxless:true, layers:1, givens:34 },
-      { n:10, boxless:true, layers:1, givens:50 },
-      // Tide now runs 9x9 the whole way, so Latin needs a ceiling above it.
-      { n:10, boxless:true, layers:1, givens:45 },
+    ramp:[0,1,2,3,4], pool:[
+      { n:5, boxless:true, layers:1, givens:12 },   // 0: 5×5 Latin easy
+      { n:7, boxless:true, layers:1, givens:24 },   // 1: 7×7 Latin easy
+      { n:7, boxless:true, layers:1, givens:21 },   // 2: 7×7 Latin medium
+      { n:9, boxless:true, layers:1, givens:38 },   // 3: 9×9 Latin easy
+      { n:9, boxless:true, layers:1, givens:34 },   // 4: 9×9 Latin medium
   ]},
-  { name:"Echo", tint:"#16a085", unlock:"Double layering",
-    preview:{ n:4, boxless:false, layers:2, givens:8 },
-    ramp:[0,1,1,2,2,3,3,4,4,4], pool:[
-      { n:4, boxless:false, layers:2, givens:6  },
-      { n:6, boxless:false, layers:2, givens:14 },
-      { n:6, boxless:false, layers:2, givens:12 },
-      { n:9, boxless:false, layers:2, givens:38 },
-      { n:9, boxless:false, layers:2, givens:34 },
+
+  // World 4: NINE — standard 9×9 easy → hard, then 9×9 double
+  { name:"Echo", tint:"#16a085", unlock:"9×9 standard and double",
+    preview:{ n:9, boxless:false, layers:1, givens:40 },
+    ramp:[0,1,2,3,4], pool:[
+      { n:9, boxless:false, layers:1, givens:40 },  // 0: 9×9 easy
+      { n:9, boxless:false, layers:1, givens:36 },  // 1: 9×9 medium
+      { n:9, boxless:false, layers:1, givens:30 },  // 2: 9×9 hard
+      { n:9, boxless:false, layers:2, givens:38 },  // 3: 9×9 double easy
+      { n:9, boxless:false, layers:2, givens:34 },  // 4: 9×9 double medium
   ]},
-  { name:"Prism", tint:"#e74c3c", unlock:"everything, combined",
-    // Prism's novelty is two mechanics at once, tasted on a small board.
-    preview:{ n:6, boxless:true, layers:2, givens:20 },
-    ramp:[0,1,1,2,2,3,3,4,4,4], pool:[
-      { n:9,  boxless:false, layers:1, givens:30 },
-      { n:10, boxless:true,  layers:1, givens:48 },
-      { n:9,  boxless:false, layers:2, givens:34 },
-      { n:9,  boxless:true,  layers:2, givens:36 },
-      { n:10, boxless:true,  layers:2, givens:50 },
+
+  // World 5: PRISM — combined mechanics, hardest
+  { name:"Prism", tint:"#e74c3c", unlock:"everything combined",
+    preview:{ n:9, boxless:true, layers:2, givens:36 },
+    ramp:[0,1,2,3,4], pool:[
+      { n:10, boxless:true,  layers:1, givens:50 },  // 0: 10×10 Latin easy
+      { n:10, boxless:true,  layers:1, givens:45 },  // 1: 10×10 Latin medium
+      { n:9,  boxless:false, layers:2, givens:30 },  // 2: 9×9 double hard
+      { n:9,  boxless:true,  layers:2, givens:36 },  // 3: 9×9 Latin double
+      { n:10, boxless:true,  layers:2, givens:50 },  // 4: 10×10 Latin double
   ]},
 ];
 
@@ -1805,7 +1802,8 @@ function levelConfig(level){
   // Trimming givens only changes difficulty where the grid is big enough to
   // hold reasoning depth; below 9x9 it just means more typing. A peek keeps its
   // full complement — it is meant to intrigue, not to punish.
-  const trim = !peek && cfg.n >= 9 ? Math.floor((step - 1) / 3) : 0;
+  // Trim 1 given every 6 steps on 9×9+ for a gentle within-stage ramp.
+  const trim = !peek && cfg.n >= 9 ? Math.floor((step - 1) / 6) : 0;
   const givens = Math.max(cfg.givens - trim, Math.ceil(cfg.n * cfg.n * 0.25));
 
   return { ...cfg, givens, level, world:w, stage, step, peek,
@@ -2468,7 +2466,7 @@ function stepMarker(step){
   return PATH_ICONS.dot;
 }
 function renderStagePath(cfg){
-  // Pre-compute the ten steps of this stage. levelConfig is cheap; buildLevel
+  // Pre-compute the twenty steps of this stage. levelConfig is cheap; buildLevel
   // is not — the rater takes real time — so precompute lazily and cache by
   // stage.  We just need config-time info (peek/boss/step) here; the pip
   // count comes from a lightweight par estimator, not the full rater.
@@ -2484,7 +2482,7 @@ function renderStagePath(cfg){
     const cls = "st " + state + (step === LEVELS_PER_STAGE ? " boss"
                                  : step === PEEK_STEP ? " peek" : "");
     // Pip count reflects how demanding this step is *within* the stage:
-    // step 10 (boss) is heaviest, step 5 (peek) uses the next-world entry
+    // step 20 (boss) is heaviest, step 15 (peek) uses the next-world entry
     // and reads as a taster. Everything else is 1 pip.
     const pips = step === LEVELS_PER_STAGE ? 3 : step === PEEK_STEP ? 2 : 1;
     html += '<span class="' + cls + '" data-step="' + step + '">'

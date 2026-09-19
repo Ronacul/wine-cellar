@@ -8,6 +8,18 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.12.7] 2026-09-19 — Levels: redesigned as a clean linear ladder (groups of 20)
+
+- **LEVELS_PER_STAGE 10 → 20, STAGES_PER_WORLD 10 → 5** — keeps 500 total real levels, but each config now runs for ~20 consecutive levels before stepping up.
+- **World 1 Sunrise:** 4×4 easy → 4×4 medium → 4×4 hard → 4×4 double → 6×6 easy
+- **World 2 Tide:** 6×6 medium → 6×6 hard → 6×6 double easy → 6×6 double medium → 6×6 rotated boxes
+- **World 3 Lattice:** 5×5 Latin → 7×7 Latin easy → 7×7 Latin medium → 9×9 Latin easy → 9×9 Latin medium
+- **World 4 Echo:** 9×9 easy → 9×9 medium → 9×9 hard → 9×9 double easy → 9×9 double medium
+- **World 5 Prism:** 10×10 Latin → 10×10 Latin medium → 9×9 double hard → 9×9 Latin double → 10×10 Latin double
+- Previous ramp zigzagged between 4×4 and 6×6 alternately within World 1 — now strictly ascending.
+- PEEK_STEP moved from 5 → 15 (sneak preview at step 15 of 20 rather than step 5 of 10).
+- Trim formula adjusted from /3 to /6 to maintain ~3 given reduction over a 20-step stage.
+
 ### [v0.12.6] 2026-09-19 — Tutorial: "Skip tutorial ×" link in the tip box
 
 - Added a **Skip tutorial ×** link at the bottom-right of the tutorial tip card. Tapping it calls `enterDaily()` immediately — no confirmation, no life penalty. The existing ✕ header button still works too but is easy to miss; this puts the escape route right where the player is reading.
