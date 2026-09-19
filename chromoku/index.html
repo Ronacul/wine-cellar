@@ -1224,7 +1224,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.12.4";
+const CHROMOKU_VERSION = "v0.12.5";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -2391,8 +2391,9 @@ function renderDailyNav(){
   }
 
   // Levels chip — shows progress as X/total; pulses when all 7 recent days done.
-  const lvlNum     = Math.min(progress().level, WORLDS.length * LEVELS_PER_WORLD);
+  // Tutorial levels don't count toward the 1-500 real-level track.
   const lvlTotal   = WORLDS.length * LEVELS_PER_WORLD;
+  const lvlNum     = Math.max(0, Math.min(progress().level - TUTORIAL_CONFIGS.length, lvlTotal));
   const lvlDone    = allDone;
   html += '<button class="lvl-chip' + (lvlDone ? ' lvl-nudge' : '') + '" id="dnLevels">'
         + '<span style="font-size:13px;font-weight:700;letter-spacing:-.01em">Levels</span>'

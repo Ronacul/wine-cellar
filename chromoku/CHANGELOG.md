@@ -8,6 +8,10 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.12.5] 2026-09-19 — Fix: Levels counter shows real-level progress (0–500), not tutorial offset
+
+- **Levels counter corrected:** `progress().level` counts tutorial levels (1–6) before the 500 real levels begin at level 7. The `X/500` display now subtracts the tutorial count, so a fresh player sees `0/500` and the first real level shows `1/500`. Previously a fresh player saw `1/500` which implied they were already one step into a hard 9×9 progression — the 9×9 they saw was Sunday's Epic daily puzzle, not the Levels track.
+
 ### [v0.12.4] 2026-09-19 — Fix: scramble shapes on 9×9; Levels chip with X/500 progress
 
 - **Scramble on 9×9:** Classic-colour scramble mode was applying random clip-path shapes as "decoy noise" to every cell. On 9×9 the cells are too small to read those shapes, making the board look broken rather than misleading. The shape decoy is now skipped for n≥9 — colour-as-truth still holds, but the shape noise is dropped.
