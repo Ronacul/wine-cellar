@@ -1084,7 +1084,11 @@ function scrambleStyle(i, v){
     const clip = m.clip ? ";clip-path:" + m.clip + ";border-radius:3px" : "";
     return "--c:" + fakeHex + clip;
   }
-  // Classic colours: colour is truth; shape is noise
+  // Classic colours: colour is truth; shape is noise.
+  // On 9×9+ the cells are too small to read the decoy shape, so skip it.
+  if (state.n >= 9){
+    return "--c:" + m.hex;
+  }
   const fakeIdx = scrambleDecoy(i, v, Math.min(state.n, SHAPES.length));
   const fakeClip = SHAPES[fakeIdx].clip;
   return "--c:" + m.hex + ";clip-path:" + fakeClip + ";border-radius:3px";
@@ -1220,7 +1224,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.12.3";
+const CHROMOKU_VERSION = "v0.12.4";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -2386,9 +2390,15 @@ function renderDailyNav(){
           + '</button>';
   }
 
-  // Levels chip — pulse when all 7 recent days are done to nudge players onward.
-  html += '<button class="lvl-chip' + (allDone ? ' lvl-nudge' : '') + '" id="dnLevels">🏆<br>'
-        + '<span style="font-size:8px;opacity:.8">' + (allDone ? 'Levels!' : 'Levels') + '</span></button>';
+  // Levels chip — shows progress as X/total; pulses when all 7 recent days done.
+  const lvlNum     = Math.min(progress().level, WORLDS.length * LEVELS_PER_WORLD);
+  const lvlTotal   = WORLDS.length * LEVELS_PER_WORLD;
+  const lvlDone    = allDone;
+  html += '<button class="lvl-chip' + (lvlDone ? ' lvl-nudge' : '') + '" id="dnLevels">'
+        + '<span style="font-size:13px;font-weight:700;letter-spacing:-.01em">Levels</span>'
+        + (lvlDone ? ' ✓' : '')
+        + '<br><span style="font-size:8px;opacity:.8">' + lvlNum + '/' + lvlTotal + '</span>'
+        + '</button>';
 
   el.innerHTML = html;
   el.querySelectorAll("[data-day]").forEach(btn => {

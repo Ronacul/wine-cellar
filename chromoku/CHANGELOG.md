@@ -8,6 +8,11 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.12.4] 2026-09-19 — Fix: scramble shapes on 9×9; Levels chip with X/500 progress
+
+- **Scramble on 9×9:** Classic-colour scramble mode was applying random clip-path shapes as "decoy noise" to every cell. On 9×9 the cells are too small to read those shapes, making the board look broken rather than misleading. The shape decoy is now skipped for n≥9 — colour-as-truth still holds, but the shape noise is dropped.
+- **Levels chip:** Redesigned for competitive framing. "Levels" is now 13px bold (was 8px), with the player's current level as `X/500` on the sub-line. Seeing "42/500" creates a pull to keep going. The gold pulse animation still fires when all 7 daily days are complete.
+
 ### [v0.12.3] 2026-09-19 — Day nav: today chip says "Today" instead of day abbreviation
 
 - Today's chip now reads "Today" rather than "Sat" / "Mon" etc., making it immediately clear which tile is the current day without having to match the date. The d/mm and tier sub-label remain. The ◆ marker is removed (redundant once the label says "Today").
