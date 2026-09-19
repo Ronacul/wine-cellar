@@ -8,6 +8,13 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.12.1] 2026-09-19 — Fix: difficulty label mismatch, d/mm in day chips
+
+- **getDailyConfig() unified:** `dailyConfig()` (old `DAILY_SCHEDULE`-based lookup) is no longer used for display. All label and tier text now comes from `getDailyConfig()`, so what the chip and sub-header say is exactly what the puzzle delivers. Saturday showing "Expert" while loading a 9×9 Medium is fixed.
+- **getDailyConfig(forDay):** Now accepts an optional day number so `renderDailyNav()` can query each chip's config without mutating state. DOW for today now uses the local calendar (consistent with `dayNumber()`).
+- **d/mm in day chips:** Each day chip now shows the calendar date below the tier label (e.g. "19/9 · Hard") so players can tell at a glance they're looking at the past 7 days.
+- **Admin date picker:** Changing the date in the admin bar now calls `enterDaily()` (loads the correct daily config) instead of `loadPuzzle(state.size, state.diff)` (which kept whatever size/diff the player last had, causing wrong-grid bugs).
+
 ### [v0.12.0] 2026-09-15 — 7-day arc: rotating weekly difficulty pools
 
 - **getDailyConfig():** Daily puzzle is now driven by a curated pool per weekday that rotates week-to-week. Each week a different variant fires — mark set, box orientation, or ruleset — so the same weekday never feels repetitive.

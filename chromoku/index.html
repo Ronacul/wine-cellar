@@ -1214,7 +1214,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.12.0";
+const CHROMOKU_VERSION = "v0.12.1";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -2219,13 +2219,18 @@ function loadLevel(n){
 // 7-day arc: each day has a pool of equivalent-difficulty configs that rotate
 // week-to-week so the puzzle never feels stale. getDailyConfig() is
 // deterministic: same day number always returns the same config.
-function getDailyConfig(){
-  const date = new Date(EPOCH + (state.day - 1) * 86400000);
-  const dow  = date.getUTCDay();                   // 0=Sun, 1=Mon, …, 6=Sat
-  const week = Math.floor((state.day - 1) / 7);
+function getDailyConfig(forDay){
+  const d    = (forDay !== undefined) ? forDay : state.day;
+  const date = new Date(EPOCH + (d - 1) * 86400000);
+  // Use local DOW for today (matches dayNumber's local-date normalisation),
+  // UTC DOW for past days (EPOCH is UTC-based so reconstruction is exact).
+  const dow  = (d === dayNumber()) ? new Date().getDay() : date.getUTCDay();
+  const week = Math.floor((d - 1) / 7);
   // Helper — builds a full config from a size/diff pair + optional overrides.
   const C = (sizeId, diffId, opts) =>
     Object.assign({ sizeId, diffId, dbl:false, latin:false, scramble:false, boxRotate:false, markSet:"classic" }, opts);
+  const DAY_NAMES = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  const DAY_TIERS = ["Epic","Intro","Easy+","Tricky","Grid","Double","Hard"];
   const pools = {
     1: [ // Monday — Easy warmup, 4×4, mark sets rotate
       C("s4","easy"),
@@ -2265,7 +2270,8 @@ function getDailyConfig(){
     ],
   };
   const pool = pools[dow] || pools[1];
-  return pool[week % pool.length];
+  const cfg  = pool[week % pool.length];
+  return Object.assign({ label: DAY_NAMES[dow], tier: DAY_TIERS[dow] }, cfg);
 }
 
 function enterDaily(){
@@ -2356,17 +2362,21 @@ function renderDailyNav(){
     const dow = (d === today)
       ? new Date().getDay()
       : new Date(EPOCH + (d - 1) * 86400000).getUTCDay();
-    const sc = DAILY_SCHEDULE[dow];
+    const sc = getDailyConfig(d);
     const isToday    = d === today;
     const isSelected = d === state.day;
     const done       = isDayDone(d);
     if (!done) allDone = false;
 
+    // Calendar date label — use UTC so it stays consistent with EPOCH arithmetic
+    const dt  = new Date(EPOCH + (d - 1) * 86400000);
+    const dStr = dt.getUTCDate() + "/" + (dt.getUTCMonth() + 1);
+
     const cls = isSelected ? "today" : "past";
     html += '<button class="' + cls + '" data-day="' + d + '">'
           + DOW_ABBR[dow]
           + (done ? ' ✓' : (isToday ? ' ◆' : ''))
-          + '<br><span style="font-size:8px;color:inherit;opacity:.7">' + sc.tier + '</span>'
+          + '<br><span style="font-size:8px;color:inherit;opacity:.7">' + dStr + ' · ' + sc.tier + '</span>'
           + '</button>';
   }
 
@@ -2589,7 +2599,7 @@ function renderSub(){
       + (state.scramble ? " · Scramble" : "");
   } else {
     // Daily: show day name + tier + puzzle number
-    const dc = dailyConfig();
+    const dc = getDailyConfig();
     base = dc.label + " · " + dc.tier + " · #" + state.day;
   }
 
@@ -3924,7 +3934,7 @@ function updateAdBanner(){
   const isDaily    = state.mode !== "levels" && !state.practice;
   const isPastDay  = isDaily && state.day < today;
   const withHints  = isDaily && totalHints() >= 2;
-  const todayCfg   = dailyConfig();
+  const todayCfg   = getDailyConfig();
   const offSched   = isDaily && state.day === today
                      && (state.size !== todayCfg.sizeId || state.diff !== todayCfg.diffId);
   const show = (state.mode === "levels" && !isTutNow) || isPastDay || withHints || offSched;
@@ -5322,7 +5332,7 @@ function updateAdminBar(){
   // Keep the → Next day button label in sync so the tester can see what comes next
   const nextBtn = document.getElementById("adminNext");
   if (nextBtn){
-    const dc = dailyConfig();
+    const dc = getDailyConfig();
     nextBtn.title = dayToISO(state.day) + " · " + dc.label + " · " + dc.tier;
   }
 }
@@ -5339,7 +5349,7 @@ function updateAdminBar(){
       const d = isoToDay(e.target.value);
       if (!isFinite(d)) return;
       save(LS_DAY, d); state.day = d;
-      loadPuzzle(state.size, state.diff);
+      enterDaily();
     };
   }
   const todayBtn = document.getElementById("adminToday");
