@@ -8,6 +8,10 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.12.3] 2026-09-19 — Day nav: today chip says "Today" instead of day abbreviation
+
+- Today's chip now reads "Today" rather than "Sat" / "Mon" etc., making it immediately clear which tile is the current day without having to match the date. The d/mm and tier sub-label remain. The ◆ marker is removed (redundant once the label says "Today").
+
 ### [v0.12.2] 2026-09-19 — Fix: shapes fall back to squares on 9×9+ and double mode
 
 - **buildMarks() guard:** When the active mark set is "Shapes" and the grid is 9×9 or larger, OR double mode is on, the outer marks now build as plain colours (same path as classic) instead of applying clip-path geometry. Tiny triangles/stars at 9×9 cell sizes are illegible, and a triangular or star-shaped donut in double mode is visually confusing. The player's saved shape preference is still respected on smaller single-layer grids.

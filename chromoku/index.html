@@ -1220,7 +1220,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.12.2";
+const CHROMOKU_VERSION = "v0.12.3";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -2380,8 +2380,8 @@ function renderDailyNav(){
 
     const cls = isSelected ? "today" : "past";
     html += '<button class="' + cls + '" data-day="' + d + '">'
-          + DOW_ABBR[dow]
-          + (done ? ' ✓' : (isToday ? ' ◆' : ''))
+          + (isToday ? "Today" : DOW_ABBR[dow])
+          + (done ? ' ✓' : '')
           + '<br><span style="font-size:8px;color:inherit;opacity:.7">' + dStr + ' · ' + sc.tier + '</span>'
           + '</button>';
   }
