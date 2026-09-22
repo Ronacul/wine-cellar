@@ -3980,7 +3980,7 @@
     "name": "Borgonero",
     "vintage": "2014",
     "type": "Red",
-    "qty": 2,
+    "qty": 1,
     "region": "Toscana IGT, Italy",
     "drinkFrom": "2017",
     "drinkTo": "2024",
@@ -3993,7 +3993,14 @@
     "price": "~$34 CAD (est.)",
     "location": "I",
     "notes": "Blend of Sangiovese, Cabernet Sauvignon, and Syrah. A medium-bodied, savory Super Tuscan showing dried cherries, leather, and earth notes from a cool, classic vintage.",
-    "imagePath": "images/mskqxm7c2mhoe.jpg"
+    "imagePath": "images/mskqxm7c2mhoe.jpg",
+    "tastingHistory": [
+      {
+        "date": "2026-09-22",
+        "notes": "Nice,dry..with pork stir fry.  Better as it breathed",
+        "bottleNum": 1
+      }
+    ]
   },
   {
     "id": "mskqyi85ipqsw",
