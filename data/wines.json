@@ -2986,7 +2986,7 @@
     "name": "Prestige des Dentelles",
     "vintage": "",
     "type": "Red",
-    "qty": 1,
+    "qty": 0,
     "region": "Gigondas, France",
     "drinkFrom": "2023",
     "drinkTo": "2030",
@@ -2999,7 +2999,9 @@
     "price": "~$45 CAD (est.)",
     "location": "C",
     "notes": "Grenache, Syrah, Mourvèdre blend; a robust, structured Southern Rhône red with notes of dark berries, garrigue, and spice, typical of Gigondas.",
-    "imagePath": "images/msi80kia2edw7.jpg"
+    "imagePath": "images/msi80kia2edw7.jpg",
+    "drankDate": "2026-09-26",
+    "giftedTo": "Signorellis"
   },
   {
     "id": "msi81lkaoy886",
