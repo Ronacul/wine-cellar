@@ -8,6 +8,11 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.12.11] 2026-09-29 — Fix: bump service worker cache to force delivery of v0.12.9–10
+
+- The service worker uses cache-first with a versioned cache name. All deploys since v0.12.9 were delivering the new `index.html` to GitHub Pages but returning the old cached copy to the browser.
+- Bumped `CACHE` from `"chromoku-v15"` → `"chromoku-v16"`. On next load the SW installs the new cache, deletes v15, and the layout-mismatch fix and tutorial flow fixes actually reach the user.
+
 ### [v0.12.10] 2026-09-29 — Fix: old (untagged) saves also rejected on layout mismatch
 
 - v0.12.9's mismatch guard had a gap: saves created before the `boxRotate`/`latin` flags were added have no such field, so `saved.boxRotate !== undefined` was `false` and the check was skipped — the bad puzzle still loaded on refresh.
