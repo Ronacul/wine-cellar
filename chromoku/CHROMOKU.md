@@ -47,7 +47,21 @@ strings into `innerHTML`, then bind listeners — the repo's existing pattern.
 Dev affordances currently shipped and **not meant for players**: the ⟳ practice
 re-roll and the debug date field in Settings.
 
+## Service worker and deployment
+
+`sw.js` uses a **cache-first strategy** with a versioned cache name (`chromoku-vN`). This is what makes the game survive iOS home-screen eviction after a week of non-use. Consequences:
+
+- **Bump `CACHE` on every deploy.** If the cache name does not change, browsers serve the old `index.html` forever, regardless of what was pushed to GitHub Pages.
+- **Two refreshes to get new code.** `skipWaiting()` + `clients.claim()` causes the first refresh to *install* the new SW but serve old content from the old cache. The second refresh serves new content from the new cache. A hard refresh (Cmd+Shift+R) speeds this up by one cycle. This is expected SW behaviour — do not mistake it for a deployment failure.
+- Because of the two-refresh delay, fixes that depend on `localStorage` state (like the boxRotate mismatch fix) may not reach the user until their second refresh even after the fix is deployed. A runtime guard that works on whatever is already in localStorage is more reliable than one that assumes the fix reached the browser.
+
 ## Findings worth not rediscovering
+
+**`loadPuzzle(sizeId, diffId, fresh)` — `fresh` does two things at once.** It uses a random seed (not the day seed) AND sets `state.practice = true`, which hides the daily UI (week list, difficulty tabs). If you need to regenerate from the day seed without touching `state.practice` — e.g. discarding a corrupted cache and re-running — pass `false` for `fresh` and a separate internal flag to skip the cache load. Passing `true` turns the daily puzzle into a practice game silently.
+
+**IIFE `return` does not return from the enclosing function.** `(function(){ return loadPuzzle(...); })()` returns from the IIFE, not from the function that contains it. The outer function continues executing. Use a regular `if` block and a real `return` statement at the top level instead.
+
+**The `boxRotate` flag must be stored in the daily save slot.** The save slot key (`"s6-easy"`) does not encode layout. A puzzle saved with `boxRotate:false` (2×3 boxes) loaded under `boxRotate:true` (3×2 boxes) will show valid givens apparently sharing a box — the "two blues in a box" bug. Fix: store `boxRotate` and `latin` with every saved slot; reject cached slots whose flags don't match the current config.
 
 **Shuffling one grid does not reach the whole space.** Permuting rows, columns
 and symbols of a canonical grid looks like it explores everything. It reaches

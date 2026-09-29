@@ -204,6 +204,15 @@ For manual assignment or AI identification from labels:
 
 ## Lessons learned
 
+### Chromoku service worker — bump CACHE on every deploy
+- `sw.js` uses cache-first with a versioned name (`chromoku-vN`). If the cache name is not bumped, browsers serve old `index.html` forever regardless of what GitHub Pages has.
+- `skipWaiting()` + `clients.claim()` means the first refresh installs the new SW but still serves old cached content. The second refresh serves new content. Hard refresh (Cmd+Shift+R) saves one cycle. Do not mistake this for a deployment failure — it is normal SW lifecycle behaviour.
+- Fixes that rely on `localStorage` state may not take effect until after two refreshes. A runtime guard that detects corruption at load time (e.g. scanning given cells for conflicts) is more reliable than a guard that only fires on a fresh cache.
+
+### Chromoku `loadPuzzle` — `fresh=true` sets `state.practice = true`
+- `fresh=true` does two things: uses a random seed instead of the day seed, AND marks the session as practice (`state.practice = true`), which hides the daily UI (week list, difficulty tabs, streak).
+- When you need to discard a corrupted cache and regenerate from the day seed without touching `state.practice`, pass `fresh=false` and an internal skip flag instead of `fresh=true`.
+
 ### Gemini API models retire fast
 - `gemini-2.0-flash` shut down June 1, 2026; `gemini-2.0-flash-lite` also retired
 - Always use a fallback chain, not a single model
