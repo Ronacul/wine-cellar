@@ -8,6 +8,13 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.12.12] 2026-09-29 — Fix: runtime given-conflict guard clears corrupt cached puzzles
+
+- Added a post-load validity check in `loadPuzzle()` that fires after `state.layers` is populated (whether from cache or freshly generated).
+- Scans every given cell in every layer for duplicate colours within the same box. If any conflict is found, the corrupted save slot is deleted from localStorage and `loadPuzzle` is called again with `fresh=true`, guaranteeing a clean board.
+- This is a runtime safety net that works regardless of service-worker cache state — it detects and repairs any corrupt save that made it past the `layoutMismatch` flag check (e.g. saves from before v0.12.9 that are still in localStorage from before the SW update was received).
+- Bumped SW cache to `"chromoku-v17"`.
+
 ### [v0.12.11] 2026-09-29 — Fix: bump service worker cache to force delivery of v0.12.9–10
 
 - The service worker uses cache-first with a versioned cache name. All deploys since v0.12.9 were delivering the new `index.html` to GitHub Pages but returning the old cached copy to the browser.
