@@ -8,6 +8,11 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.12.10] 2026-09-29 — Fix: old (untagged) saves also rejected on layout mismatch
+
+- v0.12.9's mismatch guard had a gap: saves created before the `boxRotate`/`latin` flags were added have no such field, so `saved.boxRotate !== undefined` was `false` and the check was skipped — the bad puzzle still loaded on refresh.
+- Fix: treat a missing flag as `false` (the default). If the current config has `boxRotate:true` or `latin:true` and the save has no flag, that defaults to `false` → mismatch → discard and regenerate.
+
 ### [v0.12.9] 2026-09-29 — Fix: rotated-box puzzle no longer loads mismatched cached grid
 
 - **Root cause of "two blues in a box" bug:** the daily save slot key (`"s6-easy"`) did not include `boxRotate`, so a puzzle previously saved with `boxRotate:false` (standard 2×3 boxes) could be loaded and displayed with `boxRotate:true` (3×2 boxes). The grid was valid for the original layout but looked broken in the rotated one.
