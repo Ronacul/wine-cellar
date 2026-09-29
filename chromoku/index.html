@@ -1224,7 +1224,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.12.9";
+const CHROMOKU_VERSION = "v0.12.10";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -2109,9 +2109,12 @@ function loadPuzzle(sizeId, diffId, fresh){
   // Reject a cached puzzle if its box/latin layout doesn't match the current config.
   // A mismatch means the grid was generated for different box boundaries — loading
   // it would make valid givens appear to share a box (the two-blues bug).
+  // Old saves have no boxRotate/latin flags; treat them as generated with the
+  // defaults (false/false). If the current config deviates from those defaults,
+  // an untagged save cannot be trusted and is discarded.
   const layoutMismatch = saved && (
-    (saved.boxRotate !== undefined && !!saved.boxRotate !== !!state.boxRotate) ||
-    (saved.latin     !== undefined && !!saved.latin     !== !!state.latin)
+    !!( saved.boxRotate ?? false) !== !!state.boxRotate ||
+    !!(saved.latin      ?? false) !== !!state.latin
   );
   if (saved && saved.layers && !layoutMismatch){
     state.layers = saved.layers.map(L => ({
