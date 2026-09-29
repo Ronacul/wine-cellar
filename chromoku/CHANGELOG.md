@@ -8,6 +8,12 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.12.8] 2026-09-29 — Fix: tutorial exit lands in real levels instead of daily
+
+- **Tutorial complete → real levels:** "Start playing" after the final tutorial level now loads level 1 of the real ladder (was incorrectly calling `enterDaily()` and dropping the player in the daily puzzle).
+- **Skip tutorial → real levels:** "Skip tutorial ×" tip button now also goes straight to real levels via `skipTutorial()` instead of daily. Progress is advanced past the tutorial block so the next Levels click doesn't restart the tutorial.
+- Added `skipTutorial()` helper that advances `p.level` to `TUTORIAL_CONFIGS.length` then calls `loadLevel(TUTORIAL_CONFIGS.length)`.
+
 ### [v0.12.7] 2026-09-19 — Levels: redesigned as a clean linear ladder (groups of 20)
 
 - **LEVELS_PER_STAGE 10 → 20, STAGES_PER_WORLD 10 → 5** — keeps 500 total real levels, but each config now runs for ~20 consecutive levels before stepping up.
