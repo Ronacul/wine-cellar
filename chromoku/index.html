@@ -1224,7 +1224,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.12.8";
+const CHROMOKU_VERSION = "v0.12.9";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -1993,6 +1993,8 @@ function saveProgress(){
     // most valuable after a break, not just within a single session.
     bookmark:state.bookmark,
     hints:state.hints,
+    boxRotate:!!state.boxRotate,   // saved so a rotated-box puzzle is never
+    latin:!!state.latin,           // loaded into a session with the wrong layout
   };
   saveDayRecord(state.day, d);
 }
@@ -2104,7 +2106,14 @@ function loadPuzzle(sizeId, diffId, fresh){
   buildMarks();               // mark count follows grid size
 
   const saved = fresh ? null : loadDaily()[slot(state.size, state.diff, state.dbl)];
-  if (saved && saved.layers){
+  // Reject a cached puzzle if its box/latin layout doesn't match the current config.
+  // A mismatch means the grid was generated for different box boundaries — loading
+  // it would make valid givens appear to share a box (the two-blues bug).
+  const layoutMismatch = saved && (
+    (saved.boxRotate !== undefined && !!saved.boxRotate !== !!state.boxRotate) ||
+    (saved.latin     !== undefined && !!saved.latin     !== !!state.latin)
+  );
+  if (saved && saved.layers && !layoutMismatch){
     state.layers = saved.layers.map(L => ({
       grid:L.grid.slice(), solution:L.solution.slice(), givens:L.givens.slice(),
     }));
