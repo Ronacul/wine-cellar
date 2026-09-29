@@ -1224,7 +1224,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.12.7";
+const CHROMOKU_VERSION = "v0.12.8";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -2282,6 +2282,14 @@ function getDailyConfig(forDay){
   return Object.assign({ label: DAY_NAMES[dow], tier: DAY_TIERS[dow] }, cfg);
 }
 
+// Advance past all tutorial levels and jump directly into the first real level.
+// Called by both the "Skip tutorial" tip button and the post-tutorial modal.
+function skipTutorial(){
+  const p = progress();
+  saveProgress2(Object.assign(p, { level: Math.max(p.level, TUTORIAL_CONFIGS.length) }));
+  loadLevel(TUTORIAL_CONFIGS.length);
+}
+
 function enterDaily(){
   state.mode = "daily"; state.lvl = null; state.practice = false;
   // Clear tutorial auto-hint timers — they fire flashHint(false) on a loop and
@@ -2426,7 +2434,7 @@ function render(){
       tip.style.display = "";
       tip.innerHTML = state.lvl.cfg.desc
         + '<div style="margin-top:8px;text-align:right">'
-        + '<button onclick="enterDaily()" style="background:none;border:none;cursor:pointer;'
+        + '<button onclick="skipTutorial()" style="background:none;border:none;cursor:pointer;'
         + 'font-size:11px;color:var(--ink-faint);text-decoration:underline;padding:0">'
         + 'Skip tutorial ×</button></div>';
     } else {
@@ -3326,7 +3334,7 @@ function winTutorialLevel(lv){
         + '<button class="btn" id="mTutDone">▶ Start playing</button>'
         + '<button class="btn ghost" id="mTutRestart">Replay tutorial</button>'
       );
-      document.getElementById("mTutDone").onclick = () => { closeModal(); enterDaily(); };
+      document.getElementById("mTutDone").onclick = () => { closeModal(); skipTutorial(); };
       document.getElementById("mTutRestart").onclick = () => { closeModal(); loadLevel(0); };
     } else {
       openModal(
@@ -5421,7 +5429,7 @@ window.CHROMOKU = { state, DIFFS, SIZES, DIFFICULTIES, CURR_SIZES, CURR_DIFFS,
                     revealCell, freezeClock, addTime, showHintModal,
                     paintCompletedUnits, applySharp, shareAsImage,
                     rotatedMarkSet, buildMarks, emojiFor,
-                    render, winLevel, enterDaily,
+                    render, winLevel, enterDaily, skipTutorial,
                     fireConfetti, shareChallenge, showProgression,
                     poolRemaining, powerPool,
                     showExplainers, seenMechanics, markMechanicSeen,
