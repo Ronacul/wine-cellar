@@ -8,6 +8,12 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.12.14] 2026-09-29 — Fix: conflict-guard regeneration preserves daily mode (no more missing week list/levels)
+
+- When the conflict guard fired in v0.12.13, it called `loadPuzzle(..., true)` (fresh=true). `fresh=true` sets `state.practice = true`, which hid the daily UI (week list, streak, difficulty tabs).
+- Fix: added a `_skipConflictCheck` internal parameter. The guard now calls `loadPuzzle(state.size, state.diff, false, true)` — regenerates from the daily seed, skips the conflict check on re-entry, and leaves `state.practice` false so the daily UI remains intact.
+- Bumped SW cache to `"chromoku-v19"`.
+
 ### [v0.12.13] 2026-09-29 — Fix: given-conflict guard no longer causes infinite recursion
 
 - v0.12.12 used an IIFE whose `return loadPuzzle(...)` only returned from the IIFE, not from the outer `loadPuzzle` — so both the recursive fresh call and the original outer call continued executing, causing a stack overflow.

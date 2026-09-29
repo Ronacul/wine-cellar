@@ -1224,7 +1224,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.12.13";
+const CHROMOKU_VERSION = "v0.12.14";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -2090,9 +2090,11 @@ function dayNumber(){
 
 // Two-axis loader: picks a size + difficulty, generates or restores the puzzle.
 // `fresh` re-rolls from a random seed instead of loading today's puzzle.
-function loadPuzzle(sizeId, diffId, fresh){
+// `_skipConflictCheck` is an internal flag used by the conflict guard to
+// regenerate the daily seed without marking the session as a practice game.
+function loadPuzzle(sizeId, diffId, fresh, _skipConflictCheck){
   stopTimer();
-  state.practice = !!fresh;
+  state.practice = !!fresh && !_skipConflictCheck;
 
   const sizes = CURR_SIZES();
   const sObj = sizes.find(s => s.id === sizeId) || sizes[0];
@@ -2148,8 +2150,8 @@ function loadPuzzle(sizeId, diffId, fresh){
   // same box on any layer. If they do the cached puzzle is corrupt (e.g. from
   // a boxRotate mismatch before v0.12.10) — wipe the slot and regenerate now.
   // This is a runtime safety net that works regardless of service-worker cache state.
-  // Only run on cached loads (fresh=true skips this to avoid infinite recursion).
-  if (!fresh){
+  // Only run on cached loads; skip if flagged to avoid recursion.
+  if (!fresh && !_skipConflictCheck){
     const n = state.n;
     const { bh, bw } = boxDims(n, !!state.boxRotate);
     let conflictFound = false;
@@ -2169,7 +2171,9 @@ function loadPuzzle(sizeId, diffId, fresh){
       const daily = loadDaily();
       delete daily[slot(state.size, state.diff, state.dbl)];
       saveDayRecord(state.day, daily);
-      return loadPuzzle(state.size, state.diff, true);
+      // Reload from the daily seed (not fresh/random), skipping the conflict
+      // check on the next pass to avoid recursion. state.practice stays false.
+      return loadPuzzle(state.size, state.diff, false, true);
     }
   }
 
