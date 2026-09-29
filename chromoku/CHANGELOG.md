@@ -8,7 +8,13 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
-### [v0.12.12] 2026-09-29 — Fix: runtime given-conflict guard clears corrupt cached puzzles
+### [v0.12.13] 2026-09-29 — Fix: given-conflict guard no longer causes infinite recursion
+
+- v0.12.12 used an IIFE whose `return loadPuzzle(...)` only returned from the IIFE, not from the outer `loadPuzzle` — so both the recursive fresh call and the original outer call continued executing, causing a stack overflow.
+- Fix: replaced the IIFE with a plain `if (!fresh)` block. The conflict check only runs on cached loads; `fresh=true` calls skip it entirely, breaking the cycle. When a conflict is found, `return loadPuzzle(state.size, state.diff, true)` now correctly returns from `loadPuzzle` itself.
+- Bumped SW cache to `"chromoku-v18"`.
+
+### [v0.12.12] 2026-09-29 — Fix: runtime given-conflict guard clears corrupt cached puzzles (had recursion bug — see v0.12.13)
 
 - Added a post-load validity check in `loadPuzzle()` that fires after `state.layers` is populated (whether from cache or freshly generated).
 - Scans every given cell in every layer for duplicate colours within the same box. If any conflict is found, the corrupted save slot is deleted from localStorage and `loadPuzzle` is called again with `fresh=true`, guaranteeing a clean board.
