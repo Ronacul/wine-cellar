@@ -1224,7 +1224,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.12.11";
+const CHROMOKU_VERSION = "v0.12.12";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -2143,6 +2143,34 @@ function loadPuzzle(sizeId, diffId, fresh){
     state.bookmark = null;
     state.hints = { reveals:0, freezes:0, adds:0, flashes:0 }; state.bonusReveals = 0; state.adShown = false; state._adReveals = 0;
   }
+
+  // Post-load sanity check: verify no two givens share the same colour in the
+  // same box on any layer. If they do the cached puzzle is corrupt (e.g. from
+  // a boxRotate mismatch before v0.12.10) — wipe the slot and regenerate now.
+  // This is a runtime safety net that works regardless of service-worker cache state.
+  (function validateGivens(){
+    const n = state.n;
+    const { bh, bw } = boxDims(n, !!state.boxRotate);
+    for (const lyr of state.layers){
+      const seen = {}; // "boxIdx:colour" → true
+      for (let i = 0; i < n * n; i++){
+        if (!lyr.givens[i]) continue;
+        const colour = lyr.givens[i];
+        const r = (i / n) | 0, c = i % n;
+        const box = ((r / bh) | 0) * (n / bw) + ((c / bw) | 0);
+        const key = box + ":" + colour;
+        if (seen[key]){
+          // Conflict found — clear the corrupted save slot and reload fresh.
+          const daily = loadDaily();
+          delete daily[slot(state.size, state.diff, state.dbl)];
+          saveDayRecord(state.day, daily);
+          return loadPuzzle(state.size, state.diff, true);
+        }
+        seen[key] = true;
+      }
+    }
+  })();
+
   state.since = null; state.sel = null; state.erase = false;
   state.history = []; state.frozenUntil = 0;
   if (!fresh){ save(LS_SIZE, state.size); save(LS_LAST, state.diff); }
