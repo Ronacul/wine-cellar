@@ -8,6 +8,13 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.12.9] 2026-09-29 — Fix: rotated-box puzzle no longer loads mismatched cached grid
+
+- **Root cause of "two blues in a box" bug:** the daily save slot key (`"s6-easy"`) did not include `boxRotate`, so a puzzle previously saved with `boxRotate:false` (standard 2×3 boxes) could be loaded and displayed with `boxRotate:true` (3×2 boxes). The grid was valid for the original layout but looked broken in the rotated one.
+- **Fix (save side):** `saveProgress` now stores `boxRotate` and `latin` with each slot record.
+- **Fix (load side):** `loadPuzzle` rejects a cached slot whose `boxRotate`/`latin` flags don't match the current config, falling through to fresh generation. Old saves without these flags are accepted as-is (no flag = no mismatch detected).
+- **No hard reset needed:** the mismatched cached puzzle is silently discarded and a fresh one is generated the next time that day is loaded.
+
 ### [v0.12.8] 2026-09-29 — Fix: tutorial exit lands in real levels instead of daily
 
 - **Tutorial complete → real levels:** "Start playing" after the final tutorial level now loads level 1 of the real ladder (was incorrectly calling `enterDaily()` and dropping the player in the daily puzzle).
