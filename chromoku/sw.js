@@ -4,7 +4,7 @@
 // a week of not playing.
 //
 // Bump CACHE on every deploy; the old one is deleted on activate.
-const CACHE = "chromoku-v18";
+const CACHE = "chromoku-v19";
 const ASSETS = [
   "./",
   "./index.html",
