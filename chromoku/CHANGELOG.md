@@ -8,6 +8,12 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+_Nothing pending. Everything up to v0.20.2 is released._
+
+---
+
+## Released (on `release`)
+
 ### [v0.20.2] 2026-10-03 — Watching an ad to continue refunds the life
 
 - After "Out of time", watching a bonus ad to keep going now refunds the life taken at failure. The button copy says so, and the toast says "life back". A mid-level add-time does not refund (nothing was lost).
@@ -360,8 +366,6 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 - **Housekeeping:** `CHROMOKU_VERSION` constant added; version displayed in About modal.
 
 ---
-
-## Released (on `release`)
 
 ### [v0.9.0] 2026-08-22 — Initial playtest branch
 
