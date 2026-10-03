@@ -247,6 +247,16 @@ html.in-level #sizeRow{display:none !important}
   text-align:center; font-family:var(--mono); font-size:12px;
   color:#c9a227; margin:8px 0; letter-spacing:.04em;
 }
+.prog-goal{
+  text-align:center; margin:10px 0 4px; padding:12px 12px 10px;
+  border:1px solid var(--line-2); border-radius:10px; background:var(--panel2);
+}
+.prog-goal .pg-icon{font-size:26px; line-height:1}
+.prog-goal .pg-head{font-size:20px; margin-top:6px}
+.prog-goal .pg-sub{font-family:var(--mono); font-size:11px; letter-spacing:.06em;
+  color:var(--ink-faint); margin-top:2px}
+.prog-goal .pg-body{font-size:13px; line-height:1.5; color:var(--ink-dim); margin:8px 0 0}
+.btn[disabled]{opacity:.45; pointer-events:none}
 /* Mechanic explainer modal */
 .explainer{text-align:center}
 .exp-icon{font-size:48px; margin-bottom:8px}
@@ -1224,7 +1234,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.12.14";
+const CHROMOKU_VERSION = "v0.13.0";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -2559,6 +2569,8 @@ function updateRegenChip(){
   if (modalEl){
     const ms = nextLifeMs(p);
     modalEl.textContent = ms > 0 ? fmtTime(ms) : "ready";
+    const rb = document.getElementById("mRetry");
+    if (rb && rb.disabled && p.lives > 0){ rb.disabled = false; rb.textContent = "Retry"; }
   }
 }
 
@@ -3467,12 +3479,15 @@ function failLevel(){
   const addTimeAvailable = addLeft > 0;
 
   const adBtns = addTimeAvailable
-    ? '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">'
+    ? '<details style="margin-top:10px"><summary style="font-size:12px;color:var(--ink-faint);cursor:pointer;text-align:center">Need more time?</summary>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">'
       + '<button class="btn ghost" id="mAddTime" style="margin:0;font-size:12px">⏰ +' + LEVEL_ADD_SECS + 's<br><span style="font-size:10px;opacity:.6;font-weight:400">watch 15s · ' + addLeft + ' left</span></button>'
-      + '<button class="btn" id="mAddBundle" style="margin:0;font-size:12px">🎁 +' + BUNDLE_ADD_SECS + 's + ' + BUNDLE_BONUS + ' reveals<br><span style="font-size:10px;opacity:.8;font-weight:400">watch 30s</span></button>'
-      + '</div>'
+      + '<button class="btn ghost" id="mAddBundle" style="margin:0;font-size:12px">🎁 +' + BUNDLE_ADD_SECS + 's + ' + BUNDLE_BONUS + ' reveals<br><span style="font-size:10px;opacity:.8;font-weight:400">watch 30s</span></button>'
+      + '</div></details>'
     : '';
 
+  // Retry is the main action: it restarts the level and costs the life already
+  // taken. Ads are an optional extra, never the only way forward.
   openModal(
     "<h2>Out of time</h2>"
     + '<p class="lede">Level ' + state.lvl.cfg.level + " · par was "
@@ -3481,11 +3496,10 @@ function failLevel(){
     + (out
         ? '<p class="lede">No lives left. One returns in <b id="outLivesIn">'
           + fmtTime(nextLifeMs(p)) + "</b>.</p>"
-          + adBtns
-          + '<button class="btn ghost" id="mBack" style="margin-top:8px">Back to daily</button>'
-        : '<button class="btn" id="mRetry">Try again</button>'
-          + adBtns
-          + '<button class="btn ghost" id="mBack">Back to daily</button>')
+          + '<button class="btn" id="mRetry" disabled>Retry</button>'
+        : '<button class="btn" id="mRetry">Retry · ' + p.lives + ' ♥ left</button>')
+    + adBtns
+    + '<button class="btn ghost" id="mBack" style="margin-top:8px">Back to daily</button>'
   );
 
   const r = document.getElementById("mRetry");
@@ -3761,12 +3775,37 @@ function showExplainers(ids, next){
 
 /* ================= progression interstitial ================= */
 
+// One-line statement of what the player is being asked to do on a level, built
+// from the same config fields loadLevel() reads so the two cannot disagree.
+function levelGoal(level){
+  const cfg = levelConfig(level);
+  const set = cfg.markSet && MARKSETS[cfg.markSet]
+    ? cfg.markSet
+    : isTutorialLevel(level) ? "classic" : rotatedMarkSet(level, cfg.n);
+  const noun = set === "shapes" ? "shape" : set === "ink" ? "pattern" : "colour";
+  const icon = set === "shapes" ? "◆" : set === "ink" ? "▨" : "🎨";
+  const n = cfg.n;
+  const rule = cfg.boxless
+    ? "Latin rules: each row and column holds every " + noun + " once. No boxes."
+    : "Each row, column and box holds every " + noun + " once.";
+  const extras = [];
+  if (cfg.layers > 1) extras.push("Two overlaid grids to solve.");
+  if (cfg.boxRotate) extras.push("The boxes are turned on their side.");
+  return {
+    icon,
+    head: "Match the " + noun + "s",
+    sub: n + "×" + n + " · " + n + " " + noun + "s",
+    body: rule + (extras.length ? " " + extras.join(" ") : ""),
+  };
+}
+
 // Brief screen between levels showing the player's journey through the stage.
 function showProgression(nextLevel){
   const cfg = levelConfig(nextLevel);
   const prevStage = nextLevel > 1 ? levelConfig(nextLevel - 1).stage : 0;
   const step = cfg.step;
   const theme = cfg.theme || WORLDS[cfg.world - 1];
+  const goal = levelGoal(nextLevel);
   const isNewWorld = nextLevel > 1 && cfg.world !== levelConfig(nextLevel - 1).world;
   const isNewStage = nextLevel > 1 && cfg.stage !== prevStage;
 
@@ -3788,6 +3827,10 @@ function showProgression(nextLevel){
   openModal(
     '<h2 style="color:' + theme.tint + '">' + theme.name + '</h2>'
     + '<p class="lede">Stage ' + cfg.stage + ' · step ' + step + '</p>'
+    + '<div class="prog-goal"><div class="pg-icon">' + goal.icon + '</div>'
+    + '<div class="pg-head">' + goal.head + '</div>'
+    + '<div class="pg-sub">' + goal.sub + '</div>'
+    + '<p class="pg-body">' + goal.body + '</p></div>'
     + pips
     + unlock
     + '<button class="btn" id="mGo">Play</button>'

@@ -8,6 +8,12 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.13.0] 2026-10-03 — Level splash states the goal; plain Retry on fail
+
+- Between-level splash now has a goal card: "Match the colours / shapes / patterns", grid size, and the rule (rows, columns, boxes, or Latin with no boxes), plus notes for double grids and rotated boxes. Built by `levelGoal()` from the same config `loadLevel()` uses.
+- Out-of-time screen: **Retry** is the primary button and restarts the level using the life already lost. With no lives it is disabled and enables itself when a heart returns. Ad options moved into a collapsed "Need more time?" section.
+- Bumped SW cache to `"chromoku-v20"`.
+
 ### [v0.12.14] 2026-09-29 — Fix: conflict-guard regeneration preserves daily mode (no more missing week list/levels)
 
 - When the conflict guard fired in v0.12.13, it called `loadPuzzle(..., true)` (fresh=true). `fresh=true` sets `state.practice = true`, which hid the daily UI (week list, streak, difficulty tabs).
