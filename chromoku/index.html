@@ -368,6 +368,15 @@ html.in-level #sizeRow{display:none !important}
 .cal-grid button.sel{outline:2px solid var(--ink); outline-offset:1px}
 .cal-detail{margin-top:12px; padding:12px; border:1px solid var(--line-2); border-radius:12px;
   background:var(--panel2); text-align:center; font-size:13px; color:var(--ink-dim); min-height:84px}
+.cal-trophies{margin-top:12px}
+.cal-trophies .trow{display:grid; gap:4px; margin-bottom:6px}
+.cal-trophies .m12{grid-template-columns:repeat(12,1fr)}
+.cal-trophies .q5{grid-template-columns:repeat(5,1fr)}
+.cal-trophies .tr{text-align:center; color:var(--line-2); line-height:1.1}
+.cal-trophies .tr span{display:block; font-size:12px}
+.cal-trophies .tr.big span{font-size:13px}
+.cal-trophies .tr i{display:block; font-style:normal; font-family:var(--mono); font-size:9px; color:var(--ink-faint)}
+.cal-trophies .tr.gold span{color:#f1c40f}
 .cal-key{font-family:var(--mono); font-size:10px; color:var(--ink-faint); text-align:center; margin-top:8px}
 
 /* ================= tutorial tip ================= */
@@ -1269,7 +1278,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.16.0";
+const CHROMOKU_VERSION = "v0.17.0";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -2548,25 +2557,46 @@ function calModel(year, month, h, today){
   const dayOf = (y, m, d) => Math.round((Date.UTC(y, m, d) - EPOCH) / 86400000) + 1;
   const lead = (new Date(Date.UTC(year, month, 1)).getUTCDay() + 6) % 7;   // Monday first
   const dim = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
-  const colTotal = [0,0,0,0,0,0,0], colDone = [0,0,0,0,0,0,0];
-  let monthTotal = 0, monthDone = 0;
+  const colTotal = [0,0,0,0,0,0,0], colDone = [0,0,0,0,0,0,0], colFull = [true,true,true,true,true,true,true];
   const rows = [];
   for (let r = 0; r < Math.ceil((lead + dim) / 7); r++){
-    let weekAll = true, weekAny = false;
+    let weekAll = true;
     const cells = [];
     for (let c = 0; c < 7; c++){
       const d = r * 7 + c - lead + 1;
       const n = dayOf(year, month, d);   // a week may spill into a neighbouring month
-      if (n >= 1){ weekAny = true; if (!h[String(n)]) weekAll = false; }
+      // A star needs a whole period: days before the first puzzle can never be
+      // solved, so a week or weekday that includes one can never be starred.
+      if (n < 1 || !h[String(n)]) weekAll = false;
       if (d < 1 || d > dim){ cells.push(null); continue; }
       const rec = h[String(n)] || null;
-      if (n >= 1){ colTotal[c]++; monthTotal++; if (rec){ colDone[c]++; monthDone++; } }
+      if (n < 1) colFull[c] = false;
+      else { colTotal[c]++; if (rec) colDone[c]++; }
       cells.push({ d, n, rec, ok: n >= 1 && n <= today });
     }
-    rows.push({ cells, star: weekAny && weekAll });
+    rows.push({ cells, star: weekAll });
   }
-  return { rows, colTotal, colDone, monthTotal, monthDone,
-           monthStar: monthTotal > 0 && monthDone === monthTotal };
+  const colStar = colTotal.map((t, c) => colFull[c] && t > 0 && colDone[c] === t);
+  return { rows, colTotal, colDone, colStar, ...superStars(h, year, month, today) };
+}
+
+// True when every day from the first of month m0 to the end of month m1 is
+// solved. A period that starts before the first puzzle can never complete.
+function periodDone(h, y, m0, m1, today){
+  const a = Math.round((Date.UTC(y, m0, 1) - EPOCH) / 86400000) + 1;
+  const b = Math.round((Date.UTC(y, m1 + 1, 1) - EPOCH) / 86400000);
+  if (a < 1 || b > today) return false;
+  for (let d = a; d <= b; d++) if (!h[String(d)]) return false;
+  return true;
+}
+// Month ★, quarter ★★, year ★★★ — each is a full run of solved days.
+function superStars(h, year, month, today){
+  const q = Math.floor(month / 3) * 3;
+  const monthStar = periodDone(h, year, month, month, today);
+  const quarterStar = periodDone(h, year, q, q + 2, today);
+  const yearStar = periodDone(h, year, 0, 11, today);
+  return { monthStar, quarterStar, yearStar,
+           level: yearStar ? 3 : quarterStar ? 2 : monthStar ? 1 : 0 };
 }
 
 // Link back to the game from wherever it is hosted, so shares keep working
@@ -2592,7 +2622,7 @@ function renderCalendarImage(year, month){
   g.fillStyle = ink; g.font = "700 22px system-ui,sans-serif";
   g.fillText("Chromoku", W / 2, 40);
   g.fillStyle = dimc; g.font = "12px ui-monospace,monospace";
-  g.fillText(MONTHS[month] + " " + year + (M.monthStar ? "  ★" : ""), W / 2, 62);
+  g.fillText(MONTHS[month] + " " + year + (M.level ? "  " + "★".repeat(M.level) : ""), W / 2, 62);
   g.fillStyle = ink; g.font = "700 26px system-ui,sans-serif";
   g.fillText((sk.cur ? "🔥 " + sk.cur + " day streak" : "Solved " + Object.keys(h).length + " daily puzzles"), W / 2, 100);
   g.fillStyle = dimc; g.font = "11px ui-monospace,monospace";
@@ -2619,7 +2649,7 @@ function renderCalendarImage(year, month){
   const fy = top + M.rows.length * step + 14;
   g.font = "11px ui-monospace,monospace";
   for (let c = 0; c < 7; c++){
-    const done = M.colTotal[c] && M.colDone[c] === M.colTotal[c];
+    const done = M.colStar[c];
     g.fillStyle = done ? goldc : dimc;
     g.font = done ? "16px system-ui,sans-serif" : "11px ui-monospace,monospace";
     g.fillText(done ? "★" : M.colDone[c] + "/" + M.colTotal[c], x0 + c * step + cell / 2, fy + 4);
@@ -2658,6 +2688,24 @@ async function shareCalendar(year, month){
   }
 }
 
+// The year at a glance: twelve month stars, four quarters, and the year.
+function trophyShelf(h, year, today){
+  const L = "JFMAMJJASOND";
+  let mo = "";
+  for (let m = 0; m < 12; m++){
+    const on = periodDone(h, year, m, m, today);
+    mo += '<div class="tr' + (on ? ' gold' : '') + '"><span>★</span><i>' + L[m] + '</i></div>';
+  }
+  let qs = "";
+  for (let q = 0; q < 4; q++){
+    const on = periodDone(h, year, q * 3, q * 3 + 2, today);
+    qs += '<div class="tr big' + (on ? ' gold' : '') + '"><span>★★</span><i>Q' + (q + 1) + '</i></div>';
+  }
+  const yOn = periodDone(h, year, 0, 11, today);
+  qs += '<div class="tr big' + (yOn ? ' gold' : '') + '"><span>★★★</span><i>' + year + '</i></div>';
+  return '<div class="cal-trophies"><div class="trow m12">' + mo + '</div><div class="trow q5">' + qs + '</div></div>';
+}
+
 function showCalendar(year, month, selDay){
   const today = dayNumber();
   const tDate = new Date(EPOCH + (today - 1) * 86400000);
@@ -2687,11 +2735,12 @@ function showCalendar(year, month, selDay){
     grid += row.star ? gold : dim_;
   }
   for (let c = 0; c < 7; c++){
-    grid += M.colTotal[c] && M.colDone[c] === M.colTotal[c]
+    grid += M.colStar[c]
       ? '<div class="cfoot gold">★</div>'
       : '<div class="cfoot">' + M.colDone[c] + '/' + M.colTotal[c] + '</div>';
   }
   grid += monthStar ? '<div class="cfoot gold">★</div>' : '<div></div>';
+  const yr = year, trophyHTML = trophyShelf(h, yr, today);
 
   openModal(
     '<h2>Calendar</h2>'
@@ -2700,10 +2749,11 @@ function showCalendar(year, month, selDay){
     + '<div class="stat"><div class="n">' + sk.best + '</div><div class="l">Best</div></div>'
     + '<div class="stat"><div class="n">' + solvedCount + '</div><div class="l">Solved</div></div></div>'
     + '<div class="cal-head"><button id="calPrev"' + (atFirst ? " disabled" : "") + ' aria-label="Previous month">‹</button>'
-    + '<b>' + MONTHS[month] + ' ' + year + (monthStar ? ' <span style="color:#f1c40f">★</span>' : '') + '</b>'
+    + '<b>' + MONTHS[month] + ' ' + year + (M.level ? ' <span style="color:#f1c40f">' + '★'.repeat(M.level) + '</span>' : '') + '</b>'
     + '<button id="calNext"' + (atLast ? " disabled" : "") + ' aria-label="Next month">›</button></div>'
     + '<div class="cal-grid">' + grid + '</div>'
-    + '<div class="cal-key">filled = solved on the day · outline = solved later<br>★ right = week done · ★ below = every one of that weekday · corner = whole month</div>'
+    + trophyHTML
+    + '<div class="cal-key">filled = solved on the day · outline = solved later<br>★ right = full week · ★ below = every one of that weekday · corner = full month. Only whole periods count.</div>'
     + '<div class="cal-detail" id="calDetail">Tap a day.</div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">'
     + '<button class="btn" id="calShare" style="margin:0">Share calendar</button>'

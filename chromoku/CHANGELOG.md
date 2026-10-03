@@ -8,6 +8,14 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.17.0] 2026-10-03 — Whole-period stars, plus quarter and year
+
+- **Whole periods only.** A week, weekday column or month can only be starred if every day in it falls on or after the first puzzle (15 Aug 2026). The partial opening week and August 2026 can never earn a star; the first starrable week is 17–23 Aug.
+- **Super stars:** month ★, quarter ★★ (all three months fully solved), year ★★★ (every day of the year). The calendar title shows the highest earned for the month on screen.
+- **Trophy shelf** under the grid: twelve month stars, four quarter stars and the year, for the year being viewed. Share image carries the same stars in its heading.
+- Stars still count any solve, on the day or later.
+- Bumped SW cache to `"chromoku-v25"`.
+
 ### [v0.16.0] 2026-10-03 — Share the streak calendar
 
 - Calendar has **Share calendar** (a PNG of the month: grid, stars, streak, and "Can you beat my streak?" with the game address) and **Copy invite link** (text plus link).
