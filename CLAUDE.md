@@ -348,7 +348,7 @@ git push origin release --tags
 
 Always push to `main` at the end of every Chromoku session so phone/other devices can test the latest version.
 
-### Chromoku game systems (as of v0.20.2)
+### Chromoku game systems (as of v0.20.3)
 
 All of this is in `chromoku/index.html`. Version history lives in `chromoku/CHANGELOG.md`.
 
@@ -358,6 +358,8 @@ All of this is in `chromoku/index.html`. Version history lives in `chromoku/CHAN
 - **Levels** opens the intro card (`showProgression`) first. Tutorial levels (0 to 6) load directly.
 - Real level numbers are raw (`Level 45` on the bar and splash) while the Levels button shows raw minus 7. They disagree by 7 and have not been reconciled.
 - The `.tiers` rows (size, difficulty, Latin, Double, Scramble, Levels toggles) are admin-only. Admin mode defaults ON whenever the playtest banner exists, so playtest shows them. Release does not.
+- **Admin on release:** `ADMIN_UI` is true only when the playtest banner exists. On release the Settings and About "Admin tools" toggles are hidden and long-pressing the gear does nothing. The only way in is `?dev=1` (sticks in localStorage; `?dev=0` clears it). No password: the game is all client-side, so a password would be trivially bypassed and would only protect against accidents. Admin tools (level jump, date pin, progress reset) only affect the player's own device. If anything shared ever depends on the data (leaderboards), revisit this.
+- **Setting defaults for new players:** theme Light (not Auto), Rounded marks off, Fade completed off. Existing saved choices are kept. Other defaults: Colour marks, haptics always on (no toggle; `navigator.vibrate`, unsupported on iOS Safari).
 
 #### Daily history, streak, calendar
 - `chromoku.history.v1` is a permanent `{ [dayNumber]: { secs, onTime } }`. `onTime` means solved on its own day. The per-day slot store (`chromoku.daily.v3`) still prunes to 30 days and is not the source for the calendar. First run seeds history from the slot store and the old streak.
@@ -394,7 +396,7 @@ All of this is in `chromoku/index.html`. Version history lives in `chromoku/CHAN
 - Do not reward "no helps": it works against the ad and hint design. Reward what was solved instead (weeks, weekdays, months).
 - When a screen needs more space, check what is actually tall before shrinking controls. The ad block, not the board, caused the scrolling.
 - `confirmReset` and `showAddTimeModal` call `pauseTimer()`, which only stops the display interval, not the elapsed clock (`state.since`). Opening them may still burn level time. Not verified. `showLevelGoal` stops the real clock (`stopTimer`, then `startTimer` on close).
-- Service worker: bump `CACHE` in `sw.js` on every deploy (currently `chromoku-v32`). Players need two refreshes to see a new build.
+- Service worker: bump `CACHE` in `sw.js` on every deploy (currently `chromoku-v33`). Players need two refreshes to see a new build.
 
 - **Release gotchas (v0.20.2 release):** (1) The cloud clone is shallow, so `git merge main` on `release` fails with "unrelated histories". Run `git fetch --unshallow origin` first, then fetch `main` and `release`. (2) The merge conflicts on `chromoku/index.html` because `release` lacks the banner line. Resolve with `git checkout --theirs chromoku/index.html`, then `sed -i '/PLAYTEST BUILD/d'`. (3) A push made before the unshallow fetch hung up repeatedly because git tried to send thousands of objects; after fetching it sent 5. (4) Pushing the tag `chromoku-vX.Y.Z` returned HTTP 403 from the session proxy, so the tag exists only locally. Tag by hand: `git tag chromoku-vX.Y.Z <release commit> && git push origin chromoku-vX.Y.Z`. (5) The merge also carries every non-Chromoku change on `main` (comics, wine data) into `release`, because the repo root is shared. (6) After releasing, copy the moved `chromoku/CHANGELOG.md` back to `main` so both branches agree.
 

@@ -8,7 +8,11 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
-_Nothing pending. Everything up to v0.20.2 is released._
+### [v0.20.3] 2026-10-03 — New-player defaults; admin tools hidden on release
+
+- Defaults for new players: theme **Light** (was Auto), **Rounded marks off**, **Fade completed off**. Anyone who already chose a setting keeps it.
+- Admin tools can no longer be switched on by accident on the release build: the Settings and About toggles are hidden and long-pressing the gear does nothing. `?dev=1` still works and sticks. Playtest is unchanged (admin on by default, toggles visible).
+- Bumped SW cache to `"chromoku-v33"`.
 
 ---
 
