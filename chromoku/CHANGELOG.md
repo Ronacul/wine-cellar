@@ -8,6 +8,13 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.19.1] 2026-10-03 — Goal reminder in the level bar
+
+- The level bar's subtitle now names the goal instead of the world: `🎨 colours · 4×4`, `◆ shapes · 4×4 · 🌀` (🌀 = scramble), `▨ patterns · 6×6`. It is a tap target (ⓘ): it opens the same goal card as the splash, with the clock stopped until the player closes it.
+- No new row on the board; the information lives in the line that was already there.
+- `openModal` takes an optional close callback, used to restart the clock.
+- Bumped SW cache to `"chromoku-v29"`.
+
 ### [v0.19.0] 2026-10-03 — Difficulty waves, challenge levels, one-screen fit, escape routes
 
 - **Difficulty waves.** Each block of ten levels is now a sawtooth: two breather levels with extra clues and a roomier clock, a build, a climb, and a challenge on the tenth. `WAVE` shifts the clue count (about 3.5% of the grid per step) and `waveClock()` moves the time limit (±7% per step) so small grids, which have no clues to spare, still feel the swing. Peeks are exempt.

@@ -144,6 +144,8 @@ html.in-level #sizeRow{display:none !important}
   font-family:var(--mono); font-size:9px; color:var(--ink-faint); white-space:nowrap;
   text-transform:uppercase; letter-spacing:.06em; margin-top:1px;
 }
+.lvl-sub.goal{background:none; border:0; padding:0; text-align:left; cursor:pointer;
+  overflow:hidden; text-overflow:ellipsis; max-width:100%}
 .hearts{display:flex; gap:2px; font-size:13px; color:var(--ink-faint); align-items:center}
 .hearts #lvlTimer{margin-left:6px; font-size:17px; min-width:48px; text-align:right}
 .hearts .on{color:var(--error)}
@@ -1297,7 +1299,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.19.0";
+const CHROMOKU_VERSION = "v0.19.1";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -3009,6 +3011,7 @@ function renderLevelBar(){
     renderPowerups(); // shows 🔦 bar for tutorial 4+ (renderPowerups guards level < 3)
     return;
   }
+  const mi = levelMarkInfo(c.level);
   const rotTag = c.boxRotate ? " ⤾" : "";   // rotated-box marker
   const tag = c.n + "×" + c.n + (c.boxless ? " Latin" : "") + rotTag
             + (c.layers > 1 ? " ×2" : "");
@@ -3024,8 +3027,9 @@ function renderLevelBar(){
     + '</div>'
     + '<div class="lvl-c"><b>Level ' + c.level + (c.challenge ? ' ⚡' : '')
     + (c.peek ? ' <span class="pk">' + (c.peekOf || "ahead") + "</span>" : "") + "</b>"
-    + '<span class="lvl-sub">' + (c.peek ? "Preview" : c.theme.name) + " · " + tag
-    + (c.boss ? " · boss" : "") + "</span>"
+    + '<button class="lvl-sub goal" id="lvGoal" aria-label="What is the goal?">'
+    + (c.peek ? "Preview · " : "") + mi.icon + " " + mi.noun + "s · " + tag
+    + (c.scramble ? " · 🌀" : "") + (c.boss ? " · boss" : "") + " ⓘ</button>"
     + renderStagePath(lv.cfg) + "</div>"
     + '<div class="lvl-r">'
     + '<div class="lvl-hearts">' + heartsRowHTML(p)
@@ -3038,6 +3042,7 @@ function renderLevelBar(){
   // Enter full-screen play mode — header hidden, controls live in the level bar
   document.documentElement.classList.add("in-level");
   document.getElementById("lvBack").onclick = confirmQuitLevel;
+  document.getElementById("lvGoal").onclick = showLevelGoal;
   document.getElementById("lvUndo").onclick = undo;
   document.getElementById("lvReset").onclick = confirmReset;
   renderPowerups();
@@ -4265,13 +4270,19 @@ function showExplainers(ids, next){
 
 // One-line statement of what the player is being asked to do on a level, built
 // from the same config fields loadLevel() reads so the two cannot disagree.
-function levelGoal(level){
+function levelMarkInfo(level){
   const cfg = levelConfig(level);
   const set = cfg.markSet && MARKSETS[cfg.markSet]
     ? cfg.markSet
     : isTutorialLevel(level) ? "classic" : rotatedMarkSet(level, cfg.n);
-  const noun = set === "shapes" ? "shape" : set === "ink" ? "pattern" : "colour";
-  const icon = set === "shapes" ? "◆" : set === "ink" ? "▨" : "🎨";
+  return {
+    noun: set === "shapes" ? "shape" : set === "ink" ? "pattern" : "colour",
+    icon: set === "shapes" ? "◆" : set === "ink" ? "▨" : "🎨",
+  };
+}
+function levelGoal(level){
+  const cfg = levelConfig(level);
+  const { noun, icon } = levelMarkInfo(level);
   const n = cfg.n;
   const rule = cfg.boxless
     ? "Latin rules: each row and column holds every " + noun + " once. No boxes."
@@ -4305,6 +4316,25 @@ function miniDemoHTML(cfg){
                           : 'Rows, columns and boxes. Every colour once in each.';
   return grid(0) + (cfg.layers > 1 ? '<div class="mini-cap">×2 grids</div>' + grid(1) : '')
        + '<div class="mini-cap">' + cap + '</div>';
+}
+
+// Reminder of the level's goal, one tap from the level bar so the board stays
+// uncluttered. The clock stops while it is open and restarts when it closes.
+function showLevelGoal(){
+  if (!state.lvl || state.done) return;
+  const goal = levelGoal(state.lvl.cfg.level);
+  const wasRunning = !!state.since;
+  if (wasRunning) stopTimer();
+  openModal(
+    '<div class="prog-goal"><div class="pg-icon">' + goal.icon + '</div>'
+    + '<div class="pg-head">' + goal.head + '</div>'
+    + '<div class="pg-sub">' + goal.sub + '</div>'
+    + '<p class="pg-body">' + goal.body + '</p></div>'
+    + '<button class="btn" id="mGoalOk">Back to the board</button>',
+    false,
+    () => { if (wasRunning && !state.done) startTimer(); }
+  );
+  document.getElementById("mGoalOk").onclick = closeModal;
 }
 
 function showProgression(nextLevel){
@@ -5216,13 +5246,19 @@ async function shareAsImage(){
 
 // `sticky` modals (end of a level, out of lives) ignore taps outside the card,
 // so the player always lands on one of its buttons instead of a dead board.
-let modalSticky = false;
-function openModal(html, sticky){
+let modalSticky = false, modalOnClose = null;
+function openModal(html, sticky, onClose){
   modalSticky = !!sticky;
+  modalOnClose = onClose || null;
   document.getElementById("modal").innerHTML = html;
   document.getElementById("overlay").classList.remove("hide");
 }
-function closeModal(){ modalSticky = false; document.getElementById("overlay").classList.add("hide"); }
+function closeModal(){
+  modalSticky = false;
+  document.getElementById("overlay").classList.add("hide");
+  const f = modalOnClose; modalOnClose = null;
+  if (f) f();
+}
 document.getElementById("overlay").onclick = e => {
   if (e.target.id === "overlay" && !modalSticky) closeModal();
 };
