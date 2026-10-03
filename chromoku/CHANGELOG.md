@@ -8,11 +8,22 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
-_Nothing pending. Everything up to v0.20.2 is released._
+_Nothing pending. Everything up to v0.20.4 is released._
 
 ---
 
 ## Released (on `release`)
+
+### [v0.20.4] 2026-10-03 — Share links follow the host
+
+- The daily result's share text and the footer on the share-card image now use the address of whichever build is running (`gameURL()`) instead of the hardcoded playtest address. Release shares point at release; the image footer shrinks its type if a long host would overflow.
+- Bumped SW cache to `"chromoku-v34"`.
+
+### [v0.20.3] 2026-10-03 — New-player defaults; admin tools hidden on release
+
+- Defaults for new players: theme **Light** (was Auto), **Rounded marks off**, **Fade completed off**. Anyone who already chose a setting keeps it.
+- Admin tools can no longer be switched on by accident on the release build: the Settings and About toggles are hidden and long-pressing the gear does nothing. `?dev=1` still works and sticks. Playtest is unchanged (admin on by default, toggles visible).
+- Bumped SW cache to `"chromoku-v33"`.
 
 ### [v0.20.2] 2026-10-03 — Watching an ad to continue refunds the life
 

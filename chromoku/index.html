@@ -1305,7 +1305,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.20.2";
+const CHROMOKU_VERSION = "v0.20.4";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -1322,6 +1322,9 @@ const DEV = (() => {
 // On playtest builds: default admin ON, but an explicit "0" stored in LS_ADMIN
 // takes priority — so the tester can actually turn admin off and have it stay off.
 const _savedAdminVal = (() => { try { return localStorage.getItem(LS_ADMIN); } catch { return null; } })();
+// Admin UI (the Settings and About toggles, long-press on the gear) exists only
+// on the playtest build. On release the one way in is ?dev=1, which sticks.
+const ADMIN_UI = !!document.getElementById("playtestBanner");
 let adminMode = _savedAdminVal === "1" || (_savedAdminVal === null && (DEV || !!document.getElementById("playtestBanner")));
 const LS_DAY   = "chromoku.debug-day.v1";   // debug: pin the daily puzzle to a date
 
@@ -2624,7 +2627,7 @@ function renderDailyNav(){
   };
   el.querySelector("#dnCal").onclick = () => showCalendar();
   el.querySelector("#dnTheme").onclick = () => {
-    const order = ["auto", "light", "dark"], cur = load(LS_THEME, "auto");
+    const order = ["auto", "light", "dark"], cur = load(LS_THEME, "light");
     const next = order[(order.indexOf(cur) + 1) % 3];
     save(LS_THEME, next); applyTheme();
     toast(next === "auto" ? "Theme: auto" : "Theme: " + next);
@@ -3635,7 +3638,7 @@ function paintUndo(){
 function paintCompletedUnits(){
   const board = document.getElementById("board");
   if (!board) return;
-  const fadePref = load(LS_FADE, true);
+  const fadePref = load(LS_FADE, false);
   board.classList.toggle("fade-done", fadePref);
 
   const n = state.n;
@@ -3674,7 +3677,7 @@ function paintCompletedUnits(){
 // --------------- sharp / rounded marks ---------------
 function applySharp(){
   const board = document.getElementById("board");
-  if (board) board.classList.toggle("sharp", !load(LS_ROUND, true));
+  if (board) board.classList.toggle("sharp", !load(LS_ROUND, false));
 }
 
 // Bookmark: single slot, board-state only. Clock and mistakes deliberately
@@ -4142,7 +4145,7 @@ function shareText(){
        + "⏱️ " + fmtTime(elapsedMs()) + streakBit + "\n"
        + "\n"
        + grid + "\n"
-       + "\nhttps://ronacul.github.io/wine-cellar/chromoku";
+       + "\n" + gameURL();
 }
 
 const copyShare = () => copyText(shareText());
@@ -5140,7 +5143,7 @@ function renderShareBadge(){
 
   // Draw each cell
   const bx = pad, by = headerH;
-  const rounded = load(LS_ROUND, true);
+  const rounded = load(LS_ROUND, false);
   for (let r = 0; r < n; r++){
     for (let c = 0; c < n; c++){
       const i = r * n + c;
@@ -5243,7 +5246,10 @@ function renderShareBadge(){
   // Game URL so recipients know where to play
   ctx.fillStyle = dim;
   ctx.font = "9px ui-monospace,monospace";
-  ctx.fillText("ronacul.github.io/wine-cellar/chromoku", W / 2, footerY);
+  // Address of whichever build is running; shrink the type if a long host would overflow.
+  const addr = gameURL().replace(/^https?:\/\//, "").replace(/\/$/, "");
+  for (let px = 9; px > 6 && ctx.measureText(addr).width > W - 16; px--) ctx.font = px + "px ui-monospace,monospace";
+  ctx.fillText(addr, W / 2, footerY);
 
   return canvas;
 }
@@ -5536,11 +5542,13 @@ function showAbout(){
     + '<p style="font-size:13px; color:var(--ink-dim); margin:16px 0; line-height:1.6">The logo above is a digital recreation of a quilt pattern made by the developer\'s mother. The nested squares represent Chromoku\'s Double mechanic — two puzzles, one unified solution. A tribute to the art of patterns and the joy of puzzles.</p>'
     + '<p style="font-size:12px; color:var(--ink-faint); margin-top:20px"><b>Coming:</b> Nov 8 daily puzzle featuring this exact pattern — a homage to quilting and motherhood.</p>'
     + '<p style="font-size:11px; color:var(--ink-faint); margin-top:16px; font-family:var(--mono)">' + CHROMOKU_VERSION + '</p>'
-    + '<div class="toggle-row" style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">'
-    + '<div><div class="toggle-lbl" style="font-size:12px">Admin tools</div>'
-    + '<div class="toggle-desc" style="font-size:10px">Level jump · date pin · progress reset</div></div>'
-    + '<button class="toggle-sw' + (adminMode ? " on" : "") + '" id="abtTogAdmin" aria-label="Admin tools"></button>'
-    + '</div>'
+    + (ADMIN_UI || adminMode
+        ? '<div class="toggle-row" style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">'
+          + '<div><div class="toggle-lbl" style="font-size:12px">Admin tools</div>'
+          + '<div class="toggle-desc" style="font-size:10px">Level jump · date pin · progress reset</div></div>'
+          + '<button class="toggle-sw' + (adminMode ? " on" : "") + '" id="abtTogAdmin" aria-label="Admin tools"></button>'
+          + '</div>'
+        : "")
     + '<button class="btn ghost" onclick="closeModal()" style="margin-top:12px">Done</button>'
   );
   const abtBtn = document.getElementById("abtTogAdmin");
@@ -5762,7 +5770,7 @@ function copyStats(){
 
 const HOST_THEME = document.documentElement.getAttribute("data-theme");
 function applyTheme(){
-  const t = load(LS_THEME, "auto");
+  const t = load(LS_THEME, "light");
   if (t === "auto"){
     if (HOST_THEME) document.documentElement.setAttribute("data-theme", HOST_THEME);
     else document.documentElement.removeAttribute("data-theme");
@@ -5771,7 +5779,7 @@ function applyTheme(){
 }
 
 function showSettings(){
-  const theme = load(LS_THEME, "auto");
+  const theme = load(LS_THEME, "light");
   // Attribute is data-th, not data-theme: the latter also matches <html>.
   const seg = (opts, cur) => '<div class="seg">' + opts.map(o =>
     '<button class="' + (o[0] === cur ? "on" : "") + '" data-th="' + o[0] + '">'
@@ -5799,11 +5807,13 @@ function showSettings(){
     + seg([["auto","Auto"],["light","Light"],["dark","Dark"]], theme)
     + '<p class="lede">Patterns work without relying on colour vision.</p>'
     // Admin tools at the top so they're easy to find; long-press ⚙ enables admin without opening settings first.
-    + '<div class="toggle-row">'
-    + '<div><div class="toggle-lbl">Admin tools</div>'
-    + '<div class="toggle-desc">Level jump, date pin, progress reset · or long-press ⚙</div></div>'
-    + '<button class="toggle-sw' + (adminMode ? " on" : "") + '" id="togAdmin" aria-label="Admin tools"></button>'
-    + '</div>'
+    + (ADMIN_UI || adminMode
+        ? '<div class="toggle-row">'
+          + '<div><div class="toggle-lbl">Admin tools</div>'
+          + '<div class="toggle-desc">Level jump, date pin, progress reset · or long-press ⚙</div></div>'
+          + '<button class="toggle-sw' + (adminMode ? " on" : "") + '" id="togAdmin" aria-label="Admin tools"></button>'
+          + '</div>'
+        : "")
     + (adminMode
         ? '<div class="fld">Debug — puzzle date</div>'
           + '<div class="dbg"><input type="date" id="dbgDate" value="' + dayToISO(state.day) + '">'
@@ -5822,12 +5832,12 @@ function showSettings(){
     + '<div class="toggle-row">'
     + '<div><div class="toggle-lbl">Fade completed</div>'
     + '<div class="toggle-desc">Dim rows, columns and boxes when filled</div></div>'
-    + '<button class="toggle-sw' + (load(LS_FADE, true) ? " on" : "") + '" id="togFade" aria-label="Fade completed units"></button>'
+    + '<button class="toggle-sw' + (load(LS_FADE, false) ? " on" : "") + '" id="togFade" aria-label="Fade completed units"></button>'
     + '</div>'
     + '<div class="toggle-row">'
     + '<div><div class="toggle-lbl">Rounded marks</div>'
     + '<div class="toggle-desc">Your guesses have rounded corners</div></div>'
-    + '<button class="toggle-sw' + (load(LS_ROUND, true) ? " on" : "") + '" id="togRound" aria-label="Rounded mark corners"></button>'
+    + '<button class="toggle-sw' + (load(LS_ROUND, false) ? " on" : "") + '" id="togRound" aria-label="Rounded mark corners"></button>'
     + '</div>'
     + '<button class="btn ghost" id="copyStats">Copy my stats</button>'
     + '<button class="btn" onclick="closeModal()">Done</button>'
@@ -5844,17 +5854,18 @@ function showSettings(){
     b.onclick = () => { save(LS_THEME, b.dataset.th); applyTheme(); showSettings(); };
   });
   m.querySelector("#togFade").onclick = () => {
-    save(LS_FADE, !load(LS_FADE, true));
+    save(LS_FADE, !load(LS_FADE, false));
     paintCompletedUnits();
     showSettings();
   };
   m.querySelector("#togRound").onclick = () => {
-    save(LS_ROUND, !load(LS_ROUND, true));
+    save(LS_ROUND, !load(LS_ROUND, false));
     applySharp();
     showSettings();
   };
   m.querySelector("#copyStats").onclick = copyStats;
-  m.querySelector("#togAdmin").onclick = () => {
+  const togAdmin = m.querySelector("#togAdmin");
+  if (togAdmin) togAdmin.onclick = () => {
     adminMode = !adminMode;
     try { localStorage.setItem(LS_ADMIN, adminMode ? "1" : "0"); } catch {}
     syncAdminControls();
@@ -5927,6 +5938,7 @@ document.getElementById("btnQuit").onclick = confirmQuit;
   sb.addEventListener("pointerdown", function(){
     _st = setTimeout(function(){
       _st = null;
+      if (!ADMIN_UI && !adminMode) return;   // release: long-press does nothing
       adminMode = !adminMode;
       try { localStorage.setItem(LS_ADMIN, adminMode ? "1" : "0"); } catch {}
       syncAdminControls();
