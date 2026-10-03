@@ -74,7 +74,7 @@ h1{
   text-align:center; letter-spacing:.06em; text-transform:uppercase; margin-top:2px;
 }
 .icon-btn{
-  width:34px; height:34px; border-radius:9px; font-size:15px; color:var(--ink-dim);
+  width:36px; height:36px; border-radius:10px; font-size:18px; color:var(--ink-dim);
   display:grid; place-items:center; transition:background .15s,color .15s;
 }
 .icon-btn:hover{background:var(--panel2); color:var(--ink)}
@@ -128,14 +128,16 @@ html.in-level #sizeRow{display:none !important}
   background:var(--panel2); border-radius:11px; padding:5px 8px;
 }
 /* Left section: ← ↶ ↻ buttons in a horizontal row */
-.lvl-l{display:flex; gap:2px; align-items:center; flex-shrink:0}
+.lvl-l{display:flex; gap:4px; align-items:center; flex-shrink:0}
 /* Buttons in the level bar are smaller than header buttons */
-.levelbar .icon-btn{width:28px; height:28px; font-size:13px; border-radius:7px}
+.levelbar .icon-btn{width:36px; height:36px; font-size:19px; border-radius:10px;
+  background:var(--panel); border:1px solid var(--line-2); color:var(--ink)}
+.levelbar .icon-btn[disabled]{background:transparent; border-color:transparent}
 .lvl-c{flex:1; display:flex; flex-direction:column; line-height:1.15; min-width:0}
 .lvl-c b{font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 /* Right section: hearts stacked above the countdown timer */
 .lvl-r{display:flex; flex-direction:column; align-items:flex-end; gap:1px; flex-shrink:0}
-.lvl-hearts{display:flex; gap:2px; font-size:12px; color:var(--ink-faint); align-items:center}
+.lvl-hearts{display:flex; gap:1px; font-size:11px; color:var(--ink-faint); align-items:center}
 .lvl-hearts .on{color:var(--error)}
 /* A peek borrows the next world's mechanic, so it says whose. */
 .pk{font-size:9px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
@@ -202,14 +204,14 @@ html.in-level #sizeRow{display:none !important}
   width:100%; max-width:400px;
 }
 .pu{
-  display:flex; align-items:center; gap:4px; padding:4px 10px;
-  border-radius:9px; background:var(--panel2); font-family:var(--mono);
-  font-size:12px; color:var(--ink-dim); transition:transform .1s, background .15s;
+  display:flex; align-items:center; justify-content:center; gap:5px; padding:5px 11px; min-height:36px;
+  border-radius:10px; background:var(--panel2); font-family:var(--mono);
+  font-size:14px; color:var(--ink-dim); transition:transform .1s, background .15s;
   cursor:pointer; user-select:none; border:1px solid transparent;
 }
 .pu:active{transform:scale(.92)}
 .pu[disabled]{opacity:.3; pointer-events:none}
-.pu .pu-icon{font-size:16px; line-height:1}
+.pu .pu-icon{font-size:20px; line-height:1}
 .pu .pu-n{font-weight:700; font-variant-numeric:tabular-nums; color:var(--ink)}
 .pu:hover{background:var(--panel); border-color:var(--line)}
 /* Streak chip — shown next to the subtitle when the player has a streak going. */
@@ -343,7 +345,7 @@ html.in-level #sizeRow{display:none !important}
 }
 .day-nav .home-big{
   display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
-  min-height:56px; padding:6px 8px; border-radius:14px; cursor:pointer;
+  min-height:52px; padding:5px 8px; border-radius:14px; cursor:pointer;
   background:var(--panel2); border:1px solid var(--line-2); color:var(--ink);
 }
 .day-nav .home-big .hb-t{font-size:17px; font-weight:700; letter-spacing:-.01em}
@@ -358,7 +360,7 @@ html.in-level #sizeRow{display:none !important}
   gap:8px; font-family:var(--mono); font-size:12px; color:var(--ink-dim);
 }
 .day-nav .home-row button{
-  min-height:34px; padding:4px 12px; border-radius:10px; cursor:pointer;
+  min-height:30px; padding:3px 12px; border-radius:10px; cursor:pointer;
   background:var(--panel2); border:1px solid var(--line-2); color:var(--ink);
   font-family:var(--mono); font-size:12px;
 }
@@ -1304,7 +1306,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.20.0";
+const CHROMOKU_VERSION = "v0.20.1";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -3538,7 +3540,7 @@ function showAddTimeModal(useBundle){
     +     (useBundle ? ' + ' + BUNDLE_BONUS + ' reveals 🎁' : '') + '</b></div>'
     +   '<div id="addCountdown" style="font-size:22px;font-weight:800;font-family:var(--mono);color:var(--ink);min-width:36px;text-align:right">' + secs + 's</div>'
     + '</div>'
-  );
+  , true);
 
   const countdown = setInterval(() => {
     secs--;
@@ -3895,13 +3897,15 @@ function failLevel(){
   const addLeft = HINT_LIMITS.adds - state.hints.adds;
   const addTimeAvailable = addLeft > 0;
 
+  // Always visible but secondary to Retry. When the level's quota is spent the
+  // section says so, rather than silently vanishing.
   const adBtns = addTimeAvailable
-    ? '<details style="margin-top:10px"><summary style="font-size:12px;color:var(--ink-faint);cursor:pointer;text-align:center">Need more time?</summary>'
-      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">'
+    ? '<div class="lede" style="margin:14px 0 6px;font-size:12px">Or keep going from here:</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
       + '<button class="btn ghost" id="mAddTime" style="margin:0;font-size:12px">⏰ +' + LEVEL_ADD_SECS + 's<br><span style="font-size:10px;opacity:.6;font-weight:400">watch 15s · ' + addLeft + ' left</span></button>'
       + '<button class="btn ghost" id="mAddBundle" style="margin:0;font-size:12px">🎁 +' + BUNDLE_ADD_SECS + 's + ' + BUNDLE_BONUS + ' reveals<br><span style="font-size:10px;opacity:.8;font-weight:400">watch 30s</span></button>'
-      + '</div></details>'
-    : '';
+      + '</div>'
+    : '<p class="lede" style="margin:12px 0 0;font-size:12px">No bonus time left on this level.</p>';
 
   // Retry is the main action: it restarts the level and costs the life already
   // taken. Ads are an optional extra, never the only way forward.

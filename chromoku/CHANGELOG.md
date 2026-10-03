@@ -8,6 +8,14 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.20.1] 2026-10-03 — Bigger level controls, bonus options always visible
+
+- **Out of time** now always shows the bonus-time options under Retry ("Or keep going from here"). In v0.13 I had put them in a collapsed "Need more time?" section, which hid them. When the level's two bonuses are used up it says "No bonus time left on this level" instead of showing nothing.
+- The bonus-ad screen ignores taps outside it, so the countdown can't be dismissed by accident.
+- **Bigger controls.** Level bar: back, undo and reset are 36px buttons with a visible background (were 28px, no background). Header icons 34 to 36px and 15 to 18px glyphs. Power-up buttons 36px tall with 20px icons.
+- Home buttons and calendar/theme row trimmed a few pixels so the daily still fits one screen at 360×640.
+- Bumped SW cache to `"chromoku-v31"`.
+
 ### [v0.20.0] 2026-10-03 — Clean level bar; the stage map moves to the intro card
 
 - The level bar now shows only the current level: `Level 45`, the goal line, hearts and the clock. The row of twenty step markers and stars is gone.
