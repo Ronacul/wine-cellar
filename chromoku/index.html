@@ -236,6 +236,13 @@ html.in-level #sizeRow{display:none !important}
 }
 .challenge-bar .ghost-time{font-weight:700; color:var(--ink)}
 /* Progression interstitial */
+.prog-bar{height:8px; border-radius:4px; background:var(--line-2); overflow:hidden; margin:12px 0 4px}
+.prog-bar .pb-fill{height:100%; background:var(--gold, #c9a227); border-radius:4px; transition:width .4s}
+.pb-lbl{text-align:center; font-family:var(--mono); font-size:11px; color:var(--ink-faint); margin-bottom:8px}
+.mini-demo{display:grid; gap:2px; margin:10px auto 0; width:max-content}
+.mini-demo i{display:block; width:22px; height:22px; border-radius:4px}
+.mini-demo i.hl{box-shadow:0 0 0 2px var(--ink)}
+.mini-cap{font-size:12px; color:var(--ink-dim); text-align:center; margin-top:8px}
 .prog-stage{
   display:flex; gap:4px; justify-content:center; margin:12px 0;
   font-size:22px;
@@ -1234,7 +1241,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.13.0";
+const CHROMOKU_VERSION = "v0.13.1";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -3434,11 +3441,11 @@ function winLevel(){
       + '<div class="stat"><div class="n">' + fmtTime(lv.par * 1000) + '</div><div class="l">Par</div></div>'
       + '<div class="stat"><div class="n">' + progress().lives + '</div><div class="l">Lives</div></div>'
       + "</div>"
-      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">'
-      + '<button class="btn" id="shareBtn" style="margin:0">Share</button>'
-      + '<button class="btn ghost" id="mNext" style="margin:0">Next level</button>'
-      + '<button class="btn ghost" id="mRetry" style="margin:0">Replay</button>'
-      + '<button class="btn ghost" id="mStop" style="margin:0">Done for now</button>'
+      + '<button class="btn" id="mNext">Next level</button>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px">'
+      + '<button class="btn ghost" id="shareBtn" style="margin:0;font-size:13px">Share</button>'
+      + '<button class="btn ghost" id="mRetry" style="margin:0;font-size:13px">Replay</button>'
+      + '<button class="btn ghost" id="mStop" style="margin:0;font-size:13px">Done</button>'
       + '</div>'
       + winBannerHTML()
     );
@@ -3488,10 +3495,20 @@ function failLevel(){
 
   // Retry is the main action: it restarts the level and costs the life already
   // taken. Ads are an optional extra, never the only way forward.
+  // How close the run got, and what the player has already banked on this level.
+  let open = 0, filled = 0;
+  state.layers.forEach(l => l.grid.forEach((v, i) => {
+    if (!l.givens[i]){ open++; if (v !== null && v !== undefined) filled++; }
+  }));
+  const pct = open ? Math.round(filled / open * 100) : 100;
+  const lvKey = String(state.lvl.cfg.level);
+  const bank = (p.stars[lvKey] ? '<span style="color:#f1c40f">' + '★'.repeat(p.stars[lvKey]) + '</span> best ' + fmtTime((p.best[lvKey] || 0) * 1000) + ' · ' : '');
+
   openModal(
     "<h2>Out of time</h2>"
     + '<p class="lede">Level ' + state.lvl.cfg.level + " · par was "
     + fmtTime(state.lvl.par * 1000) + ".</p>"
+    + '<p class="lede" style="margin-top:-8px">' + bank + pct + '% of the board filled</p>'
     + '<div class="hearts big">' + heartsHTML(p) + "</div>"
     + (out
         ? '<p class="lede">No lives left. One returns in <b id="outLivesIn">'
@@ -3499,7 +3516,10 @@ function failLevel(){
           + '<button class="btn" id="mRetry" disabled>Retry</button>'
         : '<button class="btn" id="mRetry">Retry · ' + p.lives + ' ♥ left</button>')
     + adBtns
-    + '<button class="btn ghost" id="mBack" style="margin-top:8px">Back to daily</button>'
+    + (out
+        ? '<p class="lede" style="margin-top:12px">Daily puzzles don\'t use lives.</p>'
+          + '<button class="btn" id="mBack">Play today\'s puzzle while you wait</button>'
+        : '<button class="btn ghost" id="mBack" style="margin-top:8px">Back to daily</button>')
   );
 
   const r = document.getElementById("mRetry");
@@ -3800,6 +3820,24 @@ function levelGoal(level){
 }
 
 // Brief screen between levels showing the player's journey through the stage.
+// 4×4 Latin square with the rule's own units picked out: one row and column
+// for Latin worlds, one 2×2 box for box worlds, stacked grids for doubles.
+function miniDemoHTML(cfg){
+  const cols = HUES.slice(0, 4).map(h => h.hex);
+  const grid = (i0) => {
+    let h = '<div class="mini-demo" style="grid-template-columns:repeat(4,22px)">';
+    for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++){
+      const hl = cfg.boxless ? (r === 1 || c === 2) : (r < 2 && c < 2);
+      h += '<i class="' + (hl ? 'hl' : '') + '" style="background:' + cols[(r * 2 + Math.floor(r / 2) + c + i0) % 4] + '"></i>';
+    }
+    return h + '</div>';
+  };
+  const cap = cfg.boxless ? 'Rows and columns only. Every colour once in each.'
+                          : 'Rows, columns and boxes. Every colour once in each.';
+  return grid(0) + (cfg.layers > 1 ? '<div class="mini-cap">×2 grids</div>' + grid(1) : '')
+       + '<div class="mini-cap">' + cap + '</div>';
+}
+
 function showProgression(nextLevel){
   const cfg = levelConfig(nextLevel);
   const prevStage = nextLevel > 1 ? levelConfig(nextLevel - 1).stage : 0;
@@ -3809,14 +3847,13 @@ function showProgression(nextLevel){
   const isNewWorld = nextLevel > 1 && cfg.world !== levelConfig(nextLevel - 1).world;
   const isNewStage = nextLevel > 1 && cfg.stage !== prevStage;
 
-  // Build the step pips for this stage
-  let pips = '<div class="prog-stage">';
-  for (let s = 1; s <= LEVELS_PER_STAGE; s++){
-    const cls = s < step ? "st done" : s === step ? "st current" : "st";
-    pips += '<span class="' + cls + '">' + (s < step ? "✦" : s === step ? "◆" : "◇") + '</span>';
-  }
-  pips += '</div>';
+  // Progress bar for this stage: step N of LEVELS_PER_STAGE.
+  const pips = '<div class="prog-bar" role="img" aria-label="Step ' + step + ' of ' + LEVELS_PER_STAGE + '">'
+    + '<div class="pb-fill" style="width:' + Math.round((step - 1) / LEVELS_PER_STAGE * 100) + '%"></div></div>'
+    + '<div class="pb-lbl">Step ' + step + ' of ' + LEVELS_PER_STAGE + (cfg.boss ? ' · boss' : '') + '</div>';
 
+  // A new world gets a tiny worked example of its rule rather than only a line of text.
+  const demo = isNewWorld ? miniDemoHTML(cfg) : '';
   let unlock = '';
   if (isNewWorld){
     unlock = '<div class="prog-unlock">🔓 ' + theme.name + ' unlocked — ' + theme.unlock + '</div>';
@@ -3833,19 +3870,22 @@ function showProgression(nextLevel){
     + '<p class="pg-body">' + goal.body + '</p></div>'
     + pips
     + unlock
+    + demo
     + '<button class="btn" id="mGo">Play</button>'
     + '<button class="btn ghost" id="mBack2">Done for now</button>'
   );
   document.getElementById("mGo").onclick = () => { closeModal(); loadLevel(nextLevel); };
   document.getElementById("mBack2").onclick = () => { closeModal(); enterDaily(); };
 
-  // Add "View level data" button
-  const m = document.getElementById("modal");
-  const dataBtn = document.createElement("button");
-  dataBtn.className = "btn ghost";
-  dataBtn.textContent = "📊 Level data";
-  dataBtn.onclick = () => { closeModal(); showLevelTable(cfg.world); };
-  m.appendChild(dataBtn);
+  // Level data is a tuning tool, so it only appears with admin tools on.
+  if (adminMode){
+    const m = document.getElementById("modal");
+    const dataBtn = document.createElement("button");
+    dataBtn.className = "btn ghost";
+    dataBtn.textContent = "📊 Level data";
+    dataBtn.onclick = () => { closeModal(); showLevelTable(cfg.world); };
+    m.appendChild(dataBtn);
+  }
 }
 
 function showLevelTable(world){

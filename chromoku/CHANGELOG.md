@@ -8,6 +8,13 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.13.1] 2026-10-03 — Level flow polish
+
+- Splash: 20 pips replaced by a progress bar ("Step N of 20", boss flagged). New worlds get a mini worked example of their rule. "Level data" is shown only with admin tools on.
+- Win screen: **Next level** is the primary button; Share / Replay / Done are a small row beneath.
+- Out of time: shows banked stars, best time and % of the board filled. Out of lives, the main button is "Play today's puzzle while you wait".
+- Bumped SW cache to `"chromoku-v21"`.
+
 ### [v0.13.0] 2026-10-03 — Level splash states the goal; plain Retry on fail
 
 - Between-level splash now has a goal card: "Match the colours / shapes / patterns", grid size, and the rule (rows, columns, boxes, or Latin with no boxes), plus notes for double grids and rotated boxes. Built by `levelGoal()` from the same config `loadLevel()` uses.
