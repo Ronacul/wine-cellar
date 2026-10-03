@@ -396,6 +396,8 @@ All of this is in `chromoku/index.html`. Version history lives in `chromoku/CHAN
 - `confirmReset` and `showAddTimeModal` call `pauseTimer()`, which only stops the display interval, not the elapsed clock (`state.since`). Opening them may still burn level time. Not verified. `showLevelGoal` stops the real clock (`stopTimer`, then `startTimer` on close).
 - Service worker: bump `CACHE` in `sw.js` on every deploy (currently `chromoku-v32`). Players need two refreshes to see a new build.
 
+- **Release gotchas (v0.20.2 release):** (1) The cloud clone is shallow, so `git merge main` on `release` fails with "unrelated histories". Run `git fetch --unshallow origin` first, then fetch `main` and `release`. (2) The merge conflicts on `chromoku/index.html` because `release` lacks the banner line. Resolve with `git checkout --theirs chromoku/index.html`, then `sed -i '/PLAYTEST BUILD/d'`. (3) A push made before the unshallow fetch hung up repeatedly because git tried to send thousands of objects; after fetching it sent 5. (4) Pushing the tag `chromoku-vX.Y.Z` returned HTTP 403 from the session proxy, so the tag exists only locally. Tag by hand: `git tag chromoku-vX.Y.Z <release commit> && git push origin chromoku-vX.Y.Z`. (5) The merge also carries every non-Chromoku change on `main` (comics, wine data) into `release`, because the repo root is shared. (6) After releasing, copy the moved `chromoku/CHANGELOG.md` back to `main` so both branches agree.
+
 ### Chromoku testing recipes
 
 - No test suite. Verify with headless Chromium through Playwright (`/opt/node22/lib/node_modules/playwright`, `executablePath:'/opt/pw-browsers/chromium'`) loading `file:///home/user/wine-cellar/chromoku/index.html`.
