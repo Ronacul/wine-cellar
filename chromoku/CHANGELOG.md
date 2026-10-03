@@ -8,6 +8,13 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.20.0] 2026-10-03 — Clean level bar; the stage map moves to the intro card
+
+- The level bar now shows only the current level: `Level 45`, the goal line, hearts and the clock. The row of twenty step markers and stars is gone.
+- The intro card carries it instead: the stage as two rows of ten with stars earned, a ⚡ on the challenge levels, ◈ on the preview and ★ on the boss.
+- **Levels** on the home screen (and "Play levels" after a daily win) now opens that intro card first rather than dropping straight onto a board. The tutorial still goes direct.
+- Bumped SW cache to `"chromoku-v30"`.
+
 ### [v0.19.1] 2026-10-03 — Goal reminder in the level bar
 
 - The level bar's subtitle now names the goal instead of the world: `🎨 colours · 4×4`, `◆ shapes · 4×4 · 🌀` (🌀 = scramble), `▨ patterns · 6×6`. It is a tap target (ⓘ): it opens the same goal card as the splash, with the clock stopped until the player closes it.

@@ -170,6 +170,11 @@ html.in-level #sizeRow{display:none !important}
 .path .st.boss{color:#c9a227}      /* honey/gold for boss */
 .path .st.peek{color:var(--ink-dim)}
 .path .st.here.boss{color:#c9a227}
+.path.big{display:grid; grid-template-columns:repeat(10,1fr); gap:8px 2px; margin:12px 0 4px; font-size:15px; text-align:center}
+.path.big .st{padding:2px 0}
+.path.big .st.here{font-size:21px}
+.path.big .stg{position:static; display:block; font-size:9px; margin-top:3px; letter-spacing:0}
+.path.big .pips{display:none}
 .path .stg{
   position:absolute; top:-6px; right:-4px; font-size:6.5px; color:#c9a227;
   letter-spacing:-1px;
@@ -1299,7 +1304,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.19.1";
+const CHROMOKU_VERSION = "v0.20.0";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -2609,7 +2614,13 @@ function renderDailyNav(){
     if (_winTimer){ clearTimeout(_winTimer); _winTimer = null; }
     if (viewing){ state.day = today; enterDaily(); }
   };
-  el.querySelector("#dnLevels").onclick = () => { closeModal(); loadLevel(progress().level); };
+  // Real levels open on the intro card (goal, rating, where you are in the
+  // stage) rather than dropping straight onto a board; the tutorial goes direct.
+  el.querySelector("#dnLevels").onclick = () => {
+    closeModal();
+    const lv = progress().level;
+    if (isTutorialLevel(lv)) loadLevel(lv); else showProgression(lv);
+  };
   el.querySelector("#dnCal").onclick = () => showCalendar();
   el.querySelector("#dnTheme").onclick = () => {
     const order = ["auto", "light", "dark"], cur = load(LS_THEME, "auto");
@@ -2933,28 +2944,29 @@ function stepMarker(step){
   if (step === PEEK_STEP) return PATH_ICONS.peek;
   return PATH_ICONS.dot;
 }
-function renderStagePath(cfg){
+function renderStagePath(cfg, big){
   // Pre-compute the twenty steps of this stage. levelConfig is cheap; buildLevel
   // is not — the rater takes real time — so precompute lazily and cache by
   // stage.  We just need config-time info (peek/boss/step) here; the pip
   // count comes from a lightweight par estimator, not the full rater.
   const baseLevel = (cfg.world - 1) * LEVELS_PER_WORLD + (cfg.stage - 1) * LEVELS_PER_STAGE;
   const p = progress();
-  let html = '<div class="path" aria-label="Stage progress">';
+  let html = '<div class="path' + (big ? ' big' : '') + '" aria-label="Stage progress">';
   for (let step = 1; step <= LEVELS_PER_STAGE; step++){
     const L = baseLevel + step;
     const st = p.stars[String(L)] || 0;
     const state = step === cfg.step ? "here"
                 : L < p.level          ? "done"
                 : "todo";
-    const cls = "st " + state + (step === LEVELS_PER_STAGE ? " boss"
+    const challenge = L >= CHALLENGE_FROM && L % DECADE === 0;
+    const cls = "st " + state + (step === LEVELS_PER_STAGE || challenge ? " boss"
                                  : step === PEEK_STEP ? " peek" : "");
     // Pip count reflects how demanding this step is *within* the stage:
     // step 20 (boss) is heaviest, step 15 (peek) uses the next-world entry
     // and reads as a taster. Everything else is 1 pip.
     const pips = step === LEVELS_PER_STAGE ? 3 : step === PEEK_STEP ? 2 : 1;
     html += '<span class="' + cls + '" data-step="' + step + '">'
-          + stepMarker(step)
+          + (challenge && step !== LEVELS_PER_STAGE ? "⚡" : stepMarker(step))
           + (st ? '<span class="stg">' + "★".repeat(st) + "</span>" : "")
           + '<span class="pips">' + "•".repeat(pips) + "</span>"
           + "</span>";
@@ -3030,7 +3042,7 @@ function renderLevelBar(){
     + '<button class="lvl-sub goal" id="lvGoal" aria-label="What is the goal?">'
     + (c.peek ? "Preview · " : "") + mi.icon + " " + mi.noun + "s · " + tag
     + (c.scramble ? " · 🌀" : "") + (c.boss ? " · boss" : "") + " ⓘ</button>"
-    + renderStagePath(lv.cfg) + "</div>"
+    + "</div>"
     + '<div class="lvl-r">'
     + '<div class="lvl-hearts">' + heartsRowHTML(p)
     + '<span class="regen" id="regen"></span></div>'
@@ -4347,9 +4359,9 @@ function showProgression(nextLevel){
   const isNewWorld = nextLevel > 1 && cfg.world !== levelConfig(nextLevel - 1).world;
   const isNewStage = nextLevel > 1 && cfg.stage !== prevStage;
 
-  // Progress bar for this stage: step N of LEVELS_PER_STAGE.
-  const pips = '<div class="prog-bar" role="img" aria-label="Step ' + step + ' of ' + LEVELS_PER_STAGE + '">'
-    + '<div class="pb-fill" style="width:' + Math.round((step - 1) / LEVELS_PER_STAGE * 100) + '%"></div></div>'
+  // The stage as two rows of ten, with stars earned so far and the challenge
+  // levels marked, so the player can see where they are in the wave.
+  const pips = renderStagePath(cfg, true)
     + '<div class="pb-lbl">Step ' + step + ' of ' + LEVELS_PER_STAGE + (cfg.boss ? ' · boss' : '') + '</div>';
 
   // A new world gets a tiny worked example of its rule rather than only a line of text.
@@ -5686,7 +5698,7 @@ function showWin(){
     + leaderboardHTML()
     + winBannerHTML()
   );
-  document.getElementById("winLevels").onclick = () => { closeModal(); loadLevel(progress().level); };
+  document.getElementById("winLevels").onclick = () => { closeModal(); const lv = progress().level; if (isTutorialLevel(lv)) loadLevel(lv); else showProgression(lv); };
   // Render the share badge canvas into the modal, scaled to fit while
   // preserving aspect ratio — CSS max-height alone breaks the ratio when
   // both width and height are set as inline pixels, so we do it in JS.
