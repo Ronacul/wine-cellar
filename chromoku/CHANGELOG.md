@@ -8,6 +8,13 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.15.0] 2026-10-03 — Calendar stars: weeks, weekdays, months
+
+- Calendar gets gold stars. **Row star:** all seven days of that week solved. **Column star:** every one of that weekday in the month solved (the footer shows N/M until it is complete). **Month star:** every day of the month solved, shown by the title.
+- Stars count any solve, on the day or later, and ignore hints and help, so they do not discourage hint or ad use. They are separate from the streak, which still needs on-the-day solves.
+- Days before the first puzzle are ignored; future days are unsolved, so stars only appear once the days are behind you.
+- Bumped SW cache to `"chromoku-v23"`.
+
 ### [v0.14.0] 2026-10-03 — Home buttons, calendar, real streaks
 
 - The 8-chip week strip is replaced by two large buttons (**Today's puzzle** with tier and solved tick, **Levels** with N / 500), a streak line and a **Calendar** button. Opening a past day shows a "Viewing #N" line; Today is the way back.

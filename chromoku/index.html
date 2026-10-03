@@ -350,7 +350,11 @@ html.in-level #sizeRow{display:none !important}
 .cal-head button{width:44px; height:40px; border-radius:10px; background:var(--panel2);
   border:1px solid var(--line-2); color:var(--ink); font-size:18px; cursor:pointer}
 .cal-head button:disabled{opacity:.3}
-.cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:4px}
+.cal-grid{display:grid; grid-template-columns:repeat(7,1fr) 22px; gap:4px; align-items:center}
+.cal-grid .cstar{text-align:center; font-size:15px; color:var(--line-2); line-height:1}
+.cal-grid .cstar.gold{color:#f1c40f}
+.cal-grid .cfoot{text-align:center; font-family:var(--mono); font-size:10px; color:var(--ink-faint)}
+.cal-grid .cfoot.gold{color:#f1c40f; font-size:15px}
 .cal-grid .dow{font-family:var(--mono); font-size:10px; color:var(--ink-faint); text-align:center}
 .cal-grid button, .cal-grid span.blank{
   aspect-ratio:1; border-radius:10px; font-family:var(--mono); font-size:13px;
@@ -1265,7 +1269,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.14.0";
+const CHROMOKU_VERSION = "v0.15.0";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -2552,16 +2556,43 @@ function showCalendar(year, month, selDay){
   const atFirst = year === first.getUTCFullYear() && month === first.getUTCMonth();
   const atLast  = year === tDate.getUTCFullYear() && month === tDate.getUTCMonth();
 
-  let grid = ["M","T","W","T","F","S","S"].map(x => '<div class="dow">' + x + '</div>').join("");
-  for (let i = 0; i < lead; i++) grid += '<span class="blank"></span>';
-  for (let d = 1; d <= dim; d++){
-    const n = dayOf(year, month, d), rec = h[String(n)];
-    const ok = n >= 1 && n <= today;
-    const cls = (rec ? (rec.onTime ? "solved" : "late") : "")
-      + (n === today ? " today" : "") + (n === selDay ? " sel" : "");
-    grid += '<button class="' + cls + '" data-day="' + n + '"' + (ok ? "" : " disabled") + '>'
-          + (rec ? "✓" : d) + '</button>';
+  // Stars: a row is a week (all seven days solved), a column is a weekday
+  // (every one of that weekday in the month solved), and the corner is the
+  // whole month. Days before the first puzzle are ignored; future days are
+  // unsolved, so a star can only appear once the days are behind you.
+  const solved = n => !!h[String(n)];
+  const gold = '<div class="cstar gold">★</div>', dim_ = '<div class="cstar">★</div>';
+  let grid = ["M","T","W","T","F","S","S"].map(x => '<div class="dow">' + x + '</div>').join("") + '<div></div>';
+  const colTotal = [0,0,0,0,0,0,0], colDone = [0,0,0,0,0,0,0];
+  let monthTotal = 0, monthDone = 0;
+  const rows = Math.ceil((lead + dim) / 7);
+  for (let r = 0; r < rows; r++){
+    let weekAll = true, weekAny = false;
+    for (let c = 0; c < 7; c++){
+      const d = r * 7 + c - lead + 1;
+      const inMonth = d >= 1 && d <= dim;
+      const n = dayOf(year, month, d);   // a week may spill into a neighbouring month
+      if (n >= 1){ weekAny = true; if (!solved(n)) weekAll = false; }
+      if (!inMonth){ grid += '<span class="blank"></span>'; continue; }
+      const rec = h[String(n)], ok = n >= 1 && n <= today;
+      if (n >= 1){
+        colTotal[c]++; monthTotal++;
+        if (rec){ colDone[c]++; monthDone++; }
+      }
+      const cls = (rec ? (rec.onTime ? "solved" : "late") : "")
+        + (n === today ? " today" : "") + (n === selDay ? " sel" : "");
+      grid += '<button class="' + cls + '" data-day="' + n + '"' + (ok ? "" : " disabled") + '>'
+            + (rec ? "✓" : d) + '</button>';
+    }
+    grid += weekAny && weekAll ? gold : dim_;
   }
+  for (let c = 0; c < 7; c++){
+    grid += colTotal[c] && colDone[c] === colTotal[c]
+      ? '<div class="cfoot gold">★</div>'
+      : '<div class="cfoot">' + colDone[c] + '/' + colTotal[c] + '</div>';
+  }
+  const monthStar = monthTotal > 0 && monthDone === monthTotal;
+  grid += monthStar ? '<div class="cfoot gold">★</div>' : '<div></div>';
 
   openModal(
     '<h2>Calendar</h2>'
@@ -2570,10 +2601,10 @@ function showCalendar(year, month, selDay){
     + '<div class="stat"><div class="n">' + sk.best + '</div><div class="l">Best</div></div>'
     + '<div class="stat"><div class="n">' + solvedCount + '</div><div class="l">Solved</div></div></div>'
     + '<div class="cal-head"><button id="calPrev"' + (atFirst ? " disabled" : "") + ' aria-label="Previous month">‹</button>'
-    + '<b>' + MONTHS[month] + ' ' + year + '</b>'
+    + '<b>' + MONTHS[month] + ' ' + year + (monthStar ? ' <span style="color:#f1c40f">★</span>' : '') + '</b>'
     + '<button id="calNext"' + (atLast ? " disabled" : "") + ' aria-label="Next month">›</button></div>'
     + '<div class="cal-grid">' + grid + '</div>'
-    + '<div class="cal-key">filled = solved on the day · outline = solved later</div>'
+    + '<div class="cal-key">filled = solved on the day · outline = solved later<br>★ right = week done · ★ below = every one of that weekday · corner = whole month</div>'
     + '<div class="cal-detail" id="calDetail">Tap a day.</div>'
     + '<button class="btn ghost" id="calDone" style="margin-top:12px">Done</button>'
   );
