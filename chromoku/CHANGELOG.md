@@ -8,6 +8,14 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.16.0] 2026-10-03 — Share the streak calendar
+
+- Calendar has **Share calendar** (a PNG of the month: grid, stars, streak, and "Can you beat my streak?" with the game address) and **Copy invite link** (text plus link).
+- The link comes from the current host (`gameURL()`), so it keeps working when playtest and release live on different hosts.
+- Share uses the system share sheet with the image and text; the address is also printed on the image because some apps drop text when a file is attached. Falls back to copying the image, then the text.
+- Calendar drawing now comes from `calModel()`, shared by the screen and the image.
+- Bumped SW cache to `"chromoku-v24"`.
+
 ### [v0.15.0] 2026-10-03 — Calendar stars: weeks, weekdays, months
 
 - Calendar gets gold stars. **Row star:** all seven days of that week solved. **Column star:** every one of that weekday in the month solved (the footer shows N/M until it is complete). **Month star:** every day of the month solved, shown by the title.
