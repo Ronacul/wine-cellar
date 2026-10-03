@@ -1306,7 +1306,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.20.3";
+const CHROMOKU_VERSION = "v0.20.4";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -4146,7 +4146,7 @@ function shareText(){
        + "⏱️ " + fmtTime(elapsedMs()) + streakBit + "\n"
        + "\n"
        + grid + "\n"
-       + "\nhttps://ronacul.github.io/wine-cellar/chromoku";
+       + "\n" + gameURL();
 }
 
 const copyShare = () => copyText(shareText());
@@ -5247,7 +5247,10 @@ function renderShareBadge(){
   // Game URL so recipients know where to play
   ctx.fillStyle = dim;
   ctx.font = "9px ui-monospace,monospace";
-  ctx.fillText("ronacul.github.io/wine-cellar/chromoku", W / 2, footerY);
+  // Address of whichever build is running; shrink the type if a long host would overflow.
+  const addr = gameURL().replace(/^https?:\/\//, "").replace(/\/$/, "");
+  for (let px = 9; px > 6 && ctx.measureText(addr).width > W - 16; px--) ctx.font = px + "px ui-monospace,monospace";
+  ctx.fillText(addr, W / 2, footerY);
 
   return canvas;
 }

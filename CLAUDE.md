@@ -348,7 +348,7 @@ git push origin release --tags
 
 Always push to `main` at the end of every Chromoku session so phone/other devices can test the latest version.
 
-### Chromoku game systems (as of v0.20.3)
+### Chromoku game systems (as of v0.20.4)
 
 All of this is in `chromoku/index.html`. Version history lives in `chromoku/CHANGELOG.md`.
 
@@ -370,7 +370,7 @@ All of this is in `chromoku/index.html`. Version history lives in `chromoku/CHAN
 - **Stars count any solve (on the day or later) and ignore hints.** Reason: hints and add-time are the ad hooks, so nothing rewards "no helps". Cheating is accepted: everything is local and personal, so there is no anti-cheat. Do not add a no-hints bonus without revisiting the monetization trade-off.
 - Whole periods only. A week, a weekday column or a month needs every day inside the game's life, so the 15 Aug opening week and August 2026 can never be starred. Row ★ = full Mon to Sun week. Column ★ (footer) = every one of that weekday in the month. Month ★, quarter ★★, year ★★★ via `periodDone()` and `superStars()`. A trophy shelf under the grid shows the year.
 - `dayStars()` and `newStarList()` compare stars before and after a win is recorded, so each star celebrates once. `starWinHTML()` shows the gold banner in the win modal and calls `fireFireworks(bursts, ms)`. Show size scales with the biggest star (week/column 3 bursts up to year 16). Fireworks are skipped under `prefers-reduced-motion`.
-- Share: `renderCalendarImage()` draws a canvas PNG, `shareCalendar()` uses the system share sheet with the image and text, falling back to clipboard image then text. `gameURL()` builds the link from the current host so playtest and release (Cloudflare) both work. Some apps drop text when a file is attached, so the address is also printed on the image.
+- Share: `renderCalendarImage()` draws a canvas PNG, `shareCalendar()` uses the system share sheet with the image and text, falling back to clipboard image then text. `gameURL()` builds the link from the current host so playtest and release (Cloudflare) both work. The daily result text and the share-card image footer use it too (no hardcoded addresses left). Some apps drop text when a file is attached, so the address is also printed on the image.
 - Storage is browser localStorage. It is per device and per browser and is wiped by clearing site data. Safari can evict it after about 7 days without a visit unless the app is on the Home Screen. An export/import button has not been built.
 
 #### Level ladder
@@ -396,7 +396,7 @@ All of this is in `chromoku/index.html`. Version history lives in `chromoku/CHAN
 - Do not reward "no helps": it works against the ad and hint design. Reward what was solved instead (weeks, weekdays, months).
 - When a screen needs more space, check what is actually tall before shrinking controls. The ad block, not the board, caused the scrolling.
 - `confirmReset` and `showAddTimeModal` call `pauseTimer()`, which only stops the display interval, not the elapsed clock (`state.since`). Opening them may still burn level time. Not verified. `showLevelGoal` stops the real clock (`stopTimer`, then `startTimer` on close).
-- Service worker: bump `CACHE` in `sw.js` on every deploy (currently `chromoku-v33`). Players need two refreshes to see a new build.
+- Service worker: bump `CACHE` in `sw.js` on every deploy (currently `chromoku-v34`). Players need two refreshes to see a new build.
 
 - **Release gotchas (v0.20.2 release):** (1) The cloud clone is shallow, so `git merge main` on `release` fails with "unrelated histories". Run `git fetch --unshallow origin` first, then fetch `main` and `release`. (2) The merge conflicts on `chromoku/index.html` because `release` lacks the banner line. Resolve with `git checkout --theirs chromoku/index.html`, then `sed -i '/PLAYTEST BUILD/d'`. (3) A push made before the unshallow fetch hung up repeatedly because git tried to send thousands of objects; after fetching it sent 5. (4) Pushing the tag `chromoku-vX.Y.Z` returned HTTP 403 from the session proxy, so the tag exists only locally. Tag by hand: `git tag chromoku-vX.Y.Z <release commit> && git push origin chromoku-vX.Y.Z`. (5) The merge also carries every non-Chromoku change on `main` (comics, wine data) into `release`, because the repo root is shared. (6) After releasing, copy the moved `chromoku/CHANGELOG.md` back to `main` so both branches agree.
 

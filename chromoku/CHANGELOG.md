@@ -8,6 +8,11 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.20.4] 2026-10-03 — Share links follow the host
+
+- The daily result's share text and the footer on the share-card image now use the address of whichever build is running (`gameURL()`) instead of the hardcoded playtest address. Release shares point at release; the image footer shrinks its type if a long host would overflow.
+- Bumped SW cache to `"chromoku-v34"`.
+
 ### [v0.20.3] 2026-10-03 — New-player defaults; admin tools hidden on release
 
 - Defaults for new players: theme **Light** (was Auto), **Rounded marks off**, **Fade completed off**. Anyone who already chose a setting keeps it.
