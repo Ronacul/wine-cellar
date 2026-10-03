@@ -8,6 +8,356 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+_Nothing pending. Everything up to v0.20.2 is released._
+
+---
+
+## Released (on `release`)
+
+### [v0.20.2] 2026-10-03 — Watching an ad to continue refunds the life
+
+- After "Out of time", watching a bonus ad to keep going now refunds the life taken at failure. The button copy says so, and the toast says "life back". A mid-level add-time does not refund (nothing was lost).
+- Bumped SW cache to `"chromoku-v32"`.
+
+### [v0.20.1] 2026-10-03 — Bigger level controls, bonus options always visible
+
+- **Out of time** now always shows the bonus-time options under Retry ("Or keep going from here"). In v0.13 I had put them in a collapsed "Need more time?" section, which hid them. When the level's two bonuses are used up it says "No bonus time left on this level" instead of showing nothing.
+- The bonus-ad screen ignores taps outside it, so the countdown can't be dismissed by accident.
+- **Bigger controls.** Level bar: back, undo and reset are 36px buttons with a visible background (were 28px, no background). Header icons 34 to 36px and 15 to 18px glyphs. Power-up buttons 36px tall with 20px icons.
+- Home buttons and calendar/theme row trimmed a few pixels so the daily still fits one screen at 360×640.
+- Bumped SW cache to `"chromoku-v31"`.
+
+### [v0.20.0] 2026-10-03 — Clean level bar; the stage map moves to the intro card
+
+- The level bar now shows only the current level: `Level 45`, the goal line, hearts and the clock. The row of twenty step markers and stars is gone.
+- The intro card carries it instead: the stage as two rows of ten with stars earned, a ⚡ on the challenge levels, ◈ on the preview and ★ on the boss.
+- **Levels** on the home screen (and "Play levels" after a daily win) now opens that intro card first rather than dropping straight onto a board. The tutorial still goes direct.
+- Bumped SW cache to `"chromoku-v30"`.
+
+### [v0.19.1] 2026-10-03 — Goal reminder in the level bar
+
+- The level bar's subtitle now names the goal instead of the world: `🎨 colours · 4×4`, `◆ shapes · 4×4 · 🌀` (🌀 = scramble), `▨ patterns · 6×6`. It is a tap target (ⓘ): it opens the same goal card as the splash, with the clock stopped until the player closes it.
+- No new row on the board; the information lives in the line that was already there.
+- `openModal` takes an optional close callback, used to restart the clock.
+- Bumped SW cache to `"chromoku-v29"`.
+
+### [v0.19.0] 2026-10-03 — Difficulty waves, challenge levels, one-screen fit, escape routes
+
+- **Difficulty waves.** Each block of ten levels is now a sawtooth: two breather levels with extra clues and a roomier clock, a build, a climb, and a challenge on the tenth. `WAVE` shifts the clue count (about 3.5% of the grid per step) and `waveClock()` moves the time limit (±7% per step) so small grids, which have no clues to spare, still feel the swing. Peeks are exempt.
+- **Challenge levels** (every 10th level from 20): Scramble. Colours wear misleading shapes, shapes wear misleading colours. On 9×9 and up the decoy is unreadable, so those challenges only get the tighter clues. Scramble no longer leaks into levels from the daily toggle, and its explainer now describes what it does.
+- **Splash:** level number, a 1–5 difficulty rating with a label (Warm-up to Brutal) and a ⚡ Challenge tag. The rating is the par-based size/clue load plus the wave.
+- **Home is always reachable.** Level wins, fails and the out-of-lives screen ignore taps outside the card and have a 🏠 Home button. The daily win screen has Play levels.
+- **Theme** is now the first setting, and a 🌓 button on the home row cycles Auto / Light / Dark.
+- **One screen on phones.** The ad slot is a 50px strip instead of a 300×250 block and the home buttons are tighter. Checked at 390×844, 375×667 and 360×640: no scrolling in the daily or in levels up to 10×10.
+- **Fix: levels no longer freeze.** The difficulty rater looped forever when its pair techniques eliminated candidates without placing anything. About a third of the 9×9 Latin levels (around 267–300) hung the page. Now all levels 7–500 build in under 0.8 s.
+- Bumped SW cache to `"chromoku-v28"`.
+
+### [v0.18.1] 2026-10-03 — Calendar: explanation moves behind a ?
+
+- The legend text under the calendar is gone. A **?** button next to the title shows or hides a short explanation of fills, outlines and stars.
+- The empty "Tap a day." box is hidden until a day is selected.
+- Bumped SW cache to `"chromoku-v27"`.
+
+### [v0.18.0] 2026-10-03 — Fireworks for earned stars
+
+- Winning a daily that completes a week, a weekday column, a month, a quarter or a year shows a gold star banner in the win modal (star pops in) and sets off fireworks on top of the usual confetti.
+- Show size follows the biggest star earned: week/weekday (3 bursts), month (6), quarter (10), year (16 over 7 s).
+- Newly earned stars are found by comparing `dayStars()` before and after the win is recorded, so replays and backfilled days celebrate too, but a star is only celebrated once.
+- Fireworks are skipped under `prefers-reduced-motion: reduce`; the banner still shows.
+- Bumped SW cache to `"chromoku-v26"`.
+
+### [v0.17.0] 2026-10-03 — Whole-period stars, plus quarter and year
+
+- **Whole periods only.** A week, weekday column or month can only be starred if every day in it falls on or after the first puzzle (15 Aug 2026). The partial opening week and August 2026 can never earn a star; the first starrable week is 17–23 Aug.
+- **Super stars:** month ★, quarter ★★ (all three months fully solved), year ★★★ (every day of the year). The calendar title shows the highest earned for the month on screen.
+- **Trophy shelf** under the grid: twelve month stars, four quarter stars and the year, for the year being viewed. Share image carries the same stars in its heading.
+- Stars still count any solve, on the day or later.
+- Bumped SW cache to `"chromoku-v25"`.
+
+### [v0.16.0] 2026-10-03 — Share the streak calendar
+
+- Calendar has **Share calendar** (a PNG of the month: grid, stars, streak, and "Can you beat my streak?" with the game address) and **Copy invite link** (text plus link).
+- The link comes from the current host (`gameURL()`), so it keeps working when playtest and release live on different hosts.
+- Share uses the system share sheet with the image and text; the address is also printed on the image because some apps drop text when a file is attached. Falls back to copying the image, then the text.
+- Calendar drawing now comes from `calModel()`, shared by the screen and the image.
+- Bumped SW cache to `"chromoku-v24"`.
+
+### [v0.15.0] 2026-10-03 — Calendar stars: weeks, weekdays, months
+
+- Calendar gets gold stars. **Row star:** all seven days of that week solved. **Column star:** every one of that weekday in the month solved (the footer shows N/M until it is complete). **Month star:** every day of the month solved, shown by the title.
+- Stars count any solve, on the day or later, and ignore hints and help, so they do not discourage hint or ad use. They are separate from the streak, which still needs on-the-day solves.
+- Days before the first puzzle are ignored; future days are unsolved, so stars only appear once the days are behind you.
+- Bumped SW cache to `"chromoku-v23"`.
+
+### [v0.14.0] 2026-10-03 — Home buttons, calendar, real streaks
+
+- The 8-chip week strip is replaced by two large buttons (**Today's puzzle** with tier and solved tick, **Levels** with N / 500), a streak line and a **Calendar** button. Opening a past day shows a "Viewing #N" line; Today is the way back.
+- **Calendar:** month view from the first puzzle to today. Filled = solved on the day, outline = solved later, ring = today. Tap a day for its time, then Play or View board.
+- **Permanent history** (`chromoku.history.v1`): `{day: {secs, onTime}}`, seeded once from the 30-day slot store and the old streak. Slot records still prune at 30 days; history does not.
+- **Streak fix:** it is now computed from history and counts only puzzles solved on their own day, and it breaks after a missed day. Before, winning an old day from the strip could overwrite `lastWinDay` and corrupt the streak, and the displayed streak never reset on a miss.
+- Data is browser localStorage: per device and per browser, and cleared if the player clears site data.
+- Bumped SW cache to `"chromoku-v22"`.
+
+### [v0.13.1] 2026-10-03 — Level flow polish
+
+- Splash: 20 pips replaced by a progress bar ("Step N of 20", boss flagged). New worlds get a mini worked example of their rule. "Level data" is shown only with admin tools on.
+- Win screen: **Next level** is the primary button; Share / Replay / Done are a small row beneath.
+- Out of time: shows banked stars, best time and % of the board filled. Out of lives, the main button is "Play today's puzzle while you wait".
+- Bumped SW cache to `"chromoku-v21"`.
+
+### [v0.13.0] 2026-10-03 — Level splash states the goal; plain Retry on fail
+
+- Between-level splash now has a goal card: "Match the colours / shapes / patterns", grid size, and the rule (rows, columns, boxes, or Latin with no boxes), plus notes for double grids and rotated boxes. Built by `levelGoal()` from the same config `loadLevel()` uses.
+- Out-of-time screen: **Retry** is the primary button and restarts the level using the life already lost. With no lives it is disabled and enables itself when a heart returns. Ad options moved into a collapsed "Need more time?" section.
+- Bumped SW cache to `"chromoku-v20"`.
+
+### [v0.12.14] 2026-09-29 — Fix: conflict-guard regeneration preserves daily mode (no more missing week list/levels)
+
+- When the conflict guard fired in v0.12.13, it called `loadPuzzle(..., true)` (fresh=true). `fresh=true` sets `state.practice = true`, which hid the daily UI (week list, streak, difficulty tabs).
+- Fix: added a `_skipConflictCheck` internal parameter. The guard now calls `loadPuzzle(state.size, state.diff, false, true)` — regenerates from the daily seed, skips the conflict check on re-entry, and leaves `state.practice` false so the daily UI remains intact.
+- Bumped SW cache to `"chromoku-v19"`.
+
+### [v0.12.13] 2026-09-29 — Fix: given-conflict guard no longer causes infinite recursion
+
+- v0.12.12 used an IIFE whose `return loadPuzzle(...)` only returned from the IIFE, not from the outer `loadPuzzle` — so both the recursive fresh call and the original outer call continued executing, causing a stack overflow.
+- Fix: replaced the IIFE with a plain `if (!fresh)` block. The conflict check only runs on cached loads; `fresh=true` calls skip it entirely, breaking the cycle. When a conflict is found, `return loadPuzzle(state.size, state.diff, true)` now correctly returns from `loadPuzzle` itself.
+- Bumped SW cache to `"chromoku-v18"`.
+
+### [v0.12.12] 2026-09-29 — Fix: runtime given-conflict guard clears corrupt cached puzzles (had recursion bug — see v0.12.13)
+
+- Added a post-load validity check in `loadPuzzle()` that fires after `state.layers` is populated (whether from cache or freshly generated).
+- Scans every given cell in every layer for duplicate colours within the same box. If any conflict is found, the corrupted save slot is deleted from localStorage and `loadPuzzle` is called again with `fresh=true`, guaranteeing a clean board.
+- This is a runtime safety net that works regardless of service-worker cache state — it detects and repairs any corrupt save that made it past the `layoutMismatch` flag check (e.g. saves from before v0.12.9 that are still in localStorage from before the SW update was received).
+- Bumped SW cache to `"chromoku-v17"`.
+
+### [v0.12.11] 2026-09-29 — Fix: bump service worker cache to force delivery of v0.12.9–10
+
+- The service worker uses cache-first with a versioned cache name. All deploys since v0.12.9 were delivering the new `index.html` to GitHub Pages but returning the old cached copy to the browser.
+- Bumped `CACHE` from `"chromoku-v15"` → `"chromoku-v16"`. On next load the SW installs the new cache, deletes v15, and the layout-mismatch fix and tutorial flow fixes actually reach the user.
+
+### [v0.12.10] 2026-09-29 — Fix: old (untagged) saves also rejected on layout mismatch
+
+- v0.12.9's mismatch guard had a gap: saves created before the `boxRotate`/`latin` flags were added have no such field, so `saved.boxRotate !== undefined` was `false` and the check was skipped — the bad puzzle still loaded on refresh.
+- Fix: treat a missing flag as `false` (the default). If the current config has `boxRotate:true` or `latin:true` and the save has no flag, that defaults to `false` → mismatch → discard and regenerate.
+
+### [v0.12.9] 2026-09-29 — Fix: rotated-box puzzle no longer loads mismatched cached grid
+
+- **Root cause of "two blues in a box" bug:** the daily save slot key (`"s6-easy"`) did not include `boxRotate`, so a puzzle previously saved with `boxRotate:false` (standard 2×3 boxes) could be loaded and displayed with `boxRotate:true` (3×2 boxes). The grid was valid for the original layout but looked broken in the rotated one.
+- **Fix (save side):** `saveProgress` now stores `boxRotate` and `latin` with each slot record.
+- **Fix (load side):** `loadPuzzle` rejects a cached slot whose `boxRotate`/`latin` flags don't match the current config, falling through to fresh generation. Old saves without these flags are accepted as-is (no flag = no mismatch detected).
+- **No hard reset needed:** the mismatched cached puzzle is silently discarded and a fresh one is generated the next time that day is loaded.
+
+### [v0.12.8] 2026-09-29 — Fix: tutorial exit lands in real levels instead of daily
+
+- **Tutorial complete → real levels:** "Start playing" after the final tutorial level now loads level 1 of the real ladder (was incorrectly calling `enterDaily()` and dropping the player in the daily puzzle).
+- **Skip tutorial → real levels:** "Skip tutorial ×" tip button now also goes straight to real levels via `skipTutorial()` instead of daily. Progress is advanced past the tutorial block so the next Levels click doesn't restart the tutorial.
+- Added `skipTutorial()` helper that advances `p.level` to `TUTORIAL_CONFIGS.length` then calls `loadLevel(TUTORIAL_CONFIGS.length)`.
+
+### [v0.12.7] 2026-09-19 — Levels: redesigned as a clean linear ladder (groups of 20)
+
+- **LEVELS_PER_STAGE 10 → 20, STAGES_PER_WORLD 10 → 5** — keeps 500 total real levels, but each config now runs for ~20 consecutive levels before stepping up.
+- **World 1 Sunrise:** 4×4 easy → 4×4 medium → 4×4 hard → 4×4 double → 6×6 easy
+- **World 2 Tide:** 6×6 medium → 6×6 hard → 6×6 double easy → 6×6 double medium → 6×6 rotated boxes
+- **World 3 Lattice:** 5×5 Latin → 7×7 Latin easy → 7×7 Latin medium → 9×9 Latin easy → 9×9 Latin medium
+- **World 4 Echo:** 9×9 easy → 9×9 medium → 9×9 hard → 9×9 double easy → 9×9 double medium
+- **World 5 Prism:** 10×10 Latin → 10×10 Latin medium → 9×9 double hard → 9×9 Latin double → 10×10 Latin double
+- Previous ramp zigzagged between 4×4 and 6×6 alternately within World 1 — now strictly ascending.
+- PEEK_STEP moved from 5 → 15 (sneak preview at step 15 of 20 rather than step 5 of 10).
+- Trim formula adjusted from /3 to /6 to maintain ~3 given reduction over a 20-step stage.
+
+### [v0.12.6] 2026-09-19 — Tutorial: "Skip tutorial ×" link in the tip box
+
+- Added a **Skip tutorial ×** link at the bottom-right of the tutorial tip card. Tapping it calls `enterDaily()` immediately — no confirmation, no life penalty. The existing ✕ header button still works too but is easy to miss; this puts the escape route right where the player is reading.
+
+### [v0.12.5] 2026-09-19 — Fix: Levels counter shows real-level progress (0–500), not tutorial offset
+
+- **Levels counter corrected:** `progress().level` counts tutorial levels (1–6) before the 500 real levels begin at level 7. The `X/500` display now subtracts the tutorial count, so a fresh player sees `0/500` and the first real level shows `1/500`. Previously a fresh player saw `1/500` which implied they were already one step into a hard 9×9 progression — the 9×9 they saw was Sunday's Epic daily puzzle, not the Levels track.
+
+### [v0.12.4] 2026-09-19 — Fix: scramble shapes on 9×9; Levels chip with X/500 progress
+
+- **Scramble on 9×9:** Classic-colour scramble mode was applying random clip-path shapes as "decoy noise" to every cell. On 9×9 the cells are too small to read those shapes, making the board look broken rather than misleading. The shape decoy is now skipped for n≥9 — colour-as-truth still holds, but the shape noise is dropped.
+- **Levels chip:** Redesigned for competitive framing. "Levels" is now 13px bold (was 8px), with the player's current level as `X/500` on the sub-line. Seeing "42/500" creates a pull to keep going. The gold pulse animation still fires when all 7 daily days are complete.
+
+### [v0.12.3] 2026-09-19 — Day nav: today chip says "Today" instead of day abbreviation
+
+- Today's chip now reads "Today" rather than "Sat" / "Mon" etc., making it immediately clear which tile is the current day without having to match the date. The d/mm and tier sub-label remain. The ◆ marker is removed (redundant once the label says "Today").
+
+### [v0.12.2] 2026-09-19 — Fix: shapes fall back to squares on 9×9+ and double mode
+
+- **buildMarks() guard:** When the active mark set is "Shapes" and the grid is 9×9 or larger, OR double mode is on, the outer marks now build as plain colours (same path as classic) instead of applying clip-path geometry. Tiny triangles/stars at 9×9 cell sizes are illegible, and a triangular or star-shaped donut in double mode is visually confusing. The player's saved shape preference is still respected on smaller single-layer grids.
+
+### [v0.12.1] 2026-09-19 — Fix: difficulty label mismatch, d/mm in day chips
+
+- **getDailyConfig() unified:** `dailyConfig()` (old `DAILY_SCHEDULE`-based lookup) is no longer used for display. All label and tier text now comes from `getDailyConfig()`, so what the chip and sub-header say is exactly what the puzzle delivers. Saturday showing "Expert" while loading a 9×9 Medium is fixed.
+- **getDailyConfig(forDay):** Now accepts an optional day number so `renderDailyNav()` can query each chip's config without mutating state. DOW for today now uses the local calendar (consistent with `dayNumber()`).
+- **d/mm in day chips:** Each day chip now shows the calendar date below the tier label (e.g. "19/9 · Hard") so players can tell at a glance they're looking at the past 7 days.
+- **Admin date picker:** Changing the date in the admin bar now calls `enterDaily()` (loads the correct daily config) instead of `loadPuzzle(state.size, state.diff)` (which kept whatever size/diff the player last had, causing wrong-grid bugs).
+
+### [v0.12.0] 2026-09-15 — 7-day arc: rotating weekly difficulty pools
+
+- **getDailyConfig():** Daily puzzle is now driven by a curated pool per weekday that rotates week-to-week. Each week a different variant fires — mark set, box orientation, or ruleset — so the same weekday never feels repetitive.
+- **Arc:** Mon easy 4×4 → Tue easy+ (4×4 Med / 6×6 Easy / 6×6 Rotated) → Wed medium/tricky (4×4 Double Hard / 6×6 Double Easy / 4×4 Latin Med / 6×6 Med) → Thu 9×9 Easy (Colour/Shapes/Ink) → Fri 6×6 Double Med (normal/rotated boxes) → Sat 9×9 Med (Colour/Shapes/6×6 Double Hard/Scramble) → Sun 9×9 Double Med (normal/Scramble/7×7 Latin).
+- **6×6 daily mode:** Added s6 as a daily-mode size (givens easy=20, medium=15, hard=11).
+- **state.boxRotate:** New state flag for daily mode box orientation; `activeBoxRotate()` helper unifies level + daily box rotation in all rendering and logic paths. Subtitle shows ⤾ when active.
+
+### [v0.11.4] 2026-09-15 — Day nav: rolling lookback, Levels nudge
+
+- **Rolling 7-day lookback:** Day nav now shows the last 7 days (today plus 6 days back), oldest on the left, today on the right. Every chip is playable — no locked/future chips at all. The previous Mon–Sun fixed-week design meant early in the week most chips were locked.
+- **Levels nudge:** When all 7 days in the window are completed, the 🏆 Levels chip pulses gold and reads "Levels!" to signal there's more to play.
+
+### [v0.11.3] 2026-09-15 — Fix: header width, upcoming day feedback
+
+- **Header width regression:** Sub-header text no longer includes the grid size (e.g. "Tuesday · Symbol · #32" instead of "Tuesday · 6×6 · Symbol · #32"). The header uses `grid-template-columns:1fr auto 1fr` — the `auto` center column expands to fit its content, squeezing the side columns. The longer text was pushing the right icon cluster off-screen on narrow phones. Tier label already conveys difficulty; grid size was redundant.
+- **Upcoming day chips now respond:** Tapping a future-day chip (Wed–Sun when it's Monday) previously did nothing silently. The chips now show a brief toast — "Wednesday's puzzle isn't available yet" — so players get feedback instead of a dead tap. Future chips are also marked with a 🔒 sub-label instead of the tier name to make their locked state immediately clear.
+
+### [v0.11.2] 2026-09-15 — Weekly nav, reset discoverability, sub-header grid size
+
+- **Weekly schedule nav:** Day navigation strip now shows a fixed Mon–Sun week instead of a rolling 6-past-days window. All 7 day types are always visible — future days appear greyed with their tier label so the weekly schedule is legible at a glance. Tapping a future chip does nothing; past days and today remain fully interactive. Today's chip is marked with ◆. This fixes the "no Tuesday" confusion where today's chip (the only Tuesday) was styled differently and players wouldn't register it.
+- **Reset discoverability — in-progress:** The ↻ Reset button is now shown in the Advantages bar alongside the flash (🔦) and reveal (💡) buttons during daily and practice play. Previously, Reset was only available as a tiny icon-only button in the header with no text label.
+- **Reset discoverability — after completion:** When the puzzle is done, the Advantages bar now shows a "↻ Try again" button instead of disappearing entirely. This makes re-trying obvious without needing to hunt for the header icon.
+- **Sub-header grid size:** Daily mode sub-header now includes the grid size: e.g. "Tuesday · 6×6 · Symbol · #32" instead of "Tuesday · Symbol · #32", so the tier name is no longer the only difficulty signal.
+
+### [v0.11.1] 2026-08-29 — Fix: win badge aspect ratio in modal
+
+- **Root cause:** `renderShareBadge()` sets `canvas.style.width` and `canvas.style.height` as absolute pixel values; CSS `max-height:30vh` then clipped one axis without adjusting the other, squashing the image. Setting both dimensions independently with a CSS cap is always ratio-breaking.
+- **Fix:** Added `fitBadgeInModal(badge)` helper that reads the canvas's logical dimensions (`_logW`/`_logH` set on the element inside `renderShareBadge()`) and computes a scale factor that satisfies both a `maxW` (≈320px) and a `maxH` (30 % of viewport height) constraint, then writes back both dimensions proportionally. Called from `showWin()` and `winLevel()` before appending the canvas.
+- **CSS simplified:** `.badge-wrap canvas` no longer needs `max-height`, `width:auto`, or `height:auto` — those rules fought the inline styles anyway; replaced with a simple `max-width:100%` safety net.
+- The shared image itself is unaffected — `shareAsImage()` calls `renderShareBadge()` fresh at full DPR resolution.
+
+### [v0.11.0] 2026-08-29 — Daily nav: Levels for all, device-aware day, persistent completions, ad bonus, share fix
+
+- **Levels button visible to all** — 🏆 Levels chip in the daily nav is no longer admin-only. Every player can reach Levels mode directly from the day strip.
+- **Device-calendar-aware Today chip** — The "Today" chip now shows the actual local day name (e.g. "Sat") instead of "Today", so players can verify the app is reading the right calendar day. `dailyConfig()` uses `new Date().getDay()` (device-local DOW) when computing today's schedule, avoiding any UTC/local mismatch.
+- **Completed dailies persist across day switches** — Daily progress is now stored in `chromoku.daily.v3`, a per-day keyed object that retains up to 30 days of history. Switching to a past or future day no longer wipes completed puzzles. A ✓ badge appears on day chips with at least one completed slot. Existing v2 saves are migrated automatically on first load.
+- **"Buy a reveal" ad bonus** — When reveals run out on the daily, a gold `+💡` button appears. Tapping it opens a simulated rewarded-ad flow (5-second countdown + cancel option). On completion the player gets +1 reveal. Capped at 2 bonus reveals per puzzle so it stays a nudge, not unlimited. Not available in practice mode.
+- **Share tracks the completed puzzle** — `win()` now stores the timer reference. Tapping a day chip during the 1.1-second pre-win animation cancels the pending win modal (instead of letting it fire from the wrong day's state), preventing the bug where Share would render the newly-loaded (incomplete) puzzle instead of the one just solved.
+
+### [v0.10.8] 2026-08-27 — Fit-one-screen pass: no scrolling on daily or win card
+
+- **Root cause of the blank space:** `.play` had `justify-content:center` with `flex:1` — short content got centred, splitting the leftover height into dead bands above and below the stack. Now `flex-start`, and the `.play` gap drops from `clamp(10px,3.5vw,22px)` to `clamp(6px,1.8vw,12px)`.
+- **Day chips — 4×2 grid:** `.day-nav` was a single `overflow-x:auto` flex row, so chips scrolled off. Now `grid-template-columns:repeat(4,1fr)` — all 8 chips visible in two rows, every chip the same width. "Today" gained a tier line so all cells are the same height.
+- **Levels chip recoloured:** gold (`.lvl-chip`, `#c9a227`) instead of another grey day chip — it's a different destination, so it reads as one.
+- **Board absorbs the reclaimed space:** `max-width:min(92vw,46vh,400px)` (was `min(84vw,340px)`) — the board grows into the freed height instead of leaving a gap. 328px → 359px on a 390×844 screen.
+- **Admin view yields it back:** admin chrome adds ~100px, so `html.dev .board-wrap` caps at `34vh` and the admin bar is now one compact scrollable row (88px → 28px) instead of wrapping to three.
+- **Win card no longer scrolls:** the share badge is capped by height (`max-height:30vh`), not just width — it was the tallest block at 340–358px. Modal padding 24px → 18px, stats margin 18px → 12px. Short screens get a further pass (badge 20vh, smaller win time) declared *after* the base rules so it actually wins the cascade.
+- **Stale negative margins removed:** `.powerups` (`margin-top:-8px`) and `.tbarwrap` (`margin-top:-16px`) were compensating for the old 22px gap and had started over-pulling into the row above.
+- **Verified:** 0px overflow on iPhone SE / 12 / 14 Pro Max / Pixel 7 / iPad Mini, in both player and admin views; win card fits without internal scroll on all of them, clean and hint-used states.
+
+### [v0.10.7] 2026-08-26 — Level bar compact, admin controls tidy, day-nav to top, banner shorter
+
+- **Level bar ~50% shorter:** `.lvl-l` is now `display:flex` so the ← ↶ ↻ buttons sit in a horizontal row instead of stacking vertically. Buttons shrink to 28×28 px. Right section uses `.lvl-r` (column-flex) — hearts sit above the countdown timer. Stage path preserved in `.lvl-c`.
+- **Admin-only daily controls:** Size row (`#sizeRow`) and diff row (`#diffRow` — Latin/Double/Scramble/Levels) hidden by CSS for regular players; `html.dev` reveals them. `html.in-level` forces `#diffRow` visible so the level bar (which replaces `#diffs` inside it) still shows. `syncLvlToggle()` renamed to `syncAdminControls()`.
+- **Day nav to top:** `#dayNav` moved above `.tiers` so the day chip strip is the first thing players see below the header. Admin-only **🏆 Levels** chip at the end of the strip (via `renderDailyNav()`); clicking it enters levels at the player's current level.
+- **Banner shorter:** `.ad-banner` is now `width:100%` and `padding:12px 16px` (was 20px) — full-width, less tall, column layout kept.
+
+### [v0.10.6] 2026-08-26 — Header cleanup, levels admin-only, win modal de-cluttered
+
+- **💡 removed from header:** Lightbulb hint button gone — hints are in help (?) and the power-up bar below the board. `btnStats` (?) moved from left to right section so left is clean: logo · undo only.
+- **Right header order:** timer · ? · ☆ · ↻ · ✕ · ⟳ (dev) · ⚙. `?` and `☆` are the visible "helper icons"; neither appears on the share canvas (correct — they're navigation aids, not solve data).
+- **Levels → admin only:** `lvlToggle` button hidden for regular players; `syncLvlToggle()` helper keeps it in sync whenever admin mode is toggled. Levels remain fully functional for admins.
+- **Levels win modal de-cluttered:** Level N heading, stars row, and theme·stage lede removed — the canvas badge already shows all of that (level, stars, theme, time). Modal now opens directly with the badge, stats row, and buttons.
+- **Daily win modal:** Game info lede (Chromoku #N · size · diff) removed for same reason — badge shows it. Time stays large at the top as a quick reference.
+
+### [v0.10.5] 2026-08-26 — Full-screen levels, stars on share tile, win banner, 15s add, bundle offer
+
+- **Full-screen levels:** Header (logo, nav buttons) hides during active level play. The level bar takes over: ← Back, ↶ Undo, ↻ Reset now live in the level bar left section. Undo stays in sync (disabled when history is empty). Header restores on returning to daily.
+- **Stars on share tile:** In levels mode the earned star rating (★★★) appears between the title and subtitle lines on the canvas badge — so the shared image shows your score without needing to annotate it.
+- **Win banner:** A compact sponsored strip appears at the bottom of the win modal (both daily and levels). Natural break moment, non-intrusive, cycles through mock creatives.
+- **Level add-time → 15s:** `LEVEL_ADD_SECS = 15`. Watching the quick ad in levels now gives 15s (was 30s — same as daily, felt too generous for shorter puzzles).
+- **Premium bundle offer:** In the out-of-time modal, two ad tiers are shown side by side: ⏰ Watch 15s → +15s (N left), and 🎁 Watch 30s → +30s + 2 reveals. Bundle grants `BUNDLE_BONUS = 2` extra reveals via `state.bonusReveals`. Not aggressive — opt-in only at the natural fail-state moment.
+
+### [v0.10.4] 2026-08-26 — Share tile redesign, 2-per-row win buttons, clock badge for time hints
+
+- **Share tile — no swatches:** Removed the swatch-dot row from the canvas badge. The completed puzzle already shows every colour — the dots were redundant. Footer is now: `[gap] hint line (if any) [URL]`.
+- **Share tile — symmetric spacing:** The gap between the subtitle and the board top now mirrors exactly below the board before the hint/URL block, giving the puzzle more visual breathing room.
+- **Share tile — compact hint line:** Single mono line showing only the hint types actually used: `💡×N` (reveals), `⏱×N` (freeze/add-time), `🔦×N` (flash). Nothing shown for a clean solve.
+- **Win modal — 2-per-row buttons:** Share / Copy text / ⚡ Challenge / Close arranged in a 2-column grid, roughly halving the modal height. Same layout in the levels win modal (Share / Next level / Replay / Done for now).
+- **Win modal badge — clock icon for time hints:** Freeze and add-time hints now show ⏱️ in the modal badge instead of being lumped into 💡. Reveals show 💡, time hints show ⏱️, flash shows 🔦 — each type visually distinct.
+
+### [v0.10.3] 2026-08-26 — Win modal compact, clean-win minimalism, 300×250 banner, day navigation
+
+- **Win modal — stars inline (levels):** Stars moved next to the level title in a flex row instead of occupying their own full-height row. Saves ~40px of vertical space.
+- **Clean win minimalism:** For a clean daily solve (no hints, no flash), the 🧠 badge icon is removed from the win modal entirely. The board canvas is the share — no annotation needed. Badge text is also removed from the canvas share for clean wins; swatch dots + URL remain.
+- **Hint wins:** 💡 badge still shows in the modal; canvas still shows the hint count line. Flash-only (🔦) uses the same clean treatment as full clean.
+- **Banner → 300×250 Medium Rectangle:** Replaced the 320×50 strip mockup with a 300×250 vertical rectangle — the format that earns 3–5× higher CPM on mobile. HTML + CSS updated.
+- **Previous-days navigation strip:** Six day chips appear below the board in daily mode (Today highlighted + Mon–Sun going back 6 days, with tier label). Tapping any past chip loads that day's scheduled puzzle. Banner shows immediately for all past days.
+- **Off-schedule banner trigger:** If a player changes the size or difficulty in daily mode away from today's scheduled config, the banner appears. Today's default puzzle stays clean.
+
+### [v0.10.2] 2026-08-26 — Fix tutorial auto-flash bleeding, flash count in share, admin in About modal
+
+- **Fix tutorial flash timer bleed:** Tutorial auto-hint interval was not cleared when entering daily mode — the timer kept calling `flashHint(false)`, which now runs in daily mode too (my v0.10.1 regression). Two-part fix: (1) `enterDaily()` now clears `_hintTimer` / `_hintInterval`; (2) auto-hint path in `flashHint()` guards against non-tutorial contexts.
+- **Flash count in share:** `🔦×N` now appears in text share and canvas badge when flash hints were used. Flash is free (no star penalty) so it stays distinct from 💡 reveals. Win modal badge also shows `🔦×N` as a separate line below the main hint indicator.
+- **Admin toggle in About modal:** Long-pressing the logo opens the About panel, which now has an Admin tools toggle at the bottom — much more discoverable than the buried Settings row. Toggling here also saves to localStorage correctly so OFF persists across reloads.
+
+### [v0.10.1] 2026-08-26 — Fix game palette, admin off-persistence, flash hint in daily, tutorial UX
+
+- **Game palette fix — no more Dark Olive:** HUES[7] was `#232c16` (near-black dark olive) — invisible on small cells, indistinguishable from Brown. Replaced with `#f6768e` (Purplish Pink), a clearly playable, highly distinct colour. The quilt logo uses its own `QUILT_PAL` and was unaffected.
+- **Admin toggle persists OFF:** On playtest builds, admin defaulted ON every reload (playtest banner always present). Now an explicit "off" stored in localStorage survives reloads — long-press ⚙ or Settings toggle actually sticks.
+- **Flash hint works in daily mode:** `flashHint()` was guarded by `if (!state.lvl) return` — but `state.lvl` is null in daily mode. Guard now only blocks levels mode with no loaded level. Flash counter and toast also appear in daily.
+- **Share badge spacing:** Extra top margin between the difficulty subtitle and the canvas badge image in the win modal.
+- **Tutorial entry toast:** A brief "📚 Tutorial · 7 levels · follow the flashing cells" toast fires when tutorial level 0 starts, so the player knows they've entered tutorial mode.
+- **Tutorial intermediate button:** "Done for now" renamed to "Skip to daily puzzle" — clarifies where the button leads.
+
+### [v0.10.0] 2026-08-26 — Advantages bar, context-aware banner, admin toggle, win badge
+
+- **Advantages bar in daily mode:** Flash (🔦) and Reveal (💡) buttons now visible below the board during daily puzzles — no longer buried behind the 💡 modal. Counts shown inline.
+- **Context-aware ad banner:** Banner now appears on: past dailies (any day before today), daily with 2+ real hints used, levels mode. Today's clean daily stays banner-free.
+- **Hint 5+ interstitial:** Fifth real hint on daily triggers a 15-second soft overlay — puzzle state is preserved, timer pauses, skip unlocks after 15s. One-time per puzzle (`state.adShown`).
+- **Win modal badge:** Clean solve shows 🧠 + "CLEAN SOLVE" in green; hints used shows 💡 (repeated, capped 3) + "N HINTS USED". More prominent than the old inline `💡×N` in the subtitle.
+- **Admin long-press toggle:** Long-pressing ⚙ now toggles admin both on and off (was one-way on-only). Toast confirms state.
+
+### [v0.9.9] 2026-08-26 — Share card: swatch dots, hint badge, game URL
+
+- **Canvas badge footer:** Replaced bare "💡×N" text with a full footer section — a row of coloured swatch dots (one per mark), a hint badge (🧠 Solved clean or 💡💡💡), and the game URL at the bottom so recipients know where to play.
+- **Text share (6×6 and smaller):** Now shows actual mark glyphs (`■ ● ▲ ◆ ★ ⬟`) instead of spoiler-free row-count emojis — far more interesting and gives a real preview of the puzzle. 9×9+ still uses row counts (too dense otherwise).
+- **Hint badge in text share:** Title line now ends with 🧠 for a clean solve or 💡 (repeated, capped at 3) for hints used.
+- **Game URL in text share:** `https://ronacul.github.io/wine-cellar/chromoku` appended so shareable text includes a link to play.
+
+### [v0.9.8] 2026-08-26 — Fix palette swatch unevenness on 9×9 grid
+
+- **Swatch sizing fix:** 9-mark palette was split 5+4 across two rows; `flex:1 1 0` made the 4-swatch row's swatches visibly wider than the 5-swatch row. Short rows are now padded with invisible `.swatch.spacer` elements so all rows divide the same width by the same count — uniform swatch sizes at every grid size.
+
+### [v0.9.7] 2026-08-23 — Admin: → Next day button cycles through weekly schedule
+
+- **Admin bar — "→ Next day" button:** Increments `state.day` by 1 and reloads the daily, so testers can walk Monday → Tuesday → … → Sunday → Monday without touching the date picker. The button's tooltip shows the date + day name + tier for the current day (e.g. *2026-08-23 · Sunday · Master*). `updateAdminBar()` keeps the tooltip in sync on every navigation.
+
+### [v0.9.6] 2026-08-23 — Daily difficulty escalation: Mon (easiest) → Sun (hardest)
+
+- **6×6 Sudoku added:** `s6` size with 2×3 boxes (`boxDims(6)` already handled this). Givens: Easy 20, Medium 15, Hard 11.
+- **`DAILY_SCHEDULE[7]`:** One config per day of week. Each entry specifies `sizeId`, `diffId`, `dbl`, `latin`, `markSet`, `label`, and `tier`. Edit entries to tune without touching engine code.
+  - Mon: 4×4 Hard (Compact)
+  - Tue: 6×6 Easy — Shapes palette (Symbol)
+  - Wed: 9×9 Easy (Grid)
+  - Thu: 4×4 Hard Double (Double)
+  - Fri: 6×6 Hard — Shapes palette (Symbol Hard)
+  - Sat: 9×9 Hard (Expert)
+  - Sun: 10×10 Latin Double (Master)
+- **`dailyConfig()`:** Derives day-of-week from EPOCH + `state.day`, returns the schedule entry.
+- **`enterDaily()`:** Now loads the day's scheduled config (size, diff, ruleset, mark set) instead of the player's last-used settings. Everyone plays the same board.
+- **Sub-header:** Daily mode now shows *"Monday · Compact · #42"* instead of the raw size/diff labels.
+
+### [v0.9.5] 2026-08-23 — Fix admin bar visibility; move level timer out of header
+
+- **Fix A — Admin bar now visible:** Removed `display:none` from the admin bar's inline style (it was overriding the `.dev-only` CSS rule) and added an explicit `html.dev #adminBar{display:flex}` rule. The green 🛠 ADMIN strip now appears correctly in playtest builds.
+- **Fix B — Timer moved to level bar:** In level mode the countdown timer now lives inside the level bar (right side, next to hearts) instead of the main header. This frees the header's right column in landscape orientation, so the ⚙ settings button is no longer clipped off-screen. The header timer is hidden while in level mode; it reappears in daily/practice mode. `pauseTimer()` and `resumeTimer()` also update the level-bar timer's frozen state.
+
+### [v0.9.4] 2026-08-23 — Admin bar always visible on playtest build
+
+- **Admin bar:** A green 🛠 ADMIN strip now appears between the header and the game board whenever admin mode is active (i.e. always on playtest). Controls directly on screen: level jump input + Go, date input + Today, Reset progress, Daily. No more hunting in Settings.
+
+### [v0.9.3] 2026-08-23 — Fix admin always-on in playtest, fix level reset board
+
+- **Fix A — Admin always visible in playtest:** `adminMode` now defaults to `true` when the playtest banner is present. No more hunting for the toggle or long-pressing ⚙ during playtesting.
+- **Fix B — Level reset shows correct puzzle:** `resetPuzzle()` in level mode now calls `loadLevel()` to rebuild from the level's seed rather than manually clearing moves. This fixes a state-consistency bug where the board could render the wrong puzzle after reset. Power-up counts (hints used) are preserved across the reset — they are not refilled.
+- **Fix C — Add-time modal text:** The "Watch to earn +Ns" line in the ad countdown modal now uses the `ADD_SECS` constant (30) instead of the old hardcoded "+15s".
+
+### [v0.9.2] 2026-08-23 — Fix add-time, reset-in-levels, admin discoverability
+
+- **Fix A — Admin panel discoverability:** Admin tools toggle moved to the top of the Settings modal. Long-press description added to the toggle row. `pointercancel` event now handled so iOS long-press doesn't silently fail. Level jump input now shows the current level when in level mode.
+- **Fix B — Add time cost warning:** "Add time" button in the Out of Time modal now reads "Watch ad for +30s (N left)" so the limited-use cost is clear before tapping.
+- **Fix C — Add time actually works:** `showAddTimeModal` now uses the `ADD_SECS = 30` constant (was hardcoded 15). After the countdown, `state.done` is reset to `false` and "won" CSS classes are stripped before `resumeTimer()` — previously the puzzle stayed locked because `failLevel()` sets `done = true` and `resumeTimer()` early-returns when `done` is true.
+- **Fix D — Reset in levels:** `resetPuzzle()` now (1) costs 1 life with a preview in the confirmation dialog, (2) clears `state.done / elapsed / since / started / frozenUntil` so the board is actually playable after reset, (3) strips leftover "done/won" CSS, and (4) refreshes the heart display in the level bar.
+
 ### [v0.9.1] 2026-08-23 — Bug fixes: admin reset, admin access, logo crop
 
 - **Fix A — Admin Reset confusion:** The "Reset" button in the admin panel (Settings → Admin tools) now shows a confirmation dialog before clearing progress. After clearing, it reloads the same level you were on rather than jumping to level 1.
@@ -16,8 +366,6 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 - **Housekeeping:** `CHROMOKU_VERSION` constant added; version displayed in About modal.
 
 ---
-
-## Released (on `release`)
 
 ### [v0.9.0] 2026-08-22 — Initial playtest branch
 

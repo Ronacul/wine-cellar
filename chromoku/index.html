@@ -53,6 +53,10 @@ body{background:var(--bg);color:var(--ink)}
 button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer}
 
 /* ================= header ================= */
+/* Full-screen play: hide the header entirely during an active level. The level
+   bar (inside #diffs) shows Level N, theme, timer, and hearts. Undo and reset
+   move into that bar so nothing critical is lost. */
+html.in-level header { display:none }
 header{
   width:100%; max-width:min(460px,100%); display:grid;
   grid-template-columns:1fr auto 1fr; align-items:center; gap:4px;
@@ -70,7 +74,7 @@ h1{
   text-align:center; letter-spacing:.06em; text-transform:uppercase; margin-top:2px;
 }
 .icon-btn{
-  width:34px; height:34px; border-radius:9px; font-size:15px; color:var(--ink-dim);
+  width:36px; height:36px; border-radius:10px; font-size:18px; color:var(--ink-dim);
   display:grid; place-items:center; transition:background .15s,color .15s;
 }
 .icon-btn:hover{background:var(--panel2); color:var(--ink)}
@@ -94,6 +98,14 @@ h1{
 .diffs::-webkit-scrollbar{display:none}
 .tiers{display:flex; flex-direction:column; gap:4px; align-items:center; max-width:100%}
 .axis-row{display:flex; gap:8px; align-items:center; max-width:100%}
+/* Admin-only controls: hide the whole .tiers block for regular players so no
+   empty gap appears in the layout. Admins (html.dev) see size + diff rows.
+   During active level play (html.in-level) .tiers reappears to show the level
+   bar, but the size row stays hidden — levels choose their own config. */
+.tiers{display:none}
+html.dev .tiers{display:flex}
+html.in-level .tiers{display:flex !important}
+html.in-level #sizeRow{display:none !important}
 /* Layering is its own axis, so it sits outside the size ladder rather than
    pretending to be one more step along it. */
 .dbl{
@@ -112,19 +124,32 @@ h1{
 
 /* ================= level mode ================= */
 .levelbar{
-  flex:1; display:flex; align-items:center; gap:10px; min-width:0;
-  background:var(--panel2); border-radius:11px; padding:7px 9px;
+  flex:1; display:flex; align-items:center; gap:8px; min-width:0;
+  background:var(--panel2); border-radius:11px; padding:5px 8px;
 }
-.lvl-c{flex:1; display:flex; flex-direction:column; line-height:1.15}
-.lvl-c b{font-size:14px; font-weight:700; white-space:nowrap}
+/* Left section: ← ↶ ↻ buttons in a horizontal row */
+.lvl-l{display:flex; gap:4px; align-items:center; flex-shrink:0}
+/* Buttons in the level bar are smaller than header buttons */
+.levelbar .icon-btn{width:36px; height:36px; font-size:19px; border-radius:10px;
+  background:var(--panel); border:1px solid var(--line-2); color:var(--ink)}
+.levelbar .icon-btn[disabled]{background:transparent; border-color:transparent}
+.lvl-c{flex:1; display:flex; flex-direction:column; line-height:1.15; min-width:0}
+.lvl-c b{font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+/* Right section: hearts stacked above the countdown timer */
+.lvl-r{display:flex; flex-direction:column; align-items:flex-end; gap:1px; flex-shrink:0}
+.lvl-hearts{display:flex; gap:1px; font-size:11px; color:var(--ink-faint); align-items:center}
+.lvl-hearts .on{color:var(--error)}
 /* A peek borrows the next world's mechanic, so it says whose. */
 .pk{font-size:9px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
   background:var(--ink); color:var(--bg); border-radius:5px; padding:2px 5px; vertical-align:2px}
 .lvl-sub{
-  font-family:var(--mono); font-size:9.5px; color:var(--ink-faint); white-space:nowrap;
-  text-transform:uppercase; letter-spacing:.06em; margin-top:2px;
+  font-family:var(--mono); font-size:9px; color:var(--ink-faint); white-space:nowrap;
+  text-transform:uppercase; letter-spacing:.06em; margin-top:1px;
 }
-.hearts{display:flex; gap:2px; font-size:13px; color:var(--ink-faint)}
+.lvl-sub.goal{background:none; border:0; padding:0; text-align:left; cursor:pointer;
+  overflow:hidden; text-overflow:ellipsis; max-width:100%}
+.hearts{display:flex; gap:2px; font-size:13px; color:var(--ink-faint); align-items:center}
+.hearts #lvlTimer{margin-left:6px; font-size:17px; min-width:48px; text-align:right}
 .hearts .on{color:var(--error)}
 .hearts.big{justify-content:center; font-size:26px; gap:5px; margin-bottom:16px}
 /* Countdown to next heart; hidden when full via empty textContent. */
@@ -147,6 +172,11 @@ h1{
 .path .st.boss{color:#c9a227}      /* honey/gold for boss */
 .path .st.peek{color:var(--ink-dim)}
 .path .st.here.boss{color:#c9a227}
+.path.big{display:grid; grid-template-columns:repeat(10,1fr); gap:8px 2px; margin:12px 0 4px; font-size:15px; text-align:center}
+.path.big .st{padding:2px 0}
+.path.big .st.here{font-size:21px}
+.path.big .stg{position:static; display:block; font-size:9px; margin-top:3px; letter-spacing:0}
+.path.big .pips{display:none}
 .path .stg{
   position:absolute; top:-6px; right:-4px; font-size:6.5px; color:#c9a227;
   letter-spacing:-1px;
@@ -158,7 +188,7 @@ h1{
 /* The clock is the only way to lose, so it gets a bar rather than just digits. */
 .tbarwrap{
   width:100%; max-width:400px; height:5px; border-radius:3px;
-  background:var(--panel2); overflow:hidden; margin-top:-16px;
+  background:var(--panel2); overflow:hidden;
 }
 .tbar-fill{
   height:100%; width:100%; border-radius:3px; background:var(--ink-dim);
@@ -170,18 +200,18 @@ h1{
 .timer.danger{color:var(--error); font-weight:600}
 /* Power-up bar — always visible during levels, not buried in a modal. */
 .powerups{
-  display:flex; gap:6px; justify-content:center; width:100%; max-width:400px;
-  margin-top:-8px; margin-bottom:2px;
+  display:flex; gap:6px; justify-content:center; align-items:center;
+  width:100%; max-width:400px;
 }
 .pu{
-  display:flex; align-items:center; gap:4px; padding:4px 10px;
-  border-radius:9px; background:var(--panel2); font-family:var(--mono);
-  font-size:12px; color:var(--ink-dim); transition:transform .1s, background .15s;
+  display:flex; align-items:center; justify-content:center; gap:5px; padding:5px 11px; min-height:36px;
+  border-radius:10px; background:var(--panel2); font-family:var(--mono);
+  font-size:14px; color:var(--ink-dim); transition:transform .1s, background .15s;
   cursor:pointer; user-select:none; border:1px solid transparent;
 }
 .pu:active{transform:scale(.92)}
 .pu[disabled]{opacity:.3; pointer-events:none}
-.pu .pu-icon{font-size:16px; line-height:1}
+.pu .pu-icon{font-size:20px; line-height:1}
 .pu .pu-n{font-weight:700; font-variant-numeric:tabular-nums; color:var(--ink)}
 .pu:hover{background:var(--panel); border-color:var(--line)}
 /* Streak chip — shown next to the subtitle when the player has a streak going. */
@@ -206,6 +236,16 @@ h1{
 .shake{animation:shake .4s ease-out}
 /* Confetti canvas — overlays the board on win */
 .confetti{position:fixed; inset:0; pointer-events:none; z-index:1000}
+.star-win{
+  text-align:center; margin:10px 0 2px; padding:10px 8px; border-radius:12px;
+  border:1px solid rgba(241,196,15,.55); background:rgba(241,196,15,.12);
+}
+.star-win .sw-s{font-size:26px; color:#f1c40f; letter-spacing:4px; line-height:1}
+.star-win .sw-t{font-weight:700; margin-top:4px}
+@media (prefers-reduced-motion:no-preference){
+  .star-win .sw-s{display:inline-block; animation:star-pop .9s cubic-bezier(.2,1.6,.4,1) both}
+  @keyframes star-pop{0%{transform:scale(0) rotate(-40deg); opacity:0}60%{transform:scale(1.5) rotate(8deg); opacity:1}100%{transform:scale(1) rotate(0)}}
+}
 /* Challenge banner — shown when playing someone's challenge */
 .challenge-bar{
   display:flex; align-items:center; gap:8px; justify-content:center;
@@ -215,6 +255,13 @@ h1{
 }
 .challenge-bar .ghost-time{font-weight:700; color:var(--ink)}
 /* Progression interstitial */
+.prog-bar{height:8px; border-radius:4px; background:var(--line-2); overflow:hidden; margin:12px 0 4px}
+.prog-bar .pb-fill{height:100%; background:var(--gold, #c9a227); border-radius:4px; transition:width .4s}
+.pb-lbl{text-align:center; font-family:var(--mono); font-size:11px; color:var(--ink-faint); margin-bottom:8px}
+.mini-demo{display:grid; gap:2px; margin:10px auto 0; width:max-content}
+.mini-demo i{display:block; width:22px; height:22px; border-radius:4px}
+.mini-demo i.hl{box-shadow:0 0 0 2px var(--ink)}
+.mini-cap{font-size:12px; color:var(--ink-dim); text-align:center; margin-top:8px}
 .prog-stage{
   display:flex; gap:4px; justify-content:center; margin:12px 0;
   font-size:22px;
@@ -226,6 +273,23 @@ h1{
   text-align:center; font-family:var(--mono); font-size:12px;
   color:#c9a227; margin:8px 0; letter-spacing:.04em;
 }
+.prog-lv{display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-top:2px}
+.prog-lv b{font-size:18px}
+.prog-lv .prog-rate{color:var(--gold, #c9a227); letter-spacing:1px; font-size:11px}
+.prog-lv .prog-rate i{font-style:normal; color:var(--line-2)}
+.prog-lv span:not(.prog-rate){font-family:var(--mono); font-size:12px; color:var(--ink-dim)}
+.prog-lv em{font-style:normal; font-family:var(--mono); font-size:11px; font-weight:700; color:#fff;
+  background:var(--claret, #a03040); border-radius:6px; padding:2px 7px}
+.prog-goal{
+  text-align:center; margin:10px 0 4px; padding:12px 12px 10px;
+  border:1px solid var(--line-2); border-radius:10px; background:var(--panel2);
+}
+.prog-goal .pg-icon{font-size:26px; line-height:1}
+.prog-goal .pg-head{font-size:20px; margin-top:6px}
+.prog-goal .pg-sub{font-family:var(--mono); font-size:11px; letter-spacing:.06em;
+  color:var(--ink-faint); margin-top:2px}
+.prog-goal .pg-body{font-size:13px; line-height:1.5; color:var(--ink-dim); margin:8px 0 0}
+.btn[disabled]{opacity:.45; pointer-events:none}
 /* Mechanic explainer modal */
 .explainer{text-align:center}
 .exp-icon{font-size:48px; margin-bottom:8px}
@@ -250,22 +314,99 @@ h1{
 }
 
 /* ================= ad banner mockup ================= */
+/* Full-width, slightly compact — enough breathing room without taking over the screen */
 .ad-banner{
-  width:100%; max-width:400px; display:flex; align-items:center; gap:8px;
-  background:var(--panel2); border-radius:10px; padding:8px 12px;
-  font-size:12px; border:1px solid var(--line);
+  width:100%; max-width:min(400px,100%);
+  display:flex; flex-direction:row; align-items:center; justify-content:space-between;
+  gap:8px; background:var(--panel2); border-radius:12px; padding:6px 10px; min-height:50px;
+  border:1px solid var(--line);
 }
+.ad-banner .ad-sub{display:block; font-weight:400}
 .ad-label{
   font-family:var(--mono); font-size:9px; font-weight:700; letter-spacing:.06em;
   text-transform:uppercase; color:var(--ink-faint); border:1px solid var(--line);
-  border-radius:4px; padding:2px 5px; white-space:nowrap; flex:0 0 auto;
+  border-radius:4px; padding:2px 5px; align-self:flex-start;
 }
-.ad-copy{flex:1; color:var(--ink-dim); line-height:1.3}
+.ad-copy{
+  color:var(--ink); font-size:13px; font-weight:600; text-align:center; line-height:1.4;
+}
+.ad-sub{
+  font-size:11px; color:var(--ink-dim); text-align:center; line-height:1.4;
+}
 .ad-cta{
-  font-size:11px; font-weight:700; color:var(--ink);
-  background:var(--panel); border-radius:7px; padding:5px 10px;
-  white-space:nowrap; flex:0 0 auto; border:1px solid var(--line);
+  font-size:12px; font-weight:700; color:#fff;
+  background:#4a8feb; border-radius:9px; padding:7px 12px;
+  white-space:nowrap; border:none; cursor:pointer;
 }
+/* ── Home buttons: today's puzzle, levels, calendar ── */
+.day-nav{
+  display:grid; grid-template-columns:1fr 1fr; gap:8px;
+  padding:0; width:100%; max-width:min(460px,100%);
+}
+.day-nav .home-big{
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+  min-height:52px; padding:5px 8px; border-radius:14px; cursor:pointer;
+  background:var(--panel2); border:1px solid var(--line-2); color:var(--ink);
+}
+.day-nav .home-big .hb-t{font-size:17px; font-weight:700; letter-spacing:-.01em}
+.day-nav .home-big .hb-s{font-family:var(--mono); font-size:11px; opacity:.75}
+.day-nav .home-big.on{background:var(--ink); color:var(--bg); border-color:var(--ink)}
+.day-nav .home-big.lvl{
+  background:rgba(201,162,39,.15); border-color:rgba(201,162,39,.45); color:#c9a227;
+}
+.day-nav .home-big.lvl:hover{background:rgba(201,162,39,.26)}
+.day-nav .home-row{
+  grid-column:1 / -1; display:flex; align-items:center; justify-content:space-between;
+  gap:8px; font-family:var(--mono); font-size:12px; color:var(--ink-dim);
+}
+.day-nav .home-row button{
+  min-height:30px; padding:3px 12px; border-radius:10px; cursor:pointer;
+  background:var(--panel2); border:1px solid var(--line-2); color:var(--ink);
+  font-family:var(--mono); font-size:12px;
+}
+.day-nav .home-view{grid-column:1 / -1; text-align:center; font-family:var(--mono); font-size:11px; color:#c9a227}
+/* Today's puzzle already solved — pulse the Levels button as a nudge. */
+@keyframes lvl-pulse{0%,100%{box-shadow:0 0 0 0 rgba(201,162,39,.5)}50%{box-shadow:0 0 0 5px rgba(201,162,39,0)}}
+.day-nav .home-big.lvl-nudge{
+  animation:lvl-pulse 1.8s ease-in-out infinite;
+  border-color:rgba(201,162,39,.8);
+}
+/* ── Calendar ── */
+.cal-head{display:flex; align-items:center; justify-content:space-between; margin:4px 0 8px}
+.cal-head b{font-size:16px}
+.cal-head button{width:44px; height:40px; border-radius:10px; background:var(--panel2);
+  border:1px solid var(--line-2); color:var(--ink); font-size:18px; cursor:pointer}
+.cal-head button:disabled{opacity:.3}
+.cal-grid{display:grid; grid-template-columns:repeat(7,1fr) 22px; gap:4px; align-items:center}
+.cal-grid .cstar{text-align:center; font-size:15px; color:var(--line-2); line-height:1}
+.cal-grid .cstar.gold{color:#f1c40f}
+.cal-grid .cfoot{text-align:center; font-family:var(--mono); font-size:10px; color:var(--ink-faint)}
+.cal-grid .cfoot.gold{color:#f1c40f; font-size:15px}
+.cal-grid .dow{font-family:var(--mono); font-size:10px; color:var(--ink-faint); text-align:center}
+.cal-grid button, .cal-grid span.blank{
+  aspect-ratio:1; border-radius:10px; font-family:var(--mono); font-size:13px;
+  border:1px solid var(--line); background:var(--panel2); color:var(--ink-dim); cursor:pointer; padding:0;
+}
+.cal-grid span.blank{visibility:hidden}
+.cal-grid button:disabled{opacity:.3; cursor:default}
+.cal-grid button.solved{background:rgba(125,168,123,.28); border-color:var(--ok); color:var(--ink)}
+.cal-grid button.late{background:transparent; border:1.5px solid var(--ok); color:var(--ink)}
+.cal-grid button.today{box-shadow:0 0 0 2px var(--gold, #c9a227)}
+.cal-grid button.sel{outline:2px solid var(--ink); outline-offset:1px}
+.cal-help{margin:8px 0 0; padding:10px 12px; border:1px solid var(--line-2); border-radius:10px;
+  background:var(--panel2); font-size:12px; line-height:1.6; color:var(--ink-dim)}
+.cal-detail{margin-top:12px; padding:12px; border:1px solid var(--line-2); border-radius:12px;
+  background:var(--panel2); text-align:center; font-size:13px; color:var(--ink-dim); min-height:84px}
+.cal-trophies{margin-top:12px}
+.cal-trophies .trow{display:grid; gap:4px; margin-bottom:6px}
+.cal-trophies .m12{grid-template-columns:repeat(12,1fr)}
+.cal-trophies .q5{grid-template-columns:repeat(5,1fr)}
+.cal-trophies .tr{text-align:center; color:var(--line-2); line-height:1.1}
+.cal-trophies .tr span{display:block; font-size:12px}
+.cal-trophies .tr.big span{font-size:13px}
+.cal-trophies .tr i{display:block; font-style:normal; font-family:var(--mono); font-size:9px; color:var(--ink-faint)}
+.cal-trophies .tr.gold span{color:#f1c40f}
+.cal-key{font-family:var(--mono); font-size:10px; color:var(--ink-faint); text-align:center; margin-top:8px}
 
 /* ================= tutorial tip ================= */
 .tut-tip{
@@ -276,18 +417,29 @@ h1{
 }
 
 /* ================= board ================= */
+/* justify-content:flex-start, not center — centring splits leftover height into
+   dead space above and below the stack. Content packs from the top and the
+   board-wrap's auto margins do the optical centring instead. */
 .play{
   flex:1; width:100%; display:flex; flex-direction:column;
-  align-items:center; justify-content:center; gap:clamp(10px,3.5vw,22px);
+  align-items:center; justify-content:flex-start; gap:clamp(6px,1.8vw,12px);
 }
-.board-wrap{width:100%; max-width:min(84vw,340px)}
+/* The board is the hero — leftover height goes into making it bigger rather
+   than into a dead gap. vh cap keeps it from overflowing on short screens. */
+.board-wrap{width:100%; max-width:min(92vw,46vh,400px)}
+/* Admin view carries ~100px of extra chrome (admin bar + size/diff rows), so
+   the board gives that height back rather than pushing the palette off-screen. */
+html.dev .board-wrap{max-width:min(92vw,34vh,400px)}
 
 /* Tighten header and layout on short screens (e.g. iPhone SE) */
 @media (max-height:680px){
   .app{ padding-top:calc(var(--safe-t) + 4px); padding-bottom:calc(var(--safe-b) + 6px) }
   header{ padding-bottom:6px; margin-bottom:8px }
-  .play{ gap:clamp(6px,2.5vw,14px) }
-  .board-wrap{ max-width:min(80vw,300px) }
+  .play{ gap:clamp(4px,1.5vw,9px) }
+  .board-wrap{ max-width:min(86vw,40vh,300px) }
+  /* Short screen + admin chrome is the tightest case there is — the board
+     yields the most here so the palette still clears the fold. */
+  html.dev .board-wrap{ max-width:min(86vw,24vh,300px) }
   .pal-pad{ padding-bottom:10px }
 }
 /* Gap between boxes is 3x the gap inside them — that ratio is the only thing
@@ -349,10 +501,10 @@ h1{
 
 /* ================= palette ================= */
 /* Palette matches the board width so swatches scale with the puzzle. */
-.palette{display:flex; flex-direction:column; gap:26px; align-items:stretch;
+.palette{display:flex; flex-direction:column; gap:clamp(10px,3vw,18px); align-items:stretch;
   width:100%; max-width:min(86vw,360px)}
 /* No number labels past 4 marks, so rows can sit closer. */
-.palette.tight{gap:10px}
+.palette.tight{gap:7px}
 /* Prow fills the palette width; swatches flex to divide it evenly. */
 .prow{display:flex; gap:clamp(5px,1.5vw,8px); align-items:center; flex-wrap:nowrap}
 /* Past four marks we split into separate prow divs via JS (no CSS wrap needed). */
@@ -467,6 +619,9 @@ h1{
 /* Development tools, hidden unless ?dev=1 */
 .dev-only{display:none}
 html.dev .dev-only{display:grid}
+html.dev #adminBar{display:flex}
+.admin-bar::-webkit-scrollbar{display:none}
+.admin-bar > *{flex:0 0 auto}
 .dbg input{
   flex:1; font-family:var(--mono); font-size:12px; padding:8px 10px; border-radius:8px;
   border:1px solid var(--line-2); background:var(--panel2); color:var(--ink);
@@ -507,7 +662,7 @@ html.dev .dev-only{display:grid}
 }
 .overlay.hide{display:none}
 .modal{
-  background:var(--panel); border-radius:18px; padding:24px 22px;
+  background:var(--panel); border-radius:18px; padding:18px 20px;
   width:100%; max-width:360px; box-shadow:0 20px 60px rgba(0,0,0,.28);
   max-height:86vh; overflow-y:auto;
 }
@@ -525,7 +680,7 @@ html.dev .dev-only{display:grid}
 }
 .btn:hover{opacity:.85}
 .btn.ghost{background:var(--panel2); color:var(--ink); margin-top:8px}
-.stats{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:18px}
+.stats{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:12px}
 .stat{text-align:center}
 .stat .n{font-family:var(--mono); font-size:24px; font-weight:600; letter-spacing:-.03em}
 .stat .l{font-size:9.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.07em; margin-top:3px; line-height:1.3}
@@ -612,9 +767,19 @@ html.dev .dev-only{display:grid}
 }
 /* revealed-cell glow */
 .cell.revealed{background:rgba(241,196,15,.18)!important; transition:background .6s}
-/* share badge canvas */
-.badge-wrap{display:flex; justify-content:center; margin-bottom:16px}
-.badge-wrap canvas{max-width:100%; height:auto; border-radius:12px}
+/* share badge canvas — display size and aspect ratio are set by fitBadgeInModal()
+   in JS, so CSS here only needs a visual default; max-width:100% is a safety net
+   in case the canvas is appended without going through fitBadgeInModal(). */
+.badge-wrap{display:flex; justify-content:center; margin-bottom:10px}
+.badge-wrap canvas{max-width:100%; border-radius:12px; display:block}
+/* Short-screen win card */
+@media (max-height:680px){
+  .modal{ padding:14px 16px }
+  .win-time{ font-size:24px; margin:2px 0 8px }
+  .badge-wrap{ margin-bottom:6px }
+  .stats{ margin-bottom:8px }
+  .stat .n{ font-size:19px }
+}
 /* timer frozen effect */
 .timer.frozen{color:#3498db!important; font-weight:700}
 @media (min-width:520px){
@@ -629,7 +794,6 @@ html.dev .dev-only{display:grid}
   <div class="hdr-l">
     <button class="icon-btn logo-btn" id="btnLogo" title="How to play" aria-label="Help" style="width:40px;height:40px;padding:0;border-radius:10px;overflow:hidden;background:#050505;flex-shrink:0"></button>
     <button class="icon-btn" id="btnUndo" title="Undo last move" aria-label="Undo" disabled>↶</button>
-    <button class="icon-btn" id="btnStats" title="Help &amp; stats" aria-label="Help and stats" style="font-size:17px;font-weight:700">?</button>
   </div>
   <div>
     <h1>Chromoku</h1>
@@ -637,21 +801,39 @@ html.dev .dev-only{display:grid}
   </div>
   <div class="hdr-r">
     <span class="timer" id="timer">0:00</span>
-    <button class="icon-btn hint" id="btnHint" title="Get hints" aria-label="Hints" style="position:relative">💡<span id="addsRemaining" style="position:absolute;top:-4px;right:-6px;background:#ff6800;color:white;border-radius:50%;width:18px;height:18px;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid var(--panel)">2</span></button>
-    <button class="icon-btn" id="btnReset" title="Reset puzzle" aria-label="Reset puzzle">↻</button>
+    <button class="icon-btn" id="btnStats" title="Help &amp; stats" aria-label="Help and stats" style="font-size:17px;font-weight:700">?</button>
     <button class="icon-btn" id="btnMark" title="Save bookmark" aria-label="Bookmark">☆</button>
+    <button class="icon-btn" id="btnReset" title="Reset puzzle" aria-label="Reset puzzle">↻</button>
     <button class="icon-btn" id="btnQuit" title="End session" aria-label="End session" style="display:none">✕</button>
     <button class="icon-btn dev-only" id="btnNew" title="New puzzle" aria-label="New practice puzzle">⟳</button>
     <button class="icon-btn" id="btnSettings" title="Settings" aria-label="Settings">⚙</button>
   </div>
 </header>
 
+<!-- Admin bar — visible only in dev/admin mode (html.dev class), never in release -->
+<div class="dev-only admin-bar" id="adminBar" style="background:#1a3a1a;border-bottom:1px solid #3a6a3a;padding:3px 8px;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:#9fdf9f;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;white-space:nowrap">
+  <span style="font-weight:700;color:#6fcf6f;letter-spacing:.05em">🛠 ADMIN</span>
+  <label style="display:flex;align-items:center;gap:4px">Level
+    <input type="number" id="adminLevel" min="1" max="500" style="width:52px;background:#0d1f0d;border:1px solid #3a6a3a;border-radius:4px;color:#9fdf9f;font-family:var(--mono);font-size:11px;padding:2px 4px" value="1">
+    <button id="adminGo" style="background:#2a5a2a;border:1px solid #3a6a3a;border-radius:4px;color:#9fdf9f;font-family:var(--mono);font-size:11px;padding:2px 8px;cursor:pointer">Go</button>
+  </label>
+  <label style="display:flex;align-items:center;gap:4px">Date
+    <input type="date" id="adminDate" style="background:#0d1f0d;border:1px solid #3a6a3a;border-radius:4px;color:#9fdf9f;font-family:var(--mono);font-size:11px;padding:2px 4px">
+    <button id="adminToday" style="background:#2a5a2a;border:1px solid #3a6a3a;border-radius:4px;color:#9fdf9f;font-family:var(--mono);font-size:11px;padding:2px 8px;cursor:pointer">Today</button>
+  </label>
+  <button id="adminReset" style="background:#3a1a1a;border:1px solid #6a3a3a;border-radius:4px;color:#df9f9f;font-family:var(--mono);font-size:11px;padding:2px 8px;cursor:pointer">Reset progress</button>
+  <button id="adminDaily" style="background:#2a5a2a;border:1px solid #3a6a3a;border-radius:4px;color:#9fdf9f;font-family:var(--mono);font-size:11px;padding:2px 8px;cursor:pointer">Daily</button>
+  <button id="adminNext" style="background:#2a4a5a;border:1px solid #3a6a7a;border-radius:4px;color:#9fcfdf;font-family:var(--mono);font-size:11px;padding:2px 8px;cursor:pointer">→ Next day</button>
+</div>
+
 <div class="play">
+  <!-- Day navigation strip — sits at the top so it's the first thing players see -->
+  <div class="day-nav" id="dayNav" style="display:none"></div>
   <div class="tiers">
     <div class="axis-row" id="sizeRow">
       <div class="diffs" id="sizes"></div>
     </div>
-    <div class="axis-row">
+    <div class="axis-row" id="diffRow">
       <div class="diffs" id="diffs"></div>
       <button class="dbl" id="latinToggle">Latin</button>
       <button class="dbl" id="dblToggle">Double</button>
@@ -664,11 +846,11 @@ html.dev .dev-only{display:grid}
   <div class="tut-tip" id="tutTip" style="display:none"></div>
   <div class="board-wrap"><div class="board" id="board"></div></div>
   <div class="palette pal-pad" id="palette"></div>
-  <!-- Ad banner mockup — shown only in level mode, hidden in daily -->
+  <!-- Ad banner — full-width strip -->
   <div class="ad-banner" id="adBanner" style="display:none">
     <span class="ad-label">Ad</span>
-    <span class="ad-copy">🎮 Try <b>PuzzleVault</b> — 500+ brain games</span>
-    <span class="ad-cta">Free →</span>
+    <div class="ad-copy">🎮 PuzzleVault <span class="ad-sub">500+ brain games</span></div>
+    <button class="ad-cta">Try it free →</button>
   </div>
 </div>
 
@@ -706,7 +888,7 @@ const HUES = [
   { hex:"#ff6800", emoji:["🟧","🟧"], label:"Orange"    },   //  5 — vivid orange
   { hex:"#803e75", emoji:["🟪","🟪"], label:"Purple"    },   //  6 — strong purple
   { hex:"#a6bdd7", emoji:["⬜","⬜"], label:"Ice"       },   //  7 — very light blue
-  { hex:"#232c16", emoji:["⬛","⬛"], label:"Dark Olive" },   //  8 — dark olive green
+  { hex:"#f6768e", emoji:["🌸","🌸"], label:"Pink"       },   //  8 — purplish pink (replaces near-black Dark Olive — unplayable)
   { hex:"#593315", emoji:["🟫","🟫"], label:"Brown"     },   //  9 — deep yellowish brown
   { hex:"#ffb300", emoji:["🟨","🟨"], label:"Gold"      },   // 10 — vivid yellow (TODO: refine 10–16)
   { hex:"#cea262", emoji:["🟫","🟫"], label:"Sand"      },   // 11 — grayish yellow
@@ -911,7 +1093,13 @@ function rotatedMarkSet(level, n){
 }
 let MARKS = [];                                   // built for the current grid size
 function buildMarks(){
-  MARKS = MARKSETS[activePalette].build(state.n) || MARKSETS.classic.build(state.n);
+  // On 9×9+ or in double mode the clip-path shapes (triangle, star, …) are too
+  // small / geometrically odd (triangular donuts) to tell apart — fall back the
+  // outer marks to plain colours (same build as classic). Player's preference is
+  // preserved: it still applies for small single-layer grids.
+  const squarify = (state.n >= 9 || state.dbl) && activePalette === "shapes";
+  const outerPal  = squarify ? "classic" : activePalette;
+  MARKS = MARKSETS[outerPal].build(state.n) || MARKSETS.classic.build(state.n);
   INNER = MARKSETS.classic.build(state.n);
 }
 const palette = () => MARKS;
@@ -960,7 +1148,7 @@ const emojiFor = (L, i) => {
 // board stays consistent on re-render, but the decoy is always different
 // from the real value so every cell lies.
 function scrambleDecoy(i, v, n){
-  const seed = state.day * 31 + state.n * 7;
+  const seed = (state.lvl ? state.lvl.cfg.level : state.day) * 31 + state.n * 7;
   let d = ((i * 17 + seed) * 13 + 37) % n;
   if (d === v) d = (d + 1) % n;
   return d;
@@ -977,7 +1165,11 @@ function scrambleStyle(i, v){
     const clip = m.clip ? ";clip-path:" + m.clip + ";border-radius:3px" : "";
     return "--c:" + fakeHex + clip;
   }
-  // Classic colours: colour is truth; shape is noise
+  // Classic colours: colour is truth; shape is noise.
+  // On 9×9+ the cells are too small to read the decoy shape, so skip it.
+  if (state.n >= 9){
+    return "--c:" + m.hex;
+  }
   const fakeIdx = scrambleDecoy(i, v, Math.min(state.n, SHAPES.length));
   const fakeClip = SHAPES[fakeIdx].clip;
   return "--c:" + m.hex + ";clip-path:" + fakeClip + ";border-radius:3px";
@@ -995,6 +1187,7 @@ function scrambleStyle(i, v){
 const SIZES = {
   sudoku: [
     { id:"s4",  label:"4×4",   n:4  },
+    { id:"s6",  label:"6×6",   n:6  },   // 2×3 boxes — boxDims(6) gives bh:2,bw:3
     { id:"s9",  label:"9×9",   n:9  },
     { id:"s16", label:"16×16", n:16 },
   ],
@@ -1008,6 +1201,9 @@ const SIZES = {
 const DIFFICULTIES = {
   sudoku: {
     4:  [{ id:"easy", label:"Easy", givens:8 }, { id:"medium", label:"Medium", givens:6 }, { id:"hard", label:"Hard", givens:4 }],
+    // 6×6: 36 cells total. Easy ~20 (55%), medium ~15 (42%), hard ~11 (31%).
+    // boxDims(6) = {bh:2,bw:3} — standard 2×3 box 6×6 sudoku.
+    6:  [{ id:"easy", label:"Easy", givens:20 }, { id:"medium", label:"Medium", givens:15 }, { id:"hard", label:"Hard", givens:11 }],
     9:  [{ id:"easy", label:"Easy", givens:35 }, { id:"medium", label:"Medium", givens:30 }, { id:"hard", label:"Hard", givens:25 }],
     // 16×16 stays near 140 givens: below that the uniqueness check climbs from
     // ~0.2s to tens of seconds, which is not something to do on page load.
@@ -1020,6 +1216,44 @@ const DIFFICULTIES = {
     10: [{ id:"easy", label:"Easy", givens:55 }, { id:"medium", label:"Medium", givens:48 }, { id:"hard", label:"Hard", givens:42 }],
   },
 };
+
+// ── Daily schedule ────────────────────────────────────────────────────────────
+// One entry per JS day-of-week (0 = Sunday … 6 = Saturday).
+// sizeId / diffId: keys into SIZES + DIFFICULTIES above.
+// dbl: true = double-layer variant.  latin: true = no-box ruleset.
+// markSet: palette override for this day ("classic"|"shapes"|"ink"); null = player's saved choice.
+// label / tier: shown in the sub-header under the board.
+// To tune a day, edit its entry — no other code needs changing.
+const DAILY_SCHEDULE = [
+  // 0 — Sunday (hardest)
+  { sizeId:"l10", diffId:"hard", dbl:true,  latin:true,  markSet:"classic", label:"Sunday",    tier:"Master"  },
+  // 1 — Monday (easiest)
+  { sizeId:"s4",  diffId:"hard", dbl:false, latin:false, markSet:"classic", label:"Monday",    tier:"Compact" },
+  // 2 — Tuesday
+  { sizeId:"s6",  diffId:"easy", dbl:false, latin:false, markSet:"shapes",  label:"Tuesday",   tier:"Symbol"  },
+  // 3 — Wednesday
+  { sizeId:"s9",  diffId:"easy", dbl:false, latin:false, markSet:"classic", label:"Wednesday", tier:"Grid"    },
+  // 4 — Thursday
+  { sizeId:"s4",  diffId:"hard", dbl:true,  latin:false, markSet:"classic", label:"Thursday",  tier:"Double"  },
+  // 5 — Friday
+  { sizeId:"s6",  diffId:"hard", dbl:false, latin:false, markSet:"shapes",  label:"Friday",    tier:"Symbol Hard" },
+  // 6 — Saturday
+  { sizeId:"s9",  diffId:"hard", dbl:false, latin:false, markSet:"classic", label:"Saturday",  tier:"Expert"  },
+];
+
+// Returns the DAILY_SCHEDULE entry for the current state.day.
+// For today we use the device's local day-of-week directly; for past/future
+// days we derive it from the UTC timestamp (which matches since dayNumber()
+// builds its day count from local calendar date components).
+function dailyConfig(){
+  const today = dayNumber();
+  if (state.day === today){
+    // Use local calendar DOW — matches what the user's device says.
+    return DAILY_SCHEDULE[new Date().getDay()];
+  }
+  const date = new Date(EPOCH + (state.day - 1) * 86400000);
+  return DAILY_SCHEDULE[date.getUTCDay()];
+}
 
 const CURR_SIZES = () => SIZES[state.latin ? "latin" : "sudoku"];
 const CURR_DIFFS = (n) => {
@@ -1052,7 +1286,8 @@ const LEGACY_SLOTS = {
   l4:"l4-easy", l5:"l5-easy", l7:"l7-easy", l10:"l10-easy",
 };
 
-const LS_DAILY = "chromoku.daily.v2";   // v2: per-layer state
+const LS_DAILY = "chromoku.daily.v2";   // v2: per-layer state (single-day, kept for migration)
+const LS_DAILY3 = "chromoku.daily.v3"; // v3: per-day keyed store — keeps last 30 days
 const LS_STATS = "chromoku.stats.v1";
 const LS_THEME = "chromoku.theme.v1";
 const LS_HELP  = "chromoku.seen-help.v1";
@@ -1070,7 +1305,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.9.1";
+const CHROMOKU_VERSION = "v0.20.2";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -1084,10 +1319,16 @@ const DEV = (() => {
     return localStorage.getItem(LS_ADMIN) === "1";
   } catch { return false; }
 })();
-let adminMode = DEV;
+// On playtest builds: default admin ON, but an explicit "0" stored in LS_ADMIN
+// takes priority — so the tester can actually turn admin off and have it stay off.
+const _savedAdminVal = (() => { try { return localStorage.getItem(LS_ADMIN); } catch { return null; } })();
+let adminMode = _savedAdminVal === "1" || (_savedAdminVal === null && (DEV || !!document.getElementById("playtestBanner")));
 const LS_DAY   = "chromoku.debug-day.v1";   // debug: pin the daily puzzle to a date
 
 // Box dimensions for a given grid size. 4→2x2, 6→3x2, 9→3x3.
+// activeBoxRotate() unifies level cfg and daily state.boxRotate so every
+// rendering and logic path gets the correct orientation automatically.
+const activeBoxRotate = () => state.lvl ? !!state.lvl.cfg.boxRotate : !!state.boxRotate;
 function boxDims(n, rotate){
   const h = Math.floor(Math.sqrt(n));
   for (let bh = h; bh >= 1; bh--) if (n % bh === 0) {
@@ -1394,6 +1635,9 @@ function lockedCandidates(g, cand, n, U, FULL, rotate){
 // singles. Works for both Sudoku and Latin rulesets — no boxes needed.
 function nakedPairs(g, cand, n, U){
   const empty = i => g[i] === null || g[i] === undefined;
+  // Only a placement counts as progress. The caller rebuilds candidates from the
+  // grid every pass, so a bare elimination is forgotten, and reporting it as
+  // progress made the rater loop forever on some sparse boards.
   let progress = false;
   for (const u of U){
     const twos = [];
@@ -1416,9 +1660,9 @@ function nakedPairs(g, cand, n, U){
           if (i === twos[a].i || i === twos[b].i || !empty(i)) continue;
           if (cand[i] & mask){
             cand[i] &= ~mask;
-            progress = true;
             if (cand[i] && (cand[i] & (cand[i] - 1)) === 0){
               g[i] = 31 - Math.clz32(cand[i]);
+              progress = true;
             }
           }
         }
@@ -1454,13 +1698,11 @@ function hiddenPairs(g, cand, n, U){
         }
         if (placed2 || cells2.length !== 2) continue;
         if (cells1[0] === cells2[0] && cells1[1] === cells2[1]){
+          // Narrows candidates but places nothing, and candidates are not kept
+          // between passes, so this cannot report progress. Left as a no-op
+          // until the rater carries eliminations forward.
           const mask = b1 | b2;
-          for (const i of [cells1[0], cells1[1]]){
-            if (cand[i] & ~mask){
-              cand[i] = mask;
-              progress = true;
-            }
-          }
+          for (const i of [cells1[0], cells1[1]]) cand[i] &= mask;
         }
       }
     }
@@ -1494,10 +1736,14 @@ const TUNE = {
 };
 // ---------------------------------------------------------------------------
 
-const LEVELS_PER_STAGE = 10, STAGES_PER_WORLD = 10, PEEK_STEP = 5;
+const LEVELS_PER_STAGE = 20, STAGES_PER_WORLD = 5, PEEK_STEP = 15;
 // Step-3 inner peek is retired: mark rotation now carries the variety role.
 
 const LEVELS_PER_WORLD = LEVELS_PER_STAGE * STAGES_PER_WORLD;
+// Wave shape across a block of ten levels: breather, build, climb, challenge.
+// Positive = harder (fewer givens). The tenth level is the challenge.
+const DECADE = 10, CHALLENGE_FROM = 20;
+const WAVE = [-2, -2, -1, -1, 0, 0, 1, 1, 2, 3];
 
 /* ================= TUTORIAL SYSTEM ================= */
 // 7-level guided onboarding, highly seeded, with interactive hints
@@ -1546,74 +1792,82 @@ function hasSeenTutorial(){ return load(LS_SEEN_TUTORIAL, false); }
 // Deliberately absent: 16x16 below ~140 givens and 12x12 Latin. Both sit past a
 // generation-cost cliff (seconds, not milliseconds) — see CHROMOKU.md.
 const WORLDS = [
-  // `pool` lists a world's configurations easiest-first; `ramp` maps each of
-  // the ten stages onto one of them. The explicit ramp is the level design —
-  // a proportional mapping spread new mechanics too thinly and left whole
-  // worlds sitting below the previous world's difficulty.
-  // Something changes every ten levels rather than every twenty: the first
-  // twenty used to be one identical 4x4, which is the worst possible place for
-  // the ladder to stand still.
-  { name:"Sunrise", tint:"#f5a623", unlock:"4×4 up to 9×9",
-    // Hook early: 6×6 arrives at stage 2 (level 11) so the player sees a
-    // bigger board before they lose interest. Then alternate between harder
-    // 4×4 and 6×6 to build both muscles, with 9×9 landing at stage 8.
-    // Stage 7 slips a 2×3-box variant in between the regular 6×6s.
-    ramp:[0,3,1,3,2,4,6,4,5,5], pool:[
-      { n:4, boxless:false, layers:1, givens:8  },
-      { n:4, boxless:false, layers:1, givens:6  },
-      { n:4, boxless:false, layers:1, givens:4  },
-      { n:6, boxless:false, layers:1, givens:16 },
-      { n:6, boxless:false, layers:1, givens:13 },
-      { n:9, boxless:false, layers:1, givens:40 },
-      { n:6, boxless:false, layers:1, givens:14, boxRotate:true },  // 2×3 boxes
+  // 5 worlds × 5 stages × 20 levels = 500 real levels.
+  // Each stage is one config for ~20 levels (stage 1 shares its early slots
+  // with the 6 tutorial levels, so delivers ~14 new levels). ramp[i] is the
+  // pool index for stage i+1; with simple [0,1,2,3,4] each stage is distinct.
+  // Boss (step 20) jumps to pool[base+1] — one tier harder for the finale.
+  // Peek (step 15) sneak-previews the next world's mechanic.
+
+  // World 1: THE BASICS — 4×4 up to first 6×6
+  { name:"Sunrise", tint:"#f5a623", unlock:"4×4, then 6×6",
+    ramp:[0,1,2,3,4], pool:[
+      { n:4, boxless:false, layers:1, givens:8  },  // 0: 4×4 easy
+      { n:4, boxless:false, layers:1, givens:6  },  // 1: 4×4 medium
+      { n:4, boxless:false, layers:1, givens:4  },  // 2: 4×4 hard
+      { n:4, boxless:false, layers:2, givens:6  },  // 3: 4×4 double
+      { n:6, boxless:false, layers:1, givens:16 },  // 4: 6×6 easy
   ]},
-  { name:"Tide", tint:"#3498db", unlock:"9×9 and shape marks",
-    // Tide's novelty a beginner can appreciate is the mark set, not the size.
-    preview:{ n:4, boxless:false, layers:1, givens:8, markSet:"shapes" },
-    ramp:[0,0,1,1,2,2,2,3,3,3], pool:[
-      { n:9, boxless:false, layers:1, givens:38 },
-      { n:9, boxless:false, layers:1, givens:34 },
-      { n:9, boxless:false, layers:1, givens:31 },
-      { n:9, boxless:false, layers:1, givens:28 },
+
+  // World 2: SIX COLOURS — 6×6 progressions including double and rotated boxes
+  { name:"Tide", tint:"#3498db", unlock:"6×6 in all its forms",
+    preview:{ n:6, boxless:false, layers:2, givens:14 },
+    ramp:[0,1,2,3,4], pool:[
+      { n:6, boxless:false, layers:1, givens:13 },              // 0: 6×6 medium
+      { n:6, boxless:false, layers:1, givens:10 },              // 1: 6×6 hard
+      { n:6, boxless:false, layers:2, givens:14 },              // 2: 6×6 double easy
+      { n:6, boxless:false, layers:2, givens:12 },              // 3: 6×6 double medium
+      { n:6, boxless:false, layers:1, givens:13, boxRotate:true }, // 4: 6×6 rotated boxes
   ]},
-  // Latin lands here, not earlier: measured harder than Sudoku at equal size
-  // (85% vs 100% solvable by singles at 9x9), despite needing more givens.
-  { name:"Lattice", tint:"#7d5fff", unlock:"Latin rules",
+
+  // World 3: LATIN — rows & columns only, climbing from 5×5 to 9×9
+  { name:"Lattice", tint:"#7d5fff", unlock:"Latin rules (no boxes)",
     preview:{ n:5, boxless:true, layers:1, givens:14 },
-    ramp:[0,1,2,3,3,4,4,5,5,6], pool:[
-      { n:5,  boxless:true, layers:1, givens:12 },
-      { n:7,  boxless:true, layers:1, givens:24 },
-      { n:7,  boxless:true, layers:1, givens:21 },
-      { n:9,  boxless:true, layers:1, givens:38 },
-      { n:9,  boxless:true, layers:1, givens:34 },
-      { n:10, boxless:true, layers:1, givens:50 },
-      // Tide now runs 9x9 the whole way, so Latin needs a ceiling above it.
-      { n:10, boxless:true, layers:1, givens:45 },
+    ramp:[0,1,2,3,4], pool:[
+      { n:5, boxless:true, layers:1, givens:12 },   // 0: 5×5 Latin easy
+      { n:7, boxless:true, layers:1, givens:24 },   // 1: 7×7 Latin easy
+      { n:7, boxless:true, layers:1, givens:21 },   // 2: 7×7 Latin medium
+      { n:9, boxless:true, layers:1, givens:38 },   // 3: 9×9 Latin easy
+      { n:9, boxless:true, layers:1, givens:34 },   // 4: 9×9 Latin medium
   ]},
-  { name:"Echo", tint:"#16a085", unlock:"Double layering",
-    preview:{ n:4, boxless:false, layers:2, givens:8 },
-    ramp:[0,1,1,2,2,3,3,4,4,4], pool:[
-      { n:4, boxless:false, layers:2, givens:6  },
-      { n:6, boxless:false, layers:2, givens:14 },
-      { n:6, boxless:false, layers:2, givens:12 },
-      { n:9, boxless:false, layers:2, givens:38 },
-      { n:9, boxless:false, layers:2, givens:34 },
+
+  // World 4: NINE — standard 9×9 easy → hard, then 9×9 double
+  { name:"Echo", tint:"#16a085", unlock:"9×9 standard and double",
+    preview:{ n:9, boxless:false, layers:1, givens:40 },
+    ramp:[0,1,2,3,4], pool:[
+      { n:9, boxless:false, layers:1, givens:40 },  // 0: 9×9 easy
+      { n:9, boxless:false, layers:1, givens:36 },  // 1: 9×9 medium
+      { n:9, boxless:false, layers:1, givens:30 },  // 2: 9×9 hard
+      { n:9, boxless:false, layers:2, givens:38 },  // 3: 9×9 double easy
+      { n:9, boxless:false, layers:2, givens:34 },  // 4: 9×9 double medium
   ]},
-  { name:"Prism", tint:"#e74c3c", unlock:"everything, combined",
-    // Prism's novelty is two mechanics at once, tasted on a small board.
-    preview:{ n:6, boxless:true, layers:2, givens:20 },
-    ramp:[0,1,1,2,2,3,3,4,4,4], pool:[
-      { n:9,  boxless:false, layers:1, givens:30 },
-      { n:10, boxless:true,  layers:1, givens:48 },
-      { n:9,  boxless:false, layers:2, givens:34 },
-      { n:9,  boxless:true,  layers:2, givens:36 },
-      { n:10, boxless:true,  layers:2, givens:50 },
+
+  // World 5: PRISM — combined mechanics, hardest
+  { name:"Prism", tint:"#e74c3c", unlock:"everything combined",
+    preview:{ n:9, boxless:true, layers:2, givens:36 },
+    ramp:[0,1,2,3,4], pool:[
+      { n:10, boxless:true,  layers:1, givens:50 },  // 0: 10×10 Latin easy
+      { n:10, boxless:true,  layers:1, givens:45 },  // 1: 10×10 Latin medium
+      { n:9,  boxless:false, layers:2, givens:30 },  // 2: 9×9 double hard
+      { n:9,  boxless:true,  layers:2, givens:36 },  // 3: 9×9 Latin double
+      { n:10, boxless:true,  layers:2, givens:50 },  // 4: 10×10 Latin double
   ]},
 ];
 
 const worldOf = level => Math.min(WORLDS.length, Math.floor((level - 1) / LEVELS_PER_WORLD) + 1);
 const stageOf = level => Math.floor(((level - 1) % LEVELS_PER_WORLD) / LEVELS_PER_STAGE) + 1;
 const stepOf  = level => ((level - 1) % LEVELS_PER_STAGE) + 1;
+
+// 1–5 difficulty shown on the splash: size and clue load set the base (from the
+// par time), then the wave nudges it so breathers read easier and challenges harder.
+const RATING_LABELS = ["", "Warm-up", "Easy", "Medium", "Hard", "Brutal"];
+function levelRating(cfg){
+  const par = parSeconds(cfg, 2);
+  const base = par <= 30 ? 1 : par <= 60 ? 2 : par <= 110 ? 3 : par <= 200 ? 4 : 5;
+  const off = cfg.challenge ? 2 : cfg.wave <= -1 ? -1 : cfg.wave === 0 ? 0 : 1;
+  const r = Math.max(1, Math.min(5, base + off));
+  return { r, label: RATING_LABELS[r] };
+}
 
 // A level's configuration is a pure function of its number, so level N is the
 // same puzzle for everyone and no table has to be maintained.
@@ -1645,13 +1899,41 @@ function levelConfig(level){
   // Trimming givens only changes difficulty where the grid is big enough to
   // hold reasoning depth; below 9x9 it just means more typing. A peek keeps its
   // full complement — it is meant to intrigue, not to punish.
-  const trim = !peek && cfg.n >= 9 ? Math.floor((step - 1) / 3) : 0;
-  const givens = Math.max(cfg.givens - trim, Math.ceil(cfg.n * cfg.n * 0.25));
+  // Trim 1 given every 6 steps on 9×9+ for a gentle within-stage ramp.
+  const trim = !peek && cfg.n >= 9 ? Math.floor((step - 1) / 6) : 0;
+
+  // Waves: difficulty is a sawtooth over each block of ten levels, not a ramp.
+  // Steps 1–2 are a breather, then it climbs, and every tenth level is a
+  // challenge. A wave unit moves the clue count by ~3.5% of the grid, so a
+  // breather has a few more givens and a climb a few fewer. Peeks are exempt.
+  const decade = ((level - 1) % DECADE) + 1;
+  const challenge = level >= CHALLENGE_FROM && decade === DECADE && !peek;
+  const wave = peek ? 0 : WAVE[decade - 1];
+  let unit = Math.round(cfg.n * cfg.n * 0.035 * wave);
+  // Big double grids are already at the edge of what the generator can make
+  // unique, so their climbs are carried by the clock rather than thinner clues.
+  if (cfg.layers > 1 && cfg.n >= 9) unit = Math.min(unit, 0);
+  // Never go thinner than the sparsest clue count this grid type already uses
+  // elsewhere (less the stage trim): below that the generator may not find a
+  // unique puzzle at all.
+  let sparsest = cfg.givens;
+  for (const wd of WORLDS) for (const e of wd.pool)
+    if (e.n === cfg.n && !!e.boxless === !!cfg.boxless) sparsest = Math.min(sparsest, e.givens);
+  const floorG = Math.max(Math.ceil(cfg.n * cfg.n * 0.25), cfg.n >= 9 ? sparsest - 3 : 0);
+  const givens = Math.min(cfg.n * cfg.n - 2, Math.max(cfg.givens - trim - unit, floorG));
+
+  // Challenge levels scramble the marks (colours wear misleading shapes, shapes
+  // misleading colours). The decoy is only readable on grids up to 8×8, and
+  // patterns have no second dimension to scramble, so those sizes keep the
+  // tighter clues but no decoys.
+  const scramble = challenge && cfg.n < 9;
+  let markSet = cfg.markSet || null;
+  if (scramble) markSet = (Math.floor(level / DECADE) % 2 && MARKSETS.shapes.build(cfg.n)) ? "shapes" : "classic";
 
   return { ...cfg, givens, level, world:w, stage, step, peek,
            boss:step === LEVELS_PER_STAGE, theme:world,
            peekOf: peek ? WORLDS[w].name : null,
-           markSet: cfg.markSet || null };
+           markSet, wave, challenge, scramble };
 }
 
 const levelSeed = level => level * 7919 + 13;
@@ -1676,6 +1958,10 @@ function generosity(level, peek){
              + TUNE.generositySpan * Math.exp(-block / TUNE.generosityDecayBlocks);
   return base + (peek ? TUNE.peekRelief : 0);
 }
+
+// The wave also moves the clock, because on small grids the clue count has no
+// room left to move: a breather gets up to 14% more time, a challenge 21% less.
+const waveClock = cfg => 1 - 0.07 * (cfg.peek ? 0 : cfg.wave);
 
 // Everything needed to play a level: the puzzle, its measured difficulty, and
 // the clock it has to be beaten against.
@@ -1703,7 +1989,7 @@ function buildLevel(level){
   const stalls = rated.reduce((s, r) => s + r.stalls, 0);
 
   const par = parSeconds(cfg, tier);
-  return { cfg, layers, tier, stalls, par, limit: par * generosity(level, cfg.peek) };
+  return { cfg, layers, tier, stalls, par, limit: par * generosity(level, cfg.peek) * waveClock(cfg) };
 }
 
 /* ================= progression state ================= */
@@ -1740,6 +2026,7 @@ const state = {
   latin:false,             // ruleset axis: no boxes, rows and columns only
   dbl:false,               // layering axis: applies to whichever tier is selected
   scramble:false,           // Stroop axis: cross colours/shapes to mislead the eye
+  boxRotate:false,          // rotate box orientation (e.g. 6×6: 2×3 → 3×2)
   practice:false,          // a re-rollable puzzle, outside the daily record
   mistakes:0,              // foundation for a lives/ads gate later
   done:false,
@@ -1748,9 +2035,12 @@ const state = {
   history:[],              // stack of { entries:[{L,i,prev}] } — one per user gesture
   bookmark:null,           // { layers:[grid, ...] } — single-slot board snapshot
   hints:{ reveals:0, freezes:0, adds:0, flashes:0 },   // hint usage this puzzle
+  bonusReveals:0,          // extra reveal capacity granted by the premium ad bundle
+  adShown:false,           // true once the 5-hint interstitial has fired this puzzle
   frozenUntil:0,           // timestamp: clock display freezes until
 };
 const HISTORY_MAX = 50;
+let _winTimer = null;   // pending setTimeout before the win modal appears
 
 /* ================= persistence ================= */
 
@@ -1782,19 +2072,95 @@ function save(key, val){
 }
 const blankStats = () => ({ played:0, streak:0, maxStreak:0, lastWinDay:null, best:{} });
 
-function loadDaily(){
-  const d = load(LS_DAILY, null);
-  if (!d || d.day !== state.day) return { day:state.day };
-  // One-time migration: old single-axis tier IDs → new composite IDs
-  if (!d._mig){
-    for (const [old, nk] of Object.entries(LEGACY_SLOTS)){
-      if (d[old] && !d[nk])           { d[nk]         = d[old]; }
-      if (d[old+"-x2"] && !d[nk+"-x2"]) { d[nk+"-x2"] = d[old+"-x2"]; }
-    }
-    d._mig = true; save(LS_DAILY, d);
+// ── Permanent daily history ──────────────────────────────────────────────────
+// The per-day slot store prunes to 30 days, so the calendar and streak read
+// from their own record: { [dayNumber]: { secs, onTime } }. `onTime` means the
+// puzzle was solved on its own day, which is what the streak counts; solving an
+// old day later fills the calendar but cannot extend a streak.
+const LS_HIST = "chromoku.history.v1";
+function loadHistory(){
+  let h = load(LS_HIST, null);
+  if (h) return h;
+  // First run: seed from what the older stores still hold.
+  h = {};
+  const store = load(LS_DAILY3, {}) || {};
+  for (const [day, rec] of Object.entries(store)){
+    const done = Object.values(rec || {}).filter(v => v && v.done);
+    if (done.length) h[day] = { secs:Math.round(Math.min(...done.map(v => (v.elapsed || 0) / 1000))), onTime:false };
   }
-  return d;
+  const st = load(LS_STATS, null);
+  if (st && st.lastWinDay && st.streak > 0){
+    for (let i = 0; i < st.streak; i++){
+      const d = String(st.lastWinDay - i);
+      h[d] = h[d] || { secs:0 };
+      h[d].onTime = true;
+    }
+  }
+  save(LS_HIST, h);
+  return h;
 }
+function recordDayWin(day, secs){
+  const h = loadHistory(), k = String(day), old = h[k];
+  h[k] = {
+    secs: old && old.secs ? Math.min(old.secs, secs) : secs,
+    onTime: !!(old && old.onTime) || day === dayNumber(),
+  };
+  save(LS_HIST, h);
+}
+// Current streak counts back from today, or from yesterday while today is still
+// open, so it only breaks once a whole day has passed unsolved.
+function streakInfo(){
+  const h = loadHistory();
+  const on = d => !!(h[String(d)] && h[String(d)].onTime);
+  let d = dayNumber();
+  if (!on(d)) d--;
+  let cur = 0;
+  while (d >= 1 && on(d)){ cur++; d--; }
+  const days = Object.keys(h).map(Number).filter(on).sort((a, b) => a - b);
+  let best = 0, run = 0;
+  days.forEach((x, i) => { run = i && x === days[i - 1] + 1 ? run + 1 : 1; best = Math.max(best, run); });
+  return { cur, best: Math.max(best, cur) };
+}
+
+// ── v3 multi-day helpers ─────────────────────────────────────────────────────
+// Returns the per-day slot record for a given day (defaults to {}), migrating
+// v2 single-day data into the v3 store on first access.
+function loadDayRecord(day){
+  // One-time migration: if v3 is empty and v2 has data for today, seed v3.
+  const store = load(LS_DAILY3, null);
+  if (!store){
+    const v2 = load(LS_DAILY, null);
+    if (v2 && v2.day){
+      // Apply v2 legacy-slot migration before importing.
+      if (!v2._mig){
+        for (const [old, nk] of Object.entries(LEGACY_SLOTS)){
+          if (v2[old] && !v2[nk])               { v2[nk]       = v2[old]; }
+          if (v2[old+"-x2"] && !v2[nk+"-x2"])   { v2[nk+"-x2"] = v2[old+"-x2"]; }
+        }
+      }
+      const migrated = {};
+      for (const k of Object.keys(v2)){
+        if (k !== "day" && k !== "_mig") migrated[k] = v2[k];
+      }
+      const newStore = { [String(v2.day)]: migrated };
+      save(LS_DAILY3, newStore);
+      return (day === v2.day) ? migrated : {};
+    }
+    save(LS_DAILY3, {});
+    return {};
+  }
+  return store[String(day)] || {};
+}
+function saveDayRecord(day, record){
+  const store = load(LS_DAILY3, {});
+  store[String(day)] = record;
+  // Prune to last 30 days to keep localStorage lean.
+  const keys = Object.keys(store).map(Number).sort((a, b) => b - a);
+  if (keys.length > 30){ keys.slice(30).forEach(k => delete store[String(k)]); }
+  save(LS_DAILY3, store);
+}
+// ── compatibility wrappers (called by existing code) ─────────────────────────
+function loadDaily(){ return loadDayRecord(state.day); }
 function saveProgress(){
   if (state.practice) return;   // practice never enters the daily record
   const d = loadDaily();
@@ -1805,8 +2171,10 @@ function saveProgress(){
     // most valuable after a break, not just within a single session.
     bookmark:state.bookmark,
     hints:state.hints,
+    boxRotate:!!state.boxRotate,   // saved so a rotated-box puzzle is never
+    latin:!!state.latin,           // loaded into a session with the wrong layout
   };
-  save(LS_DAILY, d);
+  saveDayRecord(state.day, d);
 }
 
 /* ================= timer ================= */
@@ -1835,25 +2203,31 @@ setInterval(tickTimer, 250);
 function tickTimer(){
   updateRegenChip();
   const el = document.getElementById("timer");
+  const lvlEl = document.getElementById("lvlTimer");
   const frozen = state.frozenUntil > Date.now();
   if (state.mode !== "levels"){
-    el.textContent = fmtTime(elapsedMs());
-    el.className = "timer" + (frozen ? " frozen" : "");
+    // In daily/practice mode: show header timer, no level-bar timer
+    if (el) { el.style.display = ""; el.textContent = fmtTime(elapsedMs()); el.className = "timer" + (frozen ? " frozen" : ""); }
     return;
   }
 
-  // Tutorial levels have no timer — hide the display and bar
+  // In level mode: hide header timer, drive level-bar timer instead
+  if (el) el.style.display = "none";
+
+  // Tutorial levels have no timer — hide level-bar timer and bar
   if (state.lvl && state.lvl.cfg.noTimer){
-    el.textContent = "";
-    el.className = "timer";
+    if (lvlEl) { lvlEl.textContent = ""; lvlEl.className = "timer"; }
     const bar = document.getElementById("tbar");
     if (bar) bar.style.width = "0";
     return;
   }
 
   const left = Math.max(0, state.limitMs - elapsedMs());
-  el.textContent = fmtTime(left);
-  el.className = "timer lvl" + (frozen ? " frozen" : left < 10000 ? " danger" : left < 30000 ? " warn" : "");
+  const timerClass = "timer lvl" + (frozen ? " frozen" : left < 10000 ? " danger" : left < 30000 ? " warn" : "");
+  const timerText = fmtTime(left);
+  if (lvlEl) { lvlEl.textContent = timerText; lvlEl.className = timerClass; }
+  // Keep el in sync too (hidden, but used by resumeTimer frozen-class check)
+  if (el) { el.textContent = timerText; el.className = timerClass; }
 
   const bar = document.getElementById("tbar");
   if (bar){
@@ -1894,9 +2268,11 @@ function dayNumber(){
 
 // Two-axis loader: picks a size + difficulty, generates or restores the puzzle.
 // `fresh` re-rolls from a random seed instead of loading today's puzzle.
-function loadPuzzle(sizeId, diffId, fresh){
+// `_skipConflictCheck` is an internal flag used by the conflict guard to
+// regenerate the daily seed without marking the session as a practice game.
+function loadPuzzle(sizeId, diffId, fresh, _skipConflictCheck){
   stopTimer();
-  state.practice = !!fresh;
+  state.practice = !!fresh && !_skipConflictCheck;
 
   const sizes = CURR_SIZES();
   const sObj = sizes.find(s => s.id === sizeId) || sizes[0];
@@ -1910,7 +2286,17 @@ function loadPuzzle(sizeId, diffId, fresh){
   buildMarks();               // mark count follows grid size
 
   const saved = fresh ? null : loadDaily()[slot(state.size, state.diff, state.dbl)];
-  if (saved && saved.layers){
+  // Reject a cached puzzle if its box/latin layout doesn't match the current config.
+  // A mismatch means the grid was generated for different box boundaries — loading
+  // it would make valid givens appear to share a box (the two-blues bug).
+  // Old saves have no boxRotate/latin flags; treat them as generated with the
+  // defaults (false/false). If the current config deviates from those defaults,
+  // an untagged save cannot be trusted and is discarded.
+  const layoutMismatch = saved && (
+    !!( saved.boxRotate ?? false) !== !!state.boxRotate ||
+    !!(saved.latin      ?? false) !== !!state.latin
+  );
+  if (saved && saved.layers && !layoutMismatch){
     state.layers = saved.layers.map(L => ({
       grid:L.grid.slice(), solution:L.solution.slice(), givens:L.givens.slice(),
     }));
@@ -1930,13 +2316,45 @@ function loadPuzzle(sizeId, diffId, fresh){
                          + si * 10 + di * 2 + (state.dbl ? 1 : 0);
     state.layers = [];
     for (let L = 0; L < layerCount(); L++){
-      const p = generatePuzzle(base + L * 7919, sObj.n, dObj.givens, state.latin);
+      const p = generatePuzzle(base + L * 7919, sObj.n, dObj.givens, state.latin, state.boxRotate);
       state.layers.push({ grid:p.puzzle.slice(), solution:p.solution.slice(), givens:p.givens.slice() });
     }
     state.elapsed = 0; state.mistakes = 0; state.done = false; state.started = false;
     state.bookmark = null;
-    state.hints = { reveals:0, freezes:0, adds:0, flashes:0 };
+    state.hints = { reveals:0, freezes:0, adds:0, flashes:0 }; state.bonusReveals = 0; state.adShown = false; state._adReveals = 0;
   }
+
+  // Post-load sanity check: verify no two givens share the same colour in the
+  // same box on any layer. If they do the cached puzzle is corrupt (e.g. from
+  // a boxRotate mismatch before v0.12.10) — wipe the slot and regenerate now.
+  // This is a runtime safety net that works regardless of service-worker cache state.
+  // Only run on cached loads; skip if flagged to avoid recursion.
+  if (!fresh && !_skipConflictCheck){
+    const n = state.n;
+    const { bh, bw } = boxDims(n, !!state.boxRotate);
+    let conflictFound = false;
+    outer: for (const lyr of state.layers){
+      const seen = {}; // "boxIdx:colour" → true
+      for (let i = 0; i < n * n; i++){
+        if (!lyr.givens[i]) continue;
+        const colour = lyr.givens[i];
+        const r = (i / n) | 0, c = i % n;
+        const box = ((r / bh) | 0) * (n / bw) + ((c / bw) | 0);
+        const key = box + ":" + colour;
+        if (seen[key]){ conflictFound = true; break outer; }
+        seen[key] = true;
+      }
+    }
+    if (conflictFound){
+      const daily = loadDaily();
+      delete daily[slot(state.size, state.diff, state.dbl)];
+      saveDayRecord(state.day, daily);
+      // Reload from the daily seed (not fresh/random), skipping the conflict
+      // check on the next pass to avoid recursion. state.practice stays false.
+      return loadPuzzle(state.size, state.diff, false, true);
+    }
+  }
+
   state.since = null; state.sel = null; state.erase = false;
   state.history = []; state.frozenUntil = 0;
   if (!fresh){ save(LS_SIZE, state.size); save(LS_LAST, state.diff); }
@@ -1978,6 +2396,7 @@ function loadLevel(n){
   state.n = lv.cfg.n;
   state.latin = lv.cfg.boxless;
   state.dbl = lv.cfg.layers > 1;
+  state.scramble = !!lv.cfg.scramble;   // never inherit the daily's toggle
   state.practice = true;          // levels keep their own record, not the daily one
   // A preview can advertise a mark set as well as a rule; restore the player's
   // own choice as soon as the level ends.
@@ -1996,7 +2415,7 @@ function loadLevel(n){
   state.elapsed = 0; state.since = null; state.started = false;
   state.mistakes = 0; state.done = false; state.sel = null; state.erase = false;
   state.history = []; state.bookmark = null;
-  state.hints = { reveals:0, freezes:0, adds:0, flashes:0 }; state.frozenUntil = 0;
+  state.hints = { reveals:0, freezes:0, adds:0, flashes:0 }; state.bonusReveals = 0; state.adShown = false; state._adReveals = 0; state.frozenUntil = 0;
 
   // Don't overwrite the player's highest-level progress when replaying tutorial.
   // Tutorial replay uses levels 0–6; we only advance, never regress.
@@ -2010,7 +2429,11 @@ function loadLevel(n){
   if (isTutorialLevel(n)){
     state._tutHintLayer = 0; // Double mode: start by coaching the outer (donut) layer
     state._tutHintCount = 0; // how many auto-hints have fired this level (for power-up demo timing)
-    if (n === 0) state._tutPowerupDemo = false; // reset the one-shot demo on full tutorial restart
+    if (n === 0){
+      state._tutPowerupDemo = false; // reset the one-shot demo on full tutorial restart
+      // Brief announcement so the player knows they've entered the tutorial
+      setTimeout(() => toast("📚 Tutorial · 7 levels · follow the flashing cells"), 400);
+    }
     if (state._hintTimer) clearTimeout(state._hintTimer);
     if (state._hintInterval) clearInterval(state._hintInterval);
     // First hint after 1.5s; repeat every 4.5s.
@@ -2026,13 +2449,87 @@ function loadLevel(n){
   }
 }
 
+// 7-day arc: each day has a pool of equivalent-difficulty configs that rotate
+// week-to-week so the puzzle never feels stale. getDailyConfig() is
+// deterministic: same day number always returns the same config.
+function getDailyConfig(forDay){
+  const d    = (forDay !== undefined) ? forDay : state.day;
+  const date = new Date(EPOCH + (d - 1) * 86400000);
+  // Use local DOW for today (matches dayNumber's local-date normalisation),
+  // UTC DOW for past days (EPOCH is UTC-based so reconstruction is exact).
+  const dow  = (d === dayNumber()) ? new Date().getDay() : date.getUTCDay();
+  const week = Math.floor((d - 1) / 7);
+  // Helper — builds a full config from a size/diff pair + optional overrides.
+  const C = (sizeId, diffId, opts) =>
+    Object.assign({ sizeId, diffId, dbl:false, latin:false, scramble:false, boxRotate:false, markSet:"classic" }, opts);
+  const DAY_NAMES = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  const DAY_TIERS = ["Epic","Intro","Easy+","Tricky","Grid","Double","Hard"];
+  const pools = {
+    1: [ // Monday — Easy warmup, 4×4, mark sets rotate
+      C("s4","easy"),
+      C("s4","easy",{ markSet:"shapes" }),
+      C("s4","easy",{ markSet:"ink" }),
+    ],
+    2: [ // Tuesday — Easy+, 4×4 Medium or 6×6 Easy
+      C("s4","medium"),
+      C("s6","easy"),
+      C("s6","easy",{ boxRotate:true }),
+    ],
+    3: [ // Wednesday — Medium/Tricky, Double mechanic or Latin intro
+      C("s4","hard",  { dbl:true }),
+      C("s6","easy",  { dbl:true }),
+      C("l4","medium",{ latin:true }),
+      C("s6","medium"),
+    ],
+    4: [ // Thursday — 9×9 Easy, sudoku crowd, mark sets rotate
+      C("s9","easy"),
+      C("s9","easy",{ markSet:"shapes" }),
+      C("s9","easy",{ markSet:"ink" }),
+    ],
+    5: [ // Friday — 6×6 Double Medium, box orientation alternates
+      C("s6","medium",{ dbl:true }),
+      C("s6","medium",{ dbl:true, boxRotate:true }),
+    ],
+    6: [ // Saturday — 9×9 Classic Medium, variety through mark set + scramble
+      C("s9","medium"),
+      C("s9","medium",{ markSet:"shapes" }),
+      C("s6","hard",  { dbl:true }),
+      C("s9","medium",{ scramble:true }),
+    ],
+    0: [ // Sunday — 9×9 Double Medium, epic weekend
+      C("s9","medium",{ dbl:true }),
+      C("s9","medium",{ dbl:true, scramble:true }),
+      C("l7","medium",{ latin:true }),
+    ],
+  };
+  const pool = pools[dow] || pools[1];
+  const cfg  = pool[week % pool.length];
+  return Object.assign({ label: DAY_NAMES[dow], tier: DAY_TIERS[dow] }, cfg);
+}
+
+// Advance past all tutorial levels and jump directly into the first real level.
+// Called by both the "Skip tutorial" tip button and the post-tutorial modal.
+function skipTutorial(){
+  const p = progress();
+  saveProgress2(Object.assign(p, { level: Math.max(p.level, TUTORIAL_CONFIGS.length) }));
+  loadLevel(TUTORIAL_CONFIGS.length);
+}
+
 function enterDaily(){
   state.mode = "daily"; state.lvl = null; state.practice = false;
-  state.latin = load(LS_LATIN, false); state.dbl = load(LS_DBL, false);
-  const defSize = CURR_SIZES()[0].id;
-  const sizeId = load(LS_SIZE, defSize);
-  const diffId = load(LS_LAST, "easy");
-  loadPuzzle(sizeId, diffId);
+  // Clear tutorial auto-hint timers — they fire flashHint(false) on a loop and
+  // must not bleed into daily mode when the player quits mid-tutorial.
+  if (state._hintTimer){ clearTimeout(state._hintTimer); state._hintTimer = null; }
+  if (state._hintInterval){ clearInterval(state._hintInterval); state._hintInterval = null; }
+  // Restore header — full-screen play mode only applies during active levels
+  document.documentElement.classList.remove("in-level");
+  const cfg = getDailyConfig();
+  state.latin    = cfg.latin;
+  state.dbl      = cfg.dbl;
+  state.scramble = cfg.scramble;
+  state.boxRotate = cfg.boxRotate;
+  if (cfg.markSet && MARKSETS[cfg.markSet]) activePalette = cfg.markSet;
+  loadPuzzle(cfg.sizeId, cfg.diffId);
 }
 
 /* ================= conflicts ================= */
@@ -2041,7 +2538,7 @@ function conflictsAt(L, idx){
   const n = state.n, g = state.layers[L].grid, v = g[idx];
   const out = new Set();
   if (v === null || v === undefined) return out;
-  const rotate = !!(state.lvl && state.lvl.cfg.boxRotate);
+  const rotate = activeBoxRotate();
   const { bw, bh } = boxDims(n, rotate);
   const r = Math.floor(idx / n), c = idx % n;
   for (let i = 0; i < n; i++){
@@ -2073,10 +2570,331 @@ function isSolved(){
 
 /* ================= rendering ================= */
 
+// Returns true if any slot for the given day is marked done.
+function isDayDone(day){
+  const rec = loadDayRecord(day);
+  return Object.values(rec).some(v => v && v.done);
+}
+
+// Home buttons in daily mode: today's puzzle, levels, and the calendar.
+// A past day opened from the calendar shows a one-line reminder; the Today
+// button is always the way back.
+function renderDailyNav(){
+  const el = document.getElementById("dayNav");
+  if (!el) return;
+  if (state.mode !== "daily" || state.practice){
+    el.style.display = "none"; return;
+  }
+  el.style.display = "";
+
+  const today = dayNumber();
+  const tc = getDailyConfig(today);
+  const todayDone = isDayDone(today);
+  const viewing = state.day !== today;
+  const lvlTotal = WORLDS.length * LEVELS_PER_WORLD;
+  const lvlNum   = Math.max(0, Math.min(progress().level - TUTORIAL_CONFIGS.length, lvlTotal));
+  const sk = streakInfo();
+
+  let html = '<button class="home-big' + (viewing ? '' : ' on') + '" id="dnToday">'
+    + '<span class="hb-t">Today\'s puzzle' + (todayDone ? ' ✓' : '') + '</span>'
+    + '<span class="hb-s">' + tc.tier + ' · #' + today + '</span></button>'
+    + '<button class="home-big lvl' + (todayDone ? ' lvl-nudge' : '') + '" id="dnLevels">'
+    + '<span class="hb-t">Levels</span>'
+    + '<span class="hb-s">' + lvlNum + ' / ' + lvlTotal + '</span></button>';
+  if (viewing){
+    const dt = new Date(EPOCH + (state.day - 1) * 86400000);
+    html += '<div class="home-view">Viewing #' + state.day + ' · ' + dayLabel(dt) + '</div>';
+  }
+  html += '<div class="home-row"><span>' + (sk.cur ? '🔥 ' + sk.cur + ' day streak' : 'No streak yet')
+    + (sk.best > sk.cur ? ' · best ' + sk.best : '') + '</span>'
+    + '<span><button id="dnTheme" aria-label="Switch theme" title="Theme">🌓</button> '
+    + '<button id="dnCal">📅 Calendar</button></span></div>';
+
+  el.innerHTML = html;
+  el.querySelector("#dnToday").onclick = () => {
+    if (_winTimer){ clearTimeout(_winTimer); _winTimer = null; }
+    if (viewing){ state.day = today; enterDaily(); }
+  };
+  // Real levels open on the intro card (goal, rating, where you are in the
+  // stage) rather than dropping straight onto a board; the tutorial goes direct.
+  el.querySelector("#dnLevels").onclick = () => {
+    closeModal();
+    const lv = progress().level;
+    if (isTutorialLevel(lv)) loadLevel(lv); else showProgression(lv);
+  };
+  el.querySelector("#dnCal").onclick = () => showCalendar();
+  el.querySelector("#dnTheme").onclick = () => {
+    const order = ["auto", "light", "dark"], cur = load(LS_THEME, "auto");
+    const next = order[(order.indexOf(cur) + 1) % 3];
+    save(LS_THEME, next); applyTheme();
+    toast(next === "auto" ? "Theme: auto" : "Theme: " + next);
+  };
+}
+
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const dayLabel = dt => ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][dt.getUTCDay()] + " " + dt.getUTCDate() + " " + MONTHS[dt.getUTCMonth()].slice(0, 3);
+
+// Month view of every daily since the first puzzle. Filled = solved on the
+// day (counts towards the streak); outlined = solved later; ringed = today.
+// Everything the calendar draws, as data, so the screen and the share image
+// cannot disagree. A row is a week (all seven days solved), a column is a
+// weekday (every one of that weekday in the month solved), and the corner is
+// the whole month. Days before the first puzzle are ignored; future days are
+// unsolved, so a star can only appear once the days are behind you.
+function calModel(year, month, h, today){
+  const dayOf = (y, m, d) => Math.round((Date.UTC(y, m, d) - EPOCH) / 86400000) + 1;
+  const lead = (new Date(Date.UTC(year, month, 1)).getUTCDay() + 6) % 7;   // Monday first
+  const dim = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const colTotal = [0,0,0,0,0,0,0], colDone = [0,0,0,0,0,0,0], colFull = [true,true,true,true,true,true,true];
+  const rows = [];
+  for (let r = 0; r < Math.ceil((lead + dim) / 7); r++){
+    let weekAll = true;
+    const cells = [];
+    for (let c = 0; c < 7; c++){
+      const d = r * 7 + c - lead + 1;
+      const n = dayOf(year, month, d);   // a week may spill into a neighbouring month
+      // A star needs a whole period: days before the first puzzle can never be
+      // solved, so a week or weekday that includes one can never be starred.
+      if (n < 1 || !h[String(n)]) weekAll = false;
+      if (d < 1 || d > dim){ cells.push(null); continue; }
+      const rec = h[String(n)] || null;
+      if (n < 1) colFull[c] = false;
+      else { colTotal[c]++; if (rec) colDone[c]++; }
+      cells.push({ d, n, rec, ok: n >= 1 && n <= today });
+    }
+    rows.push({ cells, star: weekAll });
+  }
+  const colStar = colTotal.map((t, c) => colFull[c] && t > 0 && colDone[c] === t);
+  return { rows, colTotal, colDone, colStar, ...superStars(h, year, month, today) };
+}
+
+// True when every day from the first of month m0 to the end of month m1 is
+// solved. A period that starts before the first puzzle can never complete.
+function periodDone(h, y, m0, m1, today){
+  const a = Math.round((Date.UTC(y, m0, 1) - EPOCH) / 86400000) + 1;
+  const b = Math.round((Date.UTC(y, m1 + 1, 1) - EPOCH) / 86400000);
+  if (a < 1 || b > today) return false;
+  for (let d = a; d <= b; d++) if (!h[String(d)]) return false;
+  return true;
+}
+// Month ★, quarter ★★, year ★★★ — each is a full run of solved days.
+function superStars(h, year, month, today){
+  const q = Math.floor(month / 3) * 3;
+  const monthStar = periodDone(h, year, month, month, today);
+  const quarterStar = periodDone(h, year, q, q + 2, today);
+  const yearStar = periodDone(h, year, 0, 11, today);
+  return { monthStar, quarterStar, yearStar,
+           level: yearStar ? 3 : quarterStar ? 2 : monthStar ? 1 : 0 };
+}
+
+// Link back to the game from wherever it is hosted, so shares keep working
+// when the playtest and release builds live on different hosts.
+const gameURL = () => location.href.split("?")[0].split("#")[0].replace(/index\.html$/, "");
+
+// Share card: the month grid, stars and streak drawn on a canvas.
+function renderCalendarImage(year, month){
+  const h = loadHistory(), today = dayNumber();
+  const M = calModel(year, month, h, today), sk = streakInfo();
+  const dpr = Math.min(window.devicePixelRatio || 1, 3);
+  const cell = 38, gap = 5, pad = 24;
+  const gridW = 7 * cell + 6 * gap + 26;
+  const W = gridW + pad * 2;
+  const H = 144 + M.rows.length * (cell + gap) + 110;
+  const cv = document.createElement("canvas");
+  cv.width = W * dpr; cv.height = H * dpr;
+  const g = cv.getContext("2d");
+  g.scale(dpr, dpr);
+  const bg = "#1c1518", ink = "#f3ecea", dimc = "#9a8e8c", ok = "#7da87b", goldc = "#f1c40f";
+  g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  g.textAlign = "center";
+  g.fillStyle = ink; g.font = "700 22px system-ui,sans-serif";
+  g.fillText("Chromoku", W / 2, 40);
+  g.fillStyle = dimc; g.font = "12px ui-monospace,monospace";
+  g.fillText(MONTHS[month] + " " + year + (M.level ? "  " + "★".repeat(M.level) : ""), W / 2, 62);
+  g.fillStyle = ink; g.font = "700 26px system-ui,sans-serif";
+  g.fillText((sk.cur ? "🔥 " + sk.cur + " day streak" : "Solved " + Object.keys(h).length + " daily puzzles"), W / 2, 100);
+  g.fillStyle = dimc; g.font = "11px ui-monospace,monospace";
+  g.fillText("best " + sk.best + " · " + Object.keys(h).length + " solved", W / 2, 120);
+
+  const top = 144;
+  const x0 = pad, step = cell + gap;
+  M.rows.forEach((row, r) => {
+    const y = top + r * step;
+    row.cells.forEach((c, i) => {
+      if (!c) return;
+      const x = x0 + i * step;
+      g.beginPath(); g.roundRect(x, y, cell, cell, 8);
+      if (c.rec && c.rec.onTime){ g.fillStyle = "rgba(125,168,123,.35)"; g.fill(); g.strokeStyle = ok; g.lineWidth = 1.5; g.stroke(); }
+      else if (c.rec){ g.strokeStyle = ok; g.lineWidth = 1.5; g.stroke(); }
+      else { g.fillStyle = c.ok ? "rgba(255,255,255,.06)" : "rgba(255,255,255,.02)"; g.fill(); }
+      g.fillStyle = c.rec ? ink : dimc; g.font = "13px ui-monospace,monospace";
+      g.fillText(c.rec ? "✓" : String(c.d), x + cell / 2, y + cell / 2 + 5);
+    });
+    g.font = "16px system-ui,sans-serif";
+    g.fillStyle = row.star ? goldc : "rgba(255,255,255,.12)";
+    g.fillText("★", x0 + 7 * step + 8, top + r * step + cell / 2 + 6);
+  });
+  const fy = top + M.rows.length * step + 14;
+  g.font = "11px ui-monospace,monospace";
+  for (let c = 0; c < 7; c++){
+    const done = M.colStar[c];
+    g.fillStyle = done ? goldc : dimc;
+    g.font = done ? "16px system-ui,sans-serif" : "11px ui-monospace,monospace";
+    g.fillText(done ? "★" : M.colDone[c] + "/" + M.colTotal[c], x0 + c * step + cell / 2, fy + 4);
+  }
+  g.fillStyle = dimc; g.font = "12px system-ui,sans-serif";
+  g.fillText("Can you beat my streak?", W / 2, H - 52);
+  g.fillStyle = ink; g.font = "700 12px ui-monospace,monospace";
+  g.fillText(gameURL().replace(/^https?:\/\//, "").replace(/\/$/, ""), W / 2, H - 30);
+  return cv;
+}
+
+function calendarShareText(year, month){
+  const sk = streakInfo(), n = Object.keys(loadHistory()).length;
+  return "Chromoku · " + MONTHS[month] + " " + year + "\n"
+    + (sk.cur ? "🔥 " + sk.cur + " day streak · " : "") + n + " solved\n"
+    + "Can you beat it? " + gameURL();
+}
+
+async function shareCalendar(year, month){
+  const text = calendarShareText(year, month);
+  try {
+    const cv = renderCalendarImage(year, month);
+    const blob = await new Promise(r => cv.toBlob(r, "image/png"));
+    const file = new File([blob], "chromoku-calendar.png", { type:"image/png" });
+    if (navigator.canShare && navigator.canShare({ files:[file] })){
+      // The link rides in the text and is also printed on the image, since
+      // some apps drop the text when a file is attached.
+      await navigator.share({ files:[file], title:SHARE_NAME, text });
+      return;
+    }
+    await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+    toast("Image copied!");
+  } catch (e) {
+    if (e && e.name === "AbortError") return;   // player closed the share sheet
+    copyText(text);
+  }
+}
+
+// The year at a glance: twelve month stars, four quarters, and the year.
+function trophyShelf(h, year, today){
+  const L = "JFMAMJJASOND";
+  let mo = "";
+  for (let m = 0; m < 12; m++){
+    const on = periodDone(h, year, m, m, today);
+    mo += '<div class="tr' + (on ? ' gold' : '') + '"><span>★</span><i>' + L[m] + '</i></div>';
+  }
+  let qs = "";
+  for (let q = 0; q < 4; q++){
+    const on = periodDone(h, year, q * 3, q * 3 + 2, today);
+    qs += '<div class="tr big' + (on ? ' gold' : '') + '"><span>★★</span><i>Q' + (q + 1) + '</i></div>';
+  }
+  const yOn = periodDone(h, year, 0, 11, today);
+  qs += '<div class="tr big' + (yOn ? ' gold' : '') + '"><span>★★★</span><i>' + year + '</i></div>';
+  return '<div class="cal-trophies"><div class="trow m12">' + mo + '</div><div class="trow q5">' + qs + '</div></div>';
+}
+
+function showCalendar(year, month, selDay){
+  const today = dayNumber();
+  const tDate = new Date(EPOCH + (today - 1) * 86400000);
+  const first = new Date(EPOCH);
+  if (year === undefined){
+    const base = new Date(EPOCH + ((selDay || today) - 1) * 86400000);
+    year = base.getUTCFullYear(); month = base.getUTCMonth();
+  }
+  const h = loadHistory();
+  const sk = streakInfo();
+  const solvedCount = Object.keys(h).length;
+  const atFirst = year === first.getUTCFullYear() && month === first.getUTCMonth();
+  const atLast  = year === tDate.getUTCFullYear() && month === tDate.getUTCMonth();
+
+  const M = calModel(year, month, h, today);
+  const monthStar = M.monthStar;
+  const gold = '<div class="cstar gold">★</div>', dim_ = '<div class="cstar">★</div>';
+  let grid = ["M","T","W","T","F","S","S"].map(x => '<div class="dow">' + x + '</div>').join("") + '<div></div>';
+  for (const row of M.rows){
+    for (const cell of row.cells){
+      if (!cell){ grid += '<span class="blank"></span>'; continue; }
+      const cls = (cell.rec ? (cell.rec.onTime ? "solved" : "late") : "")
+        + (cell.n === today ? " today" : "") + (cell.n === selDay ? " sel" : "");
+      grid += '<button class="' + cls + '" data-day="' + cell.n + '"' + (cell.ok ? "" : " disabled") + '>'
+            + (cell.rec ? "✓" : cell.d) + '</button>';
+    }
+    grid += row.star ? gold : dim_;
+  }
+  for (let c = 0; c < 7; c++){
+    grid += M.colStar[c]
+      ? '<div class="cfoot gold">★</div>'
+      : '<div class="cfoot">' + M.colDone[c] + '/' + M.colTotal[c] + '</div>';
+  }
+  grid += monthStar ? '<div class="cfoot gold">★</div>' : '<div></div>';
+  const yr = year, trophyHTML = trophyShelf(h, yr, today);
+
+  openModal(
+    '<div style="display:flex;align-items:center;justify-content:space-between"><h2 style="margin:0">Calendar</h2>'
+    + '<button class="icon-btn" id="calHelp" aria-label="How the calendar works" style="font-weight:700">?</button></div>'
+    + '<div class="cal-help" id="calHelpBox" hidden>'
+    + '<b>Filled</b> solved on the day · <b>outline</b> solved later<br>'
+    + '<b>★</b> right of a row: full week · under a column: every one of that weekday · by the month: full month<br>'
+    + '<b>★★</b> quarter · <b>★★★</b> year. Only whole periods count.</div>'
+    + '<div class="stats" style="margin:8px 0">'
+    + '<div class="stat"><div class="n">' + sk.cur + '</div><div class="l">Streak</div></div>'
+    + '<div class="stat"><div class="n">' + sk.best + '</div><div class="l">Best</div></div>'
+    + '<div class="stat"><div class="n">' + solvedCount + '</div><div class="l">Solved</div></div></div>'
+    + '<div class="cal-head"><button id="calPrev"' + (atFirst ? " disabled" : "") + ' aria-label="Previous month">‹</button>'
+    + '<b>' + MONTHS[month] + ' ' + year + (M.level ? ' <span style="color:#f1c40f">' + '★'.repeat(M.level) + '</span>' : '') + '</b>'
+    + '<button id="calNext"' + (atLast ? " disabled" : "") + ' aria-label="Next month">›</button></div>'
+    + '<div class="cal-grid">' + grid + '</div>'
+    + trophyHTML
+    + '<div class="cal-detail" id="calDetail" hidden></div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">'
+    + '<button class="btn" id="calShare" style="margin:0">Share calendar</button>'
+    + '<button class="btn ghost" id="calCopy" style="margin:0">Copy invite link</button></div>'
+    + '<button class="btn ghost" id="calDone" style="margin-top:8px">Done</button>'
+  );
+  const step = dm => {
+    const t = new Date(Date.UTC(year, month + dm, 1));
+    showCalendar(t.getUTCFullYear(), t.getUTCMonth(), selDay);
+  };
+  document.getElementById("calPrev").onclick = () => step(-1);
+  document.getElementById("calNext").onclick = () => step(1);
+  document.getElementById("calDone").onclick = closeModal;
+  document.getElementById("calHelp").onclick = () => {
+    const b = document.getElementById("calHelpBox"); b.hidden = !b.hidden;
+  };
+  document.getElementById("calShare").onclick = () => shareCalendar(year, month);
+  document.getElementById("calCopy").onclick = () => copyText(calendarShareText(year, month));
+
+  const detail = n => {
+    const rec = h[String(n)], dt = new Date(EPOCH + (n - 1) * 86400000), cfg = getDailyConfig(n);
+    const solved = !!rec;
+    document.getElementById("calDetail").hidden = false;
+    document.getElementById("calDetail").innerHTML =
+      '<div style="font-weight:700;color:var(--ink)">#' + n + ' · ' + dayLabel(dt) + ' · ' + cfg.tier + '</div>'
+      + '<div style="margin:4px 0 10px">' + (solved
+          ? 'Solved' + (rec.secs ? ' in ' + fmtTime(rec.secs * 1000) : '') + (rec.onTime ? '' : ' (played later)')
+          : (n === today ? 'Not solved yet' : 'Not played')) + '</div>'
+      + '<button class="btn" id="calGo" style="margin:0">' + (solved ? 'View board' : 'Play') + '</button>';
+    document.getElementById("calGo").onclick = () => {
+      closeModal();
+      if (_winTimer){ clearTimeout(_winTimer); _winTimer = null; }
+      state.day = n; enterDaily();
+    };
+  };
+  document.querySelectorAll(".cal-grid button[data-day]").forEach(b => {
+    b.onclick = () => {
+      document.querySelectorAll(".cal-grid button.sel").forEach(x => x.classList.remove("sel"));
+      b.classList.add("sel");
+      detail(+b.dataset.day);
+    };
+  });
+  if (selDay) detail(selDay);
+}
+
 function render(){
   if (state.mode === "levels") renderLevelBar();
-  else { renderSizes(); renderDiffs(); }
-  renderBoard(); renderPalette(); renderSub();
+  else { renderSizes(); renderDiffs(); renderPowerups(); }
+  renderBoard(); renderPalette(); renderSub(); renderDailyNav();
   paintCompletedUnits();
   applySharp();
   renderChallengeBar();
@@ -2086,7 +2904,11 @@ function render(){
   if (tip){
     if (isTutNow && state.lvl.cfg.desc){
       tip.style.display = "";
-      tip.textContent = state.lvl.cfg.desc;
+      tip.innerHTML = state.lvl.cfg.desc
+        + '<div style="margin-top:8px;text-align:right">'
+        + '<button onclick="skipTutorial()" style="background:none;border:none;cursor:pointer;'
+        + 'font-size:11px;color:var(--ink-faint);text-decoration:underline;padding:0">'
+        + 'Skip tutorial ×</button></div>';
     } else {
       tip.style.display = "none";
     }
@@ -2095,10 +2917,9 @@ function render(){
   // otherwise only once the player has started and the puzzle isn't done.
   const qb = document.getElementById("btnQuit");
   if (qb) qb.style.display = (isTutNow || ((state.started || state.elapsed > 0) && !state.done)) ? "" : "none";
-  // In tutorial, hide elements that aren't relevant. Timer stays visible — it
-  // shows elapsed time (no penalty) and sits in the single header row we keep.
+  // Header timer: hide in level mode (timer lives in the level bar there).
   const timerEl = document.getElementById("timer");
-  if (timerEl) timerEl.style.display = "";
+  if (timerEl) timerEl.style.display = (state.mode === "levels") ? "none" : "";
   const btnMark = document.getElementById("btnMark");
   if (btnMark) btnMark.style.display = isTutNow ? "none" : "";
   const btnSettings = document.getElementById("btnSettings");
@@ -2107,9 +2928,8 @@ function render(){
   // identity; the big title is wasted vertical space on mobile.
   const h1El = document.querySelector("header h1");
   if (h1El) h1El.style.display = (state.mode === "levels") ? "none" : "";
-  // Banner ad mockup — visible in level mode, but not during tutorial
-  const ab = document.getElementById("adBanner");
-  if (ab) ab.style.display = (state.mode === "levels" && !isTutNow) ? "" : "none";
+  // Banner visibility is context-driven — see updateAdBanner()
+  updateAdBanner();
 }
 
 const heartsHTML = p => Array.from({ length:LIVES_MAX }, (_, i) =>
@@ -2125,28 +2945,29 @@ function stepMarker(step){
   if (step === PEEK_STEP) return PATH_ICONS.peek;
   return PATH_ICONS.dot;
 }
-function renderStagePath(cfg){
-  // Pre-compute the ten steps of this stage. levelConfig is cheap; buildLevel
+function renderStagePath(cfg, big){
+  // Pre-compute the twenty steps of this stage. levelConfig is cheap; buildLevel
   // is not — the rater takes real time — so precompute lazily and cache by
   // stage.  We just need config-time info (peek/boss/step) here; the pip
   // count comes from a lightweight par estimator, not the full rater.
   const baseLevel = (cfg.world - 1) * LEVELS_PER_WORLD + (cfg.stage - 1) * LEVELS_PER_STAGE;
   const p = progress();
-  let html = '<div class="path" aria-label="Stage progress">';
+  let html = '<div class="path' + (big ? ' big' : '') + '" aria-label="Stage progress">';
   for (let step = 1; step <= LEVELS_PER_STAGE; step++){
     const L = baseLevel + step;
     const st = p.stars[String(L)] || 0;
     const state = step === cfg.step ? "here"
                 : L < p.level          ? "done"
                 : "todo";
-    const cls = "st " + state + (step === LEVELS_PER_STAGE ? " boss"
+    const challenge = L >= CHALLENGE_FROM && L % DECADE === 0;
+    const cls = "st " + state + (step === LEVELS_PER_STAGE || challenge ? " boss"
                                  : step === PEEK_STEP ? " peek" : "");
     // Pip count reflects how demanding this step is *within* the stage:
-    // step 10 (boss) is heaviest, step 5 (peek) uses the next-world entry
+    // step 20 (boss) is heaviest, step 15 (peek) uses the next-world entry
     // and reads as a taster. Everything else is 1 pip.
     const pips = step === LEVELS_PER_STAGE ? 3 : step === PEEK_STEP ? 2 : 1;
     html += '<span class="' + cls + '" data-step="' + step + '">'
-          + stepMarker(step)
+          + (challenge && step !== LEVELS_PER_STAGE ? "⚡" : stepMarker(step))
           + (st ? '<span class="stg">' + "★".repeat(st) + "</span>" : "")
           + '<span class="pips">' + "•".repeat(pips) + "</span>"
           + "</span>";
@@ -2165,13 +2986,13 @@ function updateRegenChip(){
   if (modalEl){
     const ms = nextLifeMs(p);
     modalEl.textContent = ms > 0 ? fmtTime(ms) : "ready";
+    const rb = document.getElementById("mRetry");
+    if (rb && rb.disabled && p.lives > 0){ rb.disabled = false; rb.textContent = "Retry"; }
   }
 }
 
 function renderLevelBar(){
-  // Hide the size row in level mode — levels pick their own config
-  const sr = document.getElementById("sizeRow");
-  if (sr) sr.style.display = "none";
+  // sizeRow is hidden during level play by CSS: html.in-level #sizeRow{display:none!important}
   const lv = state.lvl, p = progress();
   const stars = p.stars[String(lv.cfg.level)] || 0;
   const c = lv.cfg;
@@ -2203,23 +3024,40 @@ function renderLevelBar(){
     renderPowerups(); // shows 🔦 bar for tutorial 4+ (renderPowerups guards level < 3)
     return;
   }
+  const mi = levelMarkInfo(c.level);
   const rotTag = c.boxRotate ? " ⤾" : "";   // rotated-box marker
   const tag = c.n + "×" + c.n + (c.boxless ? " Latin" : "") + rotTag
             + (c.layers > 1 ? " ×2" : "");
+  // Hearts row (no timer — timer sits below in .lvl-r)
+  const heartsRowHTML = p => Array.from({ length:LIVES_MAX }, (_, i) =>
+    '<span class="' + (i < p.lives ? "on" : "") + '">♥</span>').join("");
   document.getElementById("diffs").outerHTML =
     '<div class="levelbar" id="diffs">'
-    + '<div class="lvl-l"><button class="icon-btn" id="lvBack" aria-label="Back to daily">←</button></div>'
-    + '<div class="lvl-c"><b>Level ' + c.level
+    + '<div class="lvl-l">'
+    + '<button class="icon-btn" id="lvBack" aria-label="Back to daily">←</button>'
+    + '<button class="icon-btn" id="lvUndo" aria-label="Undo" title="Undo" disabled>↶</button>'
+    + '<button class="icon-btn" id="lvReset" aria-label="Reset puzzle" title="Reset">↻</button>'
+    + '</div>'
+    + '<div class="lvl-c"><b>Level ' + c.level + (c.challenge ? ' ⚡' : '')
     + (c.peek ? ' <span class="pk">' + (c.peekOf || "ahead") + "</span>" : "") + "</b>"
-    + '<span class="lvl-sub">' + (c.peek ? "Preview" : c.theme.name) + " · " + tag
-    + (c.boss ? " · boss" : "") + "</span>"
-    + renderStagePath(lv.cfg) + "</div>"
-    + '<div class="hearts">' + heartsHTML(p)
+    + '<button class="lvl-sub goal" id="lvGoal" aria-label="What is the goal?">'
+    + (c.peek ? "Preview · " : "") + mi.icon + " " + mi.noun + "s · " + tag
+    + (c.scramble ? " · 🌀" : "") + (c.boss ? " · boss" : "") + " ⓘ</button>"
+    + "</div>"
+    + '<div class="lvl-r">'
+    + '<div class="lvl-hearts">' + heartsRowHTML(p)
     + '<span class="regen" id="regen"></span></div>'
+    + '<span class="timer lvl" id="lvlTimer" style="font-size:16px;min-width:44px;text-align:right"></span>'
+    + '</div>'
     + "</div>";
   const tw = document.getElementById("tbarwrap");
   if (tw) tw.style.display = "";
+  // Enter full-screen play mode — header hidden, controls live in the level bar
+  document.documentElement.classList.add("in-level");
   document.getElementById("lvBack").onclick = confirmQuitLevel;
+  document.getElementById("lvGoal").onclick = showLevelGoal;
+  document.getElementById("lvUndo").onclick = undo;
+  document.getElementById("lvReset").onclick = confirmReset;
   renderPowerups();
   // The axis toggles belong to the daily; a level chooses its own config.
   for (const id of ["latinToggle", "dblToggle", "scrambleToggle", "lvlToggle"]){
@@ -2258,17 +3096,22 @@ function renderSub(){
     base = "Stage " + cfg.stage + " · step " + cfg.step
          + " · " + gridLabel + " · " + ruleLabel
          + " · " + markLabel + layerLabel;
-  } else {
-    base = (state.practice ? "Practice" : "#" + state.day) + " · "
+  } else if (state.practice) {
+    base = "Practice · "
       + (state.latin ? "Latin " : "") + sObj.label + " " + dObj.label
       + (state.dbl ? " · Double" : "")
+      + (state.boxRotate ? " ⤾" : "")
       + (state.scramble ? " · Scramble" : "");
+  } else {
+    // Daily: show day name + tier + puzzle number
+    const dc = getDailyConfig();
+    base = dc.label + " · " + dc.tier + " · #" + state.day;
   }
 
   // Streak chip — visible at a glance, not buried in the win modal
   const st = load(LS_STATS, blankStats());
-  if (st.streak > 1 && state.mode !== "levels"){
-    sub.innerHTML = base + ' <span class="streak-chip">🔥' + st.streak + '</span>';
+  if (streakInfo().cur > 1 && state.mode !== "levels"){
+    sub.innerHTML = base + ' <span class="streak-chip">🔥' + streakInfo().cur + '</span>';
   } else {
     sub.textContent = base;
   }
@@ -2363,7 +3206,7 @@ function renderDiffs(){
 // box separation at any n without border bookkeeping.
 function renderBoard(){
   const n = state.n;
-  const rotate = !!(state.lvl && state.lvl.cfg.boxRotate);
+  const rotate = activeBoxRotate();
   const { bw, bh } = boxDims(n, rotate);
   const boxesPerRow = state.latin ? n : n / bw, boxRows = state.latin ? n : n / bh;
   let html = "";
@@ -2472,12 +3315,18 @@ function renderPalette(){
     // No eraser swatch — tapping the same colour on a cell clears it.
     // 9+ marks split into two rows for bigger, more tappable swatches.
     const isDbl = state.layers.length > 1;
-    // 9×9 gets 2 rows (9 marks split 5+4); 4×4 and 6×6 fit in one row.
+    // 9×9 gets 2 rows (9 marks split 5+5 with spacer); 4×4 and 6×6 fit in one row.
     const nRows = isDbl ? 1 : (state.n > 6 ? 2 : 1);
     const perRow = Math.ceil(swatches.length / nRows);
-    for (let k = 0; k < swatches.length; k += perRow)
+    // Pad the last (shorter) row with invisible spacers so flex:1 gives
+    // identical swatch widths across all rows (fixes 5+4 unevenness on 9×9).
+    const spacer = '<div class="swatch spacer" aria-hidden="true"></div>';
+    for (let k = 0; k < swatches.length; k += perRow) {
+      const row = swatches.slice(k, k + perRow);
+      while (row.length < perRow) row.push(spacer);
       rows += '<div class="prow' + (state.n > 4 ? " wrap" : "") + '">'
-            + swatches.slice(k, k + perRow).join("") + "</div>";
+            + row.join("") + "</div>";
+    }
   }
   const p = document.getElementById("palette");
   p.className = "palette pal-pad" + (state.n > 4 ? " tight" : "")
@@ -2565,10 +3414,19 @@ function placeColour(L, i, val){
 /* ================= RESET & ADD TIME ================= */
 function confirmReset(){
   pauseTimer();
+  const inLevel = state.mode === "levels";
+  const p = inLevel ? progress() : null;
+  const livesLeft = p ? p.lives : 0;
   openModal(
     '<h2>Reset puzzle?</h2>'
-    + '<p class="lede">Start over from the beginning?</p>'
-    + '<button class="btn" id="mReset">Reset</button>'
+    + (inLevel
+        ? '<p class="lede">This resets the board to its starting givens and costs 1 life.</p>'
+          + '<div class="hearts big">' + heartsHTML({ lives: Math.max(0, livesLeft - 1) }) + '</div>'
+          + (livesLeft <= 0
+              ? '<p class="lede">No lives left — you\'ll lose your last one.</p>'
+              : '')
+        : '<p class="lede">Start over from the beginning?</p>')
+    + '<button class="btn" id="mReset">Reset' + (inLevel ? ' (−1 life)' : '') + '</button>'
     + '<button class="btn ghost" id="mKeep">Keep playing</button>'
   );
   document.getElementById("mReset").onclick = () => { closeModal(); resetPuzzle(); };
@@ -2576,7 +3434,26 @@ function confirmReset(){
 }
 
 function resetPuzzle(){
-  // Clear all player marks, keep givens
+  // In level mode: cost a life then reload the level clean from its seed.
+  // Using loadLevel() (not manual clear) guarantees the board, palette, timer
+  // and all sub-renders end up in a consistent state — manual clearing missed
+  // renderSub() and left state.mode-dependent paths partially applied.
+  if (state.mode === "levels"){
+    const p = progress();
+    p.lives = Math.max(0, p.lives - 1);
+    if (p.lives < LIVES_MAX) p.livesAt = p.livesAt || Date.now();
+    saveProgress2(p);
+    // Power-ups already used carry over — reset should not refill them.
+    const savedHints = Object.assign({}, state.hints);
+    loadLevel(state.lvl.cfg.level);   // re-seeds the same puzzle, resets all state
+    state.hints = savedHints;         // restore used-up power-up counts
+    updateAddsBadge();
+    renderPowerups();
+    toast("Puzzle reset — −1 ♥");
+    return;
+  }
+
+  // Daily / practice: clear all player marks, keep givens.
   state.layers.forEach(L => {
     for (let i = 0; i < L.grid.length; i++){
       if (!L.givens[i]) L.grid[i] = null;
@@ -2585,13 +3462,23 @@ function resetPuzzle(){
   state.history = [];
   state.mistakes = 0;
   state.bookmark = null;
+  state.done = false;
+  state.elapsed = 0;
+  state.since = null;
+  state.started = false;
+  state.frozenUntil = 0;
+
+  const board = document.getElementById("board");
+  if (board){
+    board.classList.remove("done");
+    board.querySelectorAll(".won").forEach(el => el.classList.remove("won"));
+  }
   renderBoard();
   renderPalette();
   paintCompletedUnits();
   paintMark();
   paintUndo();
   saveProgress();
-  resumeTimer();
   toast("Puzzle reset");
 }
 
@@ -2599,21 +3486,31 @@ function pauseTimer(){
   if (!state.timerInterval) return;
   clearInterval(state.timerInterval);
   state.timerInterval = null;
-  const timerEl = document.getElementById("timer");
-  if (timerEl) timerEl.classList.add("frozen");
+  for (const id of ["timer", "lvlTimer"]){
+    const el = document.getElementById(id);
+    if (el) el.classList.add("frozen");
+  }
 }
 
 function resumeTimer(){
   if (state.timerInterval || state.done) return;
   state.timerInterval = setInterval(tickTimer, 250);
-  const timerEl = document.getElementById("timer");
-  if (timerEl) timerEl.classList.remove("frozen");
+  for (const id of ["timer", "lvlTimer"]){
+    const el = document.getElementById(id);
+    if (el) el.classList.remove("frozen");
+  }
 }
 
-function showAddTimeModal(){
+function showAddTimeModal(useBundle){
   if (!state.lvl || !state.lvl.cfg) return;
+  // Reached from the out-of-time screen, failLevel() has already taken a life
+  // and set done; continuing the same attempt gives that life back.
+  const afterFail = state.done && state.mode === "levels";
   pauseTimer();
-  let secs = 15;
+  // Level mode: quick = 15s, bundle = 30s+bonus. Daily always 30s.
+  const quickSecs = state.mode === "levels" ? LEVEL_ADD_SECS : ADD_SECS;
+  const rewardSecs = useBundle ? BUNDLE_ADD_SECS : quickSecs;
+  let secs = rewardSecs;
 
   // Randomly pick one of three mock ad creatives so it feels alive
   const mockAds = [
@@ -2641,10 +3538,11 @@ function showAddTimeModal(){
     +   '</div>'
     + '</div>'
     + '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px">'
-    +   '<div style="font-size:12px;color:var(--ink-dim)">Watch to earn <b>+15s</b></div>'
+    +   '<div style="font-size:12px;color:var(--ink-dim)">Watch to earn <b>+' + rewardSecs + 's'
+    +     (useBundle ? ' + ' + BUNDLE_BONUS + ' reveals 🎁' : '') + '</b></div>'
     +   '<div id="addCountdown" style="font-size:22px;font-weight:800;font-family:var(--mono);color:var(--ink);min-width:36px;text-align:right">' + secs + 's</div>'
     + '</div>'
-  );
+  , true);
 
   const countdown = setInterval(() => {
     secs--;
@@ -2653,12 +3551,28 @@ function showAddTimeModal(){
     if (secs <= 0){
       clearInterval(countdown);
       state.hints.adds++;
-      state.limitMs += 15 * 1000;
+      state.limitMs += rewardSecs * 1000;
+      if (useBundle) state.bonusReveals = (state.bonusReveals || 0) + BUNDLE_BONUS;
+      // failLevel() sets state.done = true before calling this modal.
+      // Clear it so the puzzle is actually playable again.
+      state.done = false;
+      if (afterFail){
+        const p = progress();
+        p.lives = Math.min(LIVES_MAX, p.lives + 1);
+        saveProgress2(p);
+        renderLevelBar();
+      }
+      // Strip "won" CSS classes that renderBoard() may have added while done=true.
+      document.getElementById("board").classList.remove("done");
+      document.querySelectorAll("[data-i]").forEach(el => el.classList.remove("won"));
       updateAddsBadge();
       saveProgress();
       closeModal();
       resumeTimer();
-      toast("⏰ +15s bonus!");
+      const msg = useBundle
+        ? "🎁 +" + rewardSecs + "s + " + BUNDLE_BONUS + " reveals" + (afterFail ? ", life back" : "") + " — go!"
+        : "⏰ +" + rewardSecs + "s" + (afterFail ? ", life back" : "") + " — keep going!";
+      toast(msg);
     }
   }, 1000);
 }
@@ -2706,8 +3620,11 @@ function undo(){
 }
 
 function paintUndo(){
+  const disabled = state.done || state.history.length === 0;
   const b = document.getElementById("btnUndo");
-  if (b) b.disabled = state.done || state.history.length === 0;
+  if (b) b.disabled = disabled;
+  const lb = document.getElementById("lvUndo");
+  if (lb) lb.disabled = disabled;
 }
 
 // --------------- completion fade ---------------
@@ -2722,7 +3639,7 @@ function paintCompletedUnits(){
   board.classList.toggle("fade-done", fadePref);
 
   const n = state.n;
-  const rotate = !!(state.lvl && state.lvl.cfg.boxRotate);
+  const rotate = activeBoxRotate();
   const U = unitsOf(n, state.latin, rotate);
 
   // For each layer, find which cells belong to at least one complete unit.
@@ -2840,16 +3757,14 @@ function win(){
   if (vig) vig.className = "vignette";
 
   if (state.mode === "levels"){ winLevel(); return; }
-  if (state.practice){ markWon(); setTimeout(showWin, 1100); return; }
+  if (state.practice){ markWon(); if (_winTimer) clearTimeout(_winTimer); _winTimer = setTimeout(() => { _winTimer = null; showWin(); }, 1100); return; }
 
   const st = load(LS_STATS, blankStats());
   st.played++;
-  if (st.lastWinDay !== state.day){
-    st.streak = st.lastWinDay === state.day - 1 ? st.streak + 1 : 1;
-    st.lastWinDay = state.day;
-    st.maxStreak = Math.max(st.maxStreak, st.streak);
-  }
   const secs = Math.floor(elapsedMs() / 1000);
+  const starsBefore = dayStars(loadHistory(), state.day, dayNumber());
+  recordDayWin(state.day, secs);
+  state._newStars = newStarList(starsBefore, dayStars(loadHistory(), state.day, dayNumber()));
   const bk = compositeId(state.size, state.diff);
   if (!st.best[bk] || secs < st.best[bk]) st.best[bk] = secs;
   save(LS_STATS, st);
@@ -2857,7 +3772,8 @@ function win(){
 
   markWon();
   renderDiffs();
-  setTimeout(showWin, 1100);
+  if (_winTimer) clearTimeout(_winTimer);
+  _winTimer = setTimeout(() => { _winTimer = null; showWin(); }, 1100);
 }
 
 // Stars reward beating par, so there is a reason to replay a cleared level.
@@ -2903,7 +3819,7 @@ function winTutorialLevel(lv){
         + '<button class="btn" id="mTutDone">▶ Start playing</button>'
         + '<button class="btn ghost" id="mTutRestart">Replay tutorial</button>'
       );
-      document.getElementById("mTutDone").onclick = () => { closeModal(); enterDaily(); };
+      document.getElementById("mTutDone").onclick = () => { closeModal(); skipTutorial(); };
       document.getElementById("mTutRestart").onclick = () => { closeModal(); loadLevel(0); };
     } else {
       openModal(
@@ -2915,7 +3831,7 @@ function winTutorialLevel(lv){
         + (nextCfg.desc ? '<div style="font-size:12px;color:var(--ink-dim)">' + nextCfg.desc + '</div>' : '')
         + '</div>'
         + '<button class="btn" id="mTutNext">Continue →</button>'
-        + '<button class="btn ghost" id="mTutStop">Done for now</button>'
+        + '<button class="btn ghost" id="mTutStop">Skip to daily puzzle</button>'
       );
       document.getElementById("mTutNext").onclick = () => { closeModal(); loadLevel(lvNum + 1); };
       document.getElementById("mTutStop").onclick = () => { closeModal(); enterDaily(); };
@@ -2938,27 +3854,24 @@ function winLevel(){
   markWon();
   setTimeout(() => {
     fireConfetti();
-    const hintsUsed = totalHints();
     openModal(
-      "<h2>Level " + lv.cfg.level + " cleared</h2>"
-      + '<p class="lede">' + lv.cfg.theme.name + " · stage " + lv.cfg.stage
-      + (lv.cfg.boss ? " · boss" : "")
-      + (hintsUsed ? ' · 💡×' + hintsUsed : '') + "</p>"
-      + '<div class="stars-big">' + [1,2,3].map(i =>
-          '<span class="' + (i <= st ? "on" : "") + '">★</span>').join("") + "</div>"
-      + '<div class="badge-wrap" id="badgeWrap"></div>'
+      '<div class="badge-wrap" id="badgeWrap"></div>'
       + '<div class="stats">'
       + '<div class="stat"><div class="n">' + fmtTime(secs * 1000) + '</div><div class="l">Your time</div></div>'
       + '<div class="stat"><div class="n">' + fmtTime(lv.par * 1000) + '</div><div class="l">Par</div></div>'
       + '<div class="stat"><div class="n">' + progress().lives + '</div><div class="l">Lives</div></div>'
       + "</div>"
-      + '<button class="btn" id="shareBtn">Share badge</button>'
-      + '<button class="btn ghost" id="mNext">Next level</button>'
-      + '<button class="btn ghost" id="mRetry">Replay</button>'
-      + '<button class="btn ghost" id="mStop">Done for now</button>'
-    );
+      + '<button class="btn" id="mNext">Next level</button>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px">'
+      + '<button class="btn ghost" id="shareBtn" style="margin:0;font-size:13px">Share</button>'
+      + '<button class="btn ghost" id="mRetry" style="margin:0;font-size:13px">Replay</button>'
+      + '<button class="btn ghost" id="mStop" style="margin:0;font-size:13px">🏠 Home</button>'
+      + '</div>'
+      + winBannerHTML()
+    , true);
     try {
       const badge = renderShareBadge();
+      fitBadgeInModal(badge);
       document.getElementById("badgeWrap").appendChild(badge);
     } catch { /* canvas unavailable */ }
     document.getElementById("shareBtn").onclick = shareAsImage;
@@ -2989,26 +3902,47 @@ function failLevel(){
   setTimeout(() => board.classList.remove("shake"), 500);
 
   const out = p.lives <= 0;
-  const addTimeAvailable = state.hints.adds < HINT_LIMITS.adds;
+  const addLeft = HINT_LIMITS.adds - state.hints.adds;
+  const addTimeAvailable = addLeft > 0;
+
+  // Always visible but secondary to Retry. When the level's quota is spent the
+  // section says so, rather than silently vanishing.
+  const adBtns = addTimeAvailable
+    ? '<div class="lede" style="margin:14px 0 6px;font-size:12px">Or watch an ad and keep going (your life is refunded):</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+      + '<button class="btn ghost" id="mAddTime" style="margin:0;font-size:12px">⏰ +' + LEVEL_ADD_SECS + 's<br><span style="font-size:10px;opacity:.6;font-weight:400">watch 15s · ' + addLeft + ' left</span></button>'
+      + '<button class="btn ghost" id="mAddBundle" style="margin:0;font-size:12px">🎁 +' + BUNDLE_ADD_SECS + 's + ' + BUNDLE_BONUS + ' reveals<br><span style="font-size:10px;opacity:.8;font-weight:400">watch 30s</span></button>'
+      + '</div>'
+    : '<p class="lede" style="margin:12px 0 0;font-size:12px">No bonus time left on this level.</p>';
+
+  // Retry is the main action: it restarts the level and costs the life already
+  // taken. Ads are an optional extra, never the only way forward.
+  // How close the run got, and what the player has already banked on this level.
+  let open = 0, filled = 0;
+  state.layers.forEach(l => l.grid.forEach((v, i) => {
+    if (!l.givens[i]){ open++; if (v !== null && v !== undefined) filled++; }
+  }));
+  const pct = open ? Math.round(filled / open * 100) : 100;
+  const lvKey = String(state.lvl.cfg.level);
+  const bank = (p.stars[lvKey] ? '<span style="color:#f1c40f">' + '★'.repeat(p.stars[lvKey]) + '</span> best ' + fmtTime((p.best[lvKey] || 0) * 1000) + ' · ' : '');
 
   openModal(
     "<h2>Out of time</h2>"
     + '<p class="lede">Level ' + state.lvl.cfg.level + " · par was "
     + fmtTime(state.lvl.par * 1000) + ".</p>"
+    + '<p class="lede" style="margin-top:-8px">' + bank + pct + '% of the board filled</p>'
     + '<div class="hearts big">' + heartsHTML(p) + "</div>"
     + (out
         ? '<p class="lede">No lives left. One returns in <b id="outLivesIn">'
           + fmtTime(nextLifeMs(p)) + "</b>.</p>"
-          + (addTimeAvailable
-              ? '<button class="btn" id="mAddTime">⏰ Add ' + ADD_SECS + 's</button>'
-                + '<button class="btn ghost" id="mWatchAd">📺 Watch ad for +30s</button>'
-              : "")
-          + '<button class="btn ghost" id="mBack">Back to daily</button>'
-        : '<button class="btn" id="mRetry">Try again</button>'
-          + (addTimeAvailable
-              ? '<button class="btn ghost" id="mAddTime">⏰ Add ' + ADD_SECS + 's</button>'
-              : "")
-          + '<button class="btn ghost" id="mBack">Back to daily</button>')
+          + '<button class="btn" id="mRetry" disabled>Retry</button>'
+        : '<button class="btn" id="mRetry">Retry · ' + p.lives + ' ♥ left</button>')
+    + adBtns
+    + (out
+        ? '<p class="lede" style="margin-top:12px">Daily puzzles don\'t use lives.</p>'
+          + '<button class="btn" id="mBack">Play today\'s puzzle while you wait</button>'
+        : '<button class="btn ghost" id="mBack" style="margin-top:8px">🏠 Home</button>')
+    , true
   );
 
   const r = document.getElementById("mRetry");
@@ -3018,20 +3952,14 @@ function failLevel(){
   if (addBtn) {
     addBtn.onclick = () => {
       if (state.hints.adds >= HINT_LIMITS.adds) { toast("No adds left"); return; }
-      closeModal();
-      showAddTimeModal();
+      closeModal(); showAddTimeModal(false);
     };
   }
-
-  const adBtn = document.getElementById("mWatchAd");
-  if (adBtn) {
-    adBtn.onclick = () => {
-      // TODO: Integrate with ad network (Google AdMob, etc)
-      closeModal();
-      state.frozenUntil = 0;
-      startTimer();
-      saveProgress();
-      toast("⏰ +30s from ad");
+  const bundleBtn = document.getElementById("mAddBundle");
+  if (bundleBtn) {
+    bundleBtn.onclick = () => {
+      if (state.hints.adds >= HINT_LIMITS.adds) { toast("No adds left"); return; }
+      closeModal(); showAddTimeModal(true);
     };
   }
 
@@ -3042,6 +3970,79 @@ function failLevel(){
 
 // Lightweight particle burst — fires on win. Canvas cleans itself up after the
 // last particle falls offscreen. Colour pulled from the game's own HUES palette.
+// Fireworks for the big stars: radial bursts with trails, spread over `spanMs`.
+// Skipped entirely when the player has asked the OS for reduced motion; the
+// banner in the win modal still says what was earned.
+function fireFireworks(bursts, spanMs){
+  if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const cvs = document.createElement("canvas");
+  cvs.className = "confetti";
+  cvs.width = window.innerWidth; cvs.height = window.innerHeight;
+  document.body.appendChild(cvs);
+  const ctx = cvs.getContext("2d");
+  const cols = ["#f1c40f", "#ffd966", "#ffffff"].concat(HUES.slice(0, 6).map(h => h.hex));
+  const parts = [];
+  let fired = 0, raf;
+  const burst = () => {
+    const cx = cvs.width * (0.15 + Math.random() * 0.7), cy = cvs.height * (0.12 + Math.random() * 0.38);
+    const col = cols[Math.floor(Math.random() * cols.length)], N = 48;
+    for (let i = 0; i < N; i++){
+      const a = Math.PI * 2 * i / N + Math.random() * 0.2, sp = 2 + Math.random() * 4.5;
+      parts.push({ x:cx, y:cy, vx:Math.cos(a) * sp, vy:Math.sin(a) * sp, life:1, col, r:1.6 + Math.random() * 1.6 });
+    }
+    fired++;
+  };
+  for (let k = 0; k < bursts; k++) setTimeout(burst, k * spanMs / bursts + Math.random() * 150);
+  const tick = () => {
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.fillStyle = "rgba(0,0,0,.2)"; ctx.fillRect(0, 0, cvs.width, cvs.height);
+    ctx.globalCompositeOperation = "source-over";
+    let alive = false;
+    for (const q of parts){
+      if (q.life <= 0) continue;
+      q.x += q.vx; q.y += q.vy; q.vx *= 0.985; q.vy = q.vy * 0.985 + 0.06; q.life -= 0.011;
+      alive = true;
+      ctx.globalAlpha = Math.max(0, q.life); ctx.fillStyle = q.col;
+      ctx.beginPath(); ctx.arc(q.x, q.y, q.r, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    if (alive || fired < bursts) raf = requestAnimationFrame(tick); else cvs.remove();
+  };
+  raf = requestAnimationFrame(tick);
+  setTimeout(() => { cancelAnimationFrame(raf); cvs.remove(); }, spanMs + 4000);
+}
+
+// Which stars a given day belongs to, and whether each is complete in `h`.
+// Comparing this before and after recording a win says what the win earned.
+function dayStars(h, day, today){
+  const dt = new Date(EPOCH + (day - 1) * 86400000);
+  const y = dt.getUTCFullYear(), m = dt.getUTCMonth();
+  const dow = (dt.getUTCDay() + 6) % 7;
+  const all = days => days.every(n => n >= 1 && n <= today && h[String(n)]);
+  const week = []; for (let i = 0; i < 7; i++) week.push(day - dow + i);
+  const col = [];
+  const dim = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  for (let d = 1; d <= dim; d++){
+    const n = Math.round((Date.UTC(y, m, d) - EPOCH) / 86400000) + 1;
+    if ((new Date(Date.UTC(y, m, d)).getUTCDay() + 6) % 7 === dow) col.push(n);
+  }
+  const q = Math.floor(m / 3) * 3;
+  return { week:all(week), col:all(col), month:periodDone(h, y, m, m, today),
+           quarter:periodDone(h, y, q, q + 2, today), year:periodDone(h, y, 0, 11, today),
+           weekday:["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"][dow],
+           monthName:MONTHS[m] };
+}
+// Newly earned stars, biggest last, as { tier, stars, text }.
+function newStarList(before, after){
+  const out = [];
+  if (!before.week && after.week)       out.push({ tier:1, stars:"★",    text:"Week complete" });
+  if (!before.col && after.col)         out.push({ tier:1, stars:"★",    text:"Every " + after.weekday + " in " + after.monthName });
+  if (!before.month && after.month)     out.push({ tier:2, stars:"★",    text:after.monthName + " complete" });
+  if (!before.quarter && after.quarter) out.push({ tier:3, stars:"★★",   text:"Quarter complete" });
+  if (!before.year && after.year)       out.push({ tier:4, stars:"★★★",  text:"Year complete" });
+  return out;
+}
+
 function fireConfetti(){
   const cvs = document.createElement("canvas");
   cvs.className = "confetti";
@@ -3127,11 +4128,21 @@ function spoilerFreeGrid(){
 function shareText(){
   const mods = (state.dbl ? " · Double" : "") + (state.scramble ? " · Scramble" : "");
   const st = load(LS_STATS, blankStats());
-  const streakLine = st.streak > 1 ? "🔥 " + st.streak + " day streak\n" : "";
-  return SHARE_NAME + " #" + state.day + " · " + sizeOf(state.size).label + " " + diffOf2(state.diff, state.n).label + mods + " ✨\n"
-       + "⏱️ " + fmtTime(elapsedMs()) + "\n"
-       + streakLine + "\n"
-       + spoilerFreeGrid() + "\n";
+  const hintsUsed = totalHints();
+  const flashesUsed = state.hints.flashes;
+  // 🧠 for clean solves; up to 3 💡 for hint use (capped so it stays compact)
+  // 🔦×N appended when flash hints were used (flash is free, shown separately)
+  const hintBadge = hintsUsed === 0 ? " 🧠" : " " + "💡".repeat(Math.min(hintsUsed, 3));
+  const flashBit  = flashesUsed > 0 ? " 🔦×" + flashesUsed : "";
+  const streakBit = streakInfo().cur > 1 ? " · 🔥" + streakInfo().cur : "";
+  // Show actual mark glyphs on small grids — more interesting than row counts.
+  // 9×9 and up use spoiler-free row counts (9 rows of 9 glyphs is too dense).
+  const grid = state.n <= 6 ? emojiGrid(0) : spoilerFreeGrid();
+  return SHARE_NAME + " #" + state.day + " · " + sizeOf(state.size).label + " " + diffOf2(state.diff, state.n).label + mods + hintBadge + flashBit + "\n"
+       + "⏱️ " + fmtTime(elapsedMs()) + streakBit + "\n"
+       + "\n"
+       + grid + "\n"
+       + "\nhttps://ronacul.github.io/wine-cellar/chromoku";
 }
 
 const copyShare = () => copyText(shareText());
@@ -3207,9 +4218,9 @@ const MECHANIC_EXPLAINERS = {
   scramble: {
     title:"Scramble mode",
     icon:"🌀",
-    body:"Colours shift position on the palette when placed.<br>"
-       + "The same colour still means the same value — it just moves around to keep you on your toes.<br>"
-       + "Trust the board, not the palette order.",
+    body:"Every mark wears a decoy: colours get odd shapes, shapes get odd colours.<br>"
+       + "Only the real mark counts: the colour of a colour board, the shape of a shape board.<br>"
+       + "Ignore the decoy.",
   },
   boxRotate: {
     title:"Rotated boxes",
@@ -3250,6 +4261,7 @@ function newMechanics(cfg){
   if (cfg.boxless && !seen.has("latin")) out.push("latin");
   if (cfg.layers > 1 && !seen.has("double")) out.push("double");
   if (cfg.boxRotate && !seen.has("boxRotate")) out.push("boxRotate");
+  if (cfg.scramble && !seen.has("scramble")) out.push("scramble");
   // Scramble is a daily-mode toggle, not a level config — but the preview
   // config can flag it, or the player can encounter it first in daily mode.
   return out;
@@ -3280,23 +4292,92 @@ function showExplainers(ids, next){
 
 /* ================= progression interstitial ================= */
 
+// One-line statement of what the player is being asked to do on a level, built
+// from the same config fields loadLevel() reads so the two cannot disagree.
+function levelMarkInfo(level){
+  const cfg = levelConfig(level);
+  const set = cfg.markSet && MARKSETS[cfg.markSet]
+    ? cfg.markSet
+    : isTutorialLevel(level) ? "classic" : rotatedMarkSet(level, cfg.n);
+  return {
+    noun: set === "shapes" ? "shape" : set === "ink" ? "pattern" : "colour",
+    icon: set === "shapes" ? "◆" : set === "ink" ? "▨" : "🎨",
+  };
+}
+function levelGoal(level){
+  const cfg = levelConfig(level);
+  const { noun, icon } = levelMarkInfo(level);
+  const n = cfg.n;
+  const rule = cfg.boxless
+    ? "Latin rules: each row and column holds every " + noun + " once. No boxes."
+    : "Each row, column and box holds every " + noun + " once.";
+  const extras = [];
+  if (cfg.layers > 1) extras.push("Two overlaid grids to solve.");
+  if (cfg.boxRotate) extras.push("The boxes are turned on their side.");
+  if (cfg.scramble) extras.push("Scramble: every mark wears a decoy, so trust the real " + noun + ".");
+  return {
+    icon,
+    head: "Match the " + noun + "s",
+    sub: n + "×" + n + " · " + n + " " + noun + "s",
+    body: rule + (extras.length ? " " + extras.join(" ") : ""),
+  };
+}
+
 // Brief screen between levels showing the player's journey through the stage.
+// 4×4 Latin square with the rule's own units picked out: one row and column
+// for Latin worlds, one 2×2 box for box worlds, stacked grids for doubles.
+function miniDemoHTML(cfg){
+  const cols = HUES.slice(0, 4).map(h => h.hex);
+  const grid = (i0) => {
+    let h = '<div class="mini-demo" style="grid-template-columns:repeat(4,22px)">';
+    for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++){
+      const hl = cfg.boxless ? (r === 1 || c === 2) : (r < 2 && c < 2);
+      h += '<i class="' + (hl ? 'hl' : '') + '" style="background:' + cols[(r * 2 + Math.floor(r / 2) + c + i0) % 4] + '"></i>';
+    }
+    return h + '</div>';
+  };
+  const cap = cfg.boxless ? 'Rows and columns only. Every colour once in each.'
+                          : 'Rows, columns and boxes. Every colour once in each.';
+  return grid(0) + (cfg.layers > 1 ? '<div class="mini-cap">×2 grids</div>' + grid(1) : '')
+       + '<div class="mini-cap">' + cap + '</div>';
+}
+
+// Reminder of the level's goal, one tap from the level bar so the board stays
+// uncluttered. The clock stops while it is open and restarts when it closes.
+function showLevelGoal(){
+  if (!state.lvl || state.done) return;
+  const goal = levelGoal(state.lvl.cfg.level);
+  const wasRunning = !!state.since;
+  if (wasRunning) stopTimer();
+  openModal(
+    '<div class="prog-goal"><div class="pg-icon">' + goal.icon + '</div>'
+    + '<div class="pg-head">' + goal.head + '</div>'
+    + '<div class="pg-sub">' + goal.sub + '</div>'
+    + '<p class="pg-body">' + goal.body + '</p></div>'
+    + '<button class="btn" id="mGoalOk">Back to the board</button>',
+    false,
+    () => { if (wasRunning && !state.done) startTimer(); }
+  );
+  document.getElementById("mGoalOk").onclick = closeModal;
+}
+
 function showProgression(nextLevel){
   const cfg = levelConfig(nextLevel);
   const prevStage = nextLevel > 1 ? levelConfig(nextLevel - 1).stage : 0;
   const step = cfg.step;
   const theme = cfg.theme || WORLDS[cfg.world - 1];
+  const goal = levelGoal(nextLevel);
+  const rating = levelRating(cfg);
   const isNewWorld = nextLevel > 1 && cfg.world !== levelConfig(nextLevel - 1).world;
   const isNewStage = nextLevel > 1 && cfg.stage !== prevStage;
 
-  // Build the step pips for this stage
-  let pips = '<div class="prog-stage">';
-  for (let s = 1; s <= LEVELS_PER_STAGE; s++){
-    const cls = s < step ? "st done" : s === step ? "st current" : "st";
-    pips += '<span class="' + cls + '">' + (s < step ? "✦" : s === step ? "◆" : "◇") + '</span>';
-  }
-  pips += '</div>';
+  // The stage as two rows of ten, with stars earned so far and the challenge
+  // levels marked, so the player can see where they are in the wave.
+  const pips = renderStagePath(cfg, true)
+    + '<div class="pb-lbl">Step ' + step + ' of ' + LEVELS_PER_STAGE + (cfg.boss ? ' · boss' : '') + '</div>';
 
+  // A new world gets a tiny worked example of its rule rather than only a line of text.
+  const demo = isNewWorld ? miniDemoHTML(cfg) : '';
   let unlock = '';
   if (isNewWorld){
     unlock = '<div class="prog-unlock">🔓 ' + theme.name + ' unlocked — ' + theme.unlock + '</div>';
@@ -3306,22 +4387,33 @@ function showProgression(nextLevel){
 
   openModal(
     '<h2 style="color:' + theme.tint + '">' + theme.name + '</h2>'
-    + '<p class="lede">Stage ' + cfg.stage + ' · step ' + step + '</p>'
+    + '<div class="prog-lv"><b>Level ' + nextLevel + '</b>'
+    + '<span class="prog-rate" aria-label="Difficulty ' + rating.r + ' of 5">' + '●'.repeat(rating.r) + '<i>' + '●'.repeat(5 - rating.r) + '</i></span>'
+    + '<span>' + rating.label + '</span>'
+    + (cfg.challenge ? '<em>⚡ Challenge</em>' : '') + '</div>'
+    + '<p class="lede" style="margin:2px 0 0">Stage ' + cfg.stage + ' · step ' + step + '</p>'
+    + '<div class="prog-goal"><div class="pg-icon">' + goal.icon + '</div>'
+    + '<div class="pg-head">' + goal.head + '</div>'
+    + '<div class="pg-sub">' + goal.sub + '</div>'
+    + '<p class="pg-body">' + goal.body + '</p></div>'
     + pips
     + unlock
+    + demo
     + '<button class="btn" id="mGo">Play</button>'
-    + '<button class="btn ghost" id="mBack2">Done for now</button>'
+    + '<button class="btn ghost" id="mBack2">🏠 Home</button>'
   );
   document.getElementById("mGo").onclick = () => { closeModal(); loadLevel(nextLevel); };
   document.getElementById("mBack2").onclick = () => { closeModal(); enterDaily(); };
 
-  // Add "View level data" button
-  const m = document.getElementById("modal");
-  const dataBtn = document.createElement("button");
-  dataBtn.className = "btn ghost";
-  dataBtn.textContent = "📊 Level data";
-  dataBtn.onclick = () => { closeModal(); showLevelTable(cfg.world); };
-  m.appendChild(dataBtn);
+  // Level data is a tuning tool, so it only appears with admin tools on.
+  if (adminMode){
+    const m = document.getElementById("modal");
+    const dataBtn = document.createElement("button");
+    dataBtn.className = "btn ghost";
+    dataBtn.textContent = "📊 Level data";
+    dataBtn.onclick = () => { closeModal(); showLevelTable(cfg.world); };
+    m.appendChild(dataBtn);
+  }
 }
 
 function showLevelTable(world){
@@ -3404,6 +4496,24 @@ function recordLeaderboard(){
   save(LS_BOARD, board);
 }
 
+// Compact sponsored banner for win modals — natural break, non-intrusive.
+function winBannerHTML(){
+  const ads = [
+    { icon:"🎮", brand:"GameZone Plus",  line:"500+ brain puzzles — free to play" },
+    { icon:"☕", brand:"Morning Brew",    line:"News that doesn't suck" },
+    { icon:"🌿", brand:"NatureBox",       line:"Snacks you'll actually love" },
+  ];
+  const a = ads[Math.floor(Math.random() * ads.length)];
+  return '<div style="margin-top:14px;border-top:1px solid var(--line);padding-top:10px">'
+    + '<div style="font-size:9px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Sponsored</div>'
+    + '<div style="display:flex;align-items:center;gap:10px;background:var(--panel2);border-radius:10px;padding:10px 12px">'
+    + '<div style="font-size:26px;flex-shrink:0">' + a.icon + '</div>'
+    + '<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:700;color:var(--ink)">' + a.brand + '</div>'
+    + '<div style="font-size:11px;color:var(--ink-dim);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + a.line + '</div></div>'
+    + '<button style="flex-shrink:0;font-size:11px;font-weight:700;background:#4a8feb;color:#fff;border-radius:8px;padding:6px 12px;white-space:nowrap">Try it</button>'
+    + '</div></div>';
+}
+
 function leaderboardHTML(){
   const board = load(LS_BOARD, {});
   const today = dayNumber();
@@ -3442,7 +4552,10 @@ async function copyText(text){
 // dents the star rating so there is a reason not to, but never blocks progress.
 const HINT_LIMITS = { reveals:3, freezes:2, adds:2, flashes:5 };
 const FREEZE_SECS = 15;
-const ADD_SECS = 30;
+const ADD_SECS = 30;          // daily add-time (seconds)
+const LEVEL_ADD_SECS = 15;    // level add-time — shorter, same watch duration
+const BUNDLE_ADD_SECS = 30;   // premium bundle: watch 30s → +30s + extra reveals
+const BUNDLE_BONUS = 2;       // extra reveals granted by the bundle
 
 // Regenerating power-up pool — global across levels, stored in progress.
 // Pool recharges one unit every POOL_REGEN_MIN minutes, capped at POOL_MAX.
@@ -3489,18 +4602,107 @@ function totalHints(){ return state.hints.reveals + state.hints.freezes + state.
 // Power-ups: always visible during levels so the player can fire them
 // without opening a modal. The hint modal still exists for daily mode
 // (where only Reveal applies) and as a fallback info panel.
+// ── Banner visibility ─────────────────────────────────────────────────────
+// Banner rules (never on today's clean daily):
+// · Past daily (day < today)                → always show
+// · Today's daily, 2+ real hints used      → show
+// · Today's daily, off-schedule size/diff  → show (player customised away from today's puzzle)
+// · Levels (non-tutorial)                  → show
+// · Tutorial                               → never
+// · Today's scheduled daily, no hints      → never (keep it clean)
+function updateAdBanner(){
+  const ab = document.getElementById("adBanner");
+  if (!ab) return;
+  const isTutNow   = state.mode === "levels" && state.lvl && state.lvl.cfg.tutorial;
+  const today      = dayNumber();
+  const isDaily    = state.mode !== "levels" && !state.practice;
+  const isPastDay  = isDaily && state.day < today;
+  const withHints  = isDaily && totalHints() >= 2;
+  const todayCfg   = getDailyConfig();
+  const offSched   = isDaily && state.day === today
+                     && (state.size !== todayCfg.sizeId || state.diff !== todayCfg.diffId);
+  const show = (state.mode === "levels" && !isTutNow) || isPastDay || withHints || offSched;
+  ab.style.display = show ? "" : "none";
+}
+
+// Called after any real hint (reveal/freeze/add) is consumed on daily.
+// Triggers banner at 2+ hints and the one-time 15s interstitial at 5+.
+function afterHintUsed(){
+  updateAdBanner();
+  if (state.mode === "levels" || state.practice) return;
+  if (!state.adShown && totalHints() >= 5) showAdInterstitial();
+}
+
+// 15-second soft interstitial — puzzle timer pauses, skip unlocks after 15s.
+function showAdInterstitial(){
+  state.adShown = true;
+  if (state.since){ state.elapsed += Date.now() - state.since; state.since = null; }
+  let rem = 15;
+  openModal(
+    '<div style="text-align:center;padding:4px 0">'
+    + '<span style="background:var(--ink-faint);color:var(--ink);border-radius:4px;'
+    + 'padding:2px 8px;font-size:10px;font-family:var(--mono);letter-spacing:.06em">Ad</span>'
+    + '<div style="margin:14px 0 4px;font-size:15px;font-weight:700">🎮 PuzzleVault</div>'
+    + '<div style="font-size:12px;color:var(--ink-dim);margin-bottom:18px">500+ brain games — free to play</div>'
+    + '<div id="adIntCount" style="font-size:52px;font-weight:800;color:var(--gold);line-height:1;margin-bottom:4px">15</div>'
+    + '<div id="adIntMsg" style="font-size:12px;color:var(--ink-dim);margin-bottom:16px">Skip available in 15s</div>'
+    + '<div style="font-size:12px;color:var(--ok);margin-bottom:20px">🟢 Puzzle saved — timer paused</div>'
+    + '<button class="btn ghost" id="adIntSkip" style="display:none">Skip →</button>'
+    + '</div>'
+  );
+  // Block overlay-tap close during countdown
+  const overlay = document.getElementById("overlay");
+  const savedClick = overlay.onclick;
+  overlay.onclick = null;
+  const iv = setInterval(() => {
+    rem--;
+    const cd = document.getElementById("adIntCount");
+    const msg = document.getElementById("adIntMsg");
+    const skip = document.getElementById("adIntSkip");
+    if (cd) cd.textContent = rem > 0 ? rem : "✓";
+    if (rem <= 0){
+      clearInterval(iv);
+      if (msg) msg.textContent = "Thanks for watching";
+      if (skip) skip.style.display = "";
+    }
+  }, 1000);
+  const dismiss = () => {
+    clearInterval(iv);
+    overlay.onclick = savedClick;
+    if (!state.done) state.since = Date.now();
+    closeModal();
+  };
+  // Skip button wires up after it appears; also catch early DOM-not-yet-ready case
+  // by delegating via the modal container
+  document.getElementById("modal").addEventListener("click", function handler(e){
+    if (e.target.id === "adIntSkip" && rem <= 0){
+      this.removeEventListener("click", handler);
+      dismiss();
+    }
+  });
+}
+
 function renderPowerups(){
   const el = document.getElementById("powerups");
   if (!el) return;
   const isTutNow = state.mode === "levels" && state.lvl && state.lvl.cfg.tutorial;
   const tutLvl   = isTutNow ? (state.lvl.cfg.level || 0) : -1;
-  // Tutorial levels 0-3: no powerup bar. Tutorial 4+ (index ≥ 3): show 🔦 only.
-  // Non-tutorial levels: show full bar.
-  if (state.mode !== "levels" || state.done || (isTutNow && tutLvl < 3)){
-    el.style.display = "none"; return;
+
+  // In levels mode, hide when done — the win modal handles next steps.
+  // In daily / practice, show a "Try again" reset prompt instead of hiding.
+  if (state.done && state.mode === "levels"){ el.style.display = "none"; return; }
+  if (state.done && state.mode !== "levels"){
+    el.style.display = "";
+    el.innerHTML = '<button class="pu" id="puReset" title="Reset puzzle to starting givens" style="padding:4px 10px;font-size:11px;font-family:var(--mono);color:var(--ink-dim)">'
+      + '↻ Try again</button>';
+    const pR2 = document.getElementById("puReset");
+    if (pR2) pR2.onclick = confirmReset;
+    return;
   }
+
+  // Tutorial levels 0–2: no bar. Tutorial 3+: flash only.
+  if (isTutNow && tutLvl < 3){ el.style.display = "none"; return; }
   if (isTutNow){
-    // Tutorial powerup bar: just the flash hint button (free in tutorial, no pool gate).
     el.style.display = "";
     el.innerHTML = '<button class="pu" id="puFlash" title="Flash hint — shows which cell and colour">'
       + '<span class="pu-icon">🔦</span></button>';
@@ -3508,8 +4710,42 @@ function renderPowerups(){
     if (pFl) pFl.onclick = () => flashHint(true);
     return;
   }
+
+  // ── Daily / practice: flash + reveal + reset (no pool gate, no freeze/add) ──
+  if (state.mode !== "levels"){
+    el.style.display = "";
+    const revLeft = HINT_LIMITS.reveals + (state.bonusReveals || 0) - state.hints.reveals;
+    const flsLeft = HINT_LIMITS.flashes - state.hints.flashes;
+    // Max bonus reveals purchasable per puzzle (so it stays a fair nudge, not unlimited)
+    const MAX_AD_REVEALS = 2;
+    const adRevealsLeft = MAX_AD_REVEALS - (state._adReveals || 0);
+    const canBuyReveal = revLeft <= 0 && adRevealsLeft > 0 && !state.practice;
+    el.innerHTML =
+      '<span style="font-size:9px;color:var(--ink-dim);font-family:var(--mono)">Advantages</span> '
+      + '<button class="pu" id="puFlash"' + (flsLeft <= 0 ? " disabled" : "")
+      + ' title="Flash hint — free, no badge penalty">'
+      + '<span class="pu-icon">🔦</span><span class="pu-n">' + flsLeft + '</span></button>'
+      + '<button class="pu" id="puReveal"' + (revLeft <= 0 ? " disabled" : "")
+      + ' title="Reveal a cell — counts toward hint badge">'
+      + '<span class="pu-icon">💡</span><span class="pu-n">' + revLeft + '</span></button>'
+      + (canBuyReveal
+          ? '<button class="pu" id="puBuyReveal" title="Watch a short ad to unlock +1 reveal" style="background:rgba(201,162,39,.13);border-color:rgba(201,162,39,.45);color:#c9a227;font-weight:700">'
+            + '<span class="pu-icon" style="font-size:11px">+💡</span></button>'
+          : '')
+      + '<button class="pu" id="puReset" title="Reset puzzle to starting givens" style="margin-left:4px">'
+      + '<span class="pu-icon">↻</span></button>';
+    const pFl = document.getElementById("puFlash");
+    if (pFl) pFl.onclick = () => { flashHint(true); renderPowerups(); };
+    const pR = document.getElementById("puReveal");
+    if (pR) pR.onclick = () => { revealCell(); renderPowerups(); };
+    const pBuy = document.getElementById("puBuyReveal");
+    if (pBuy) pBuy.onclick = () => watchAdForBonus();
+    const pRst = document.getElementById("puReset");
+    if (pRst) pRst.onclick = confirmReset;
+    return;
+  }
   el.style.display = "";
-  const revLeft = HINT_LIMITS.reveals - state.hints.reveals;
+  const revLeft = HINT_LIMITS.reveals + (state.bonusReveals || 0) - state.hints.reveals;
   const frzLeft = HINT_LIMITS.freezes - state.hints.freezes;
   const addLeft = HINT_LIMITS.adds - state.hints.adds;
   const flsLeft = HINT_LIMITS.flashes - state.hints.flashes;
@@ -3585,7 +4821,7 @@ function confirmQuit(){
 function showHintModal(){
   if (state.done){ toast("Puzzle already solved"); return; }
   const isLvl = state.mode === "levels";
-  const revLeft = HINT_LIMITS.reveals - state.hints.reveals;
+  const revLeft = HINT_LIMITS.reveals + (state.bonusReveals || 0) - state.hints.reveals;
   const frzLeft = HINT_LIMITS.freezes - state.hints.freezes;
   const addLeft = HINT_LIMITS.adds - state.hints.adds;
   const flsLeft = HINT_LIMITS.flashes - state.hints.flashes;
@@ -3633,9 +4869,51 @@ function showHintModal(){
   if (hA) hA.onclick = () => { closeModal(); addTime(); };
 }
 
+// Simulated "watch an ad" flow to earn +1 reveal on the daily puzzle.
+// In a real app this would gate on a rewarded ad SDK; here we show a countdown
+// modal that the player must wait through, then grant the bonus.
+function watchAdForBonus(){
+  if (state.done || state.practice) return;
+  const AD_SECS = 5;
+  let remaining = AD_SECS;
+  function buildHTML(){
+    return '<h2>🎁 Free reveal</h2>'
+      + '<p class="lede">Support Chromoku by watching a short ad. Your reveal will unlock in '
+      + '<b id="adCountdown">' + remaining + '</b>s…</p>'
+      + '<div style="height:80px;background:var(--panel2);border-radius:10px;display:grid;place-items:center;margin:12px 0;color:var(--ink-faint);font-size:11px;font-family:var(--mono)">[Ad placeholder]</div>'
+      + '<button class="btn ghost" id="adSkip">Cancel</button>';
+  }
+  openModal(buildHTML());
+  // Block overlay-tap close during countdown so user has to wait.
+  const overlay = document.getElementById("overlay");
+  const savedClick = overlay.onclick;
+  overlay.onclick = null;
+  let timer = setInterval(() => {
+    remaining--;
+    const el = document.getElementById("adCountdown");
+    if (el) el.textContent = remaining;
+    if (remaining <= 0){
+      clearInterval(timer);
+      overlay.onclick = savedClick;
+      closeModal();
+      // Grant the bonus reveal.
+      state.bonusReveals = (state.bonusReveals || 0) + 1;
+      state._adReveals = (state._adReveals || 0) + 1;
+      saveProgress();
+      renderPowerups();
+      toast("💡 +1 reveal unlocked!");
+    }
+  }, 1000);
+  document.getElementById("adSkip").onclick = () => {
+    clearInterval(timer);
+    overlay.onclick = savedClick;
+    closeModal();
+  };
+}
+
 function revealCell(){
   if (state.done) return;
-  if (state.hints.reveals >= HINT_LIMITS.reveals){ toast("No reveals left"); return; }
+  if (state.hints.reveals >= HINT_LIMITS.reveals + (state.bonusReveals || 0)){ toast("No reveals left"); return; }
   if (state.mode === "levels" && poolRemaining() <= 0){ toast("Power-up pool empty — recharges over time"); return; }
   // Collect all empty, non-given cells across all layers
   const empties = [];
@@ -3653,6 +4931,7 @@ function revealCell(){
   const el = cellEl(pick.i);
   if (el){ el.classList.add("revealed"); setTimeout(() => el.classList.remove("revealed"), 900); }
   toast("Cell revealed · " + (HINT_LIMITS.reveals - state.hints.reveals) + " left");
+  afterHintUsed();
 }
 
 function freezeClock(){
@@ -3759,7 +5038,7 @@ function drawBadgePattern(ctx, idx, x, y, sz, ink, cellBg, rad){
 // in a copy-pasteable way.
 function renderShareBadge(){
   const n = state.n;
-  const rotate = !!(state.lvl && state.lvl.cfg.boxRotate);
+  const rotate = activeBoxRotate();
   const { bw, bh } = boxDims(n, rotate);
   const dpr = Math.min(window.devicePixelRatio || 1, 3);
 
@@ -3767,7 +5046,7 @@ function renderShareBadge(){
   const cGap = n <= 4 ? 4 : n <= 9 ? 2 : 1;
   const bGap = state.latin ? cGap : (n <= 4 ? 10 : n <= 9 ? 7 : 4);
   const pad = 20;
-  const headerH = 56, footerH = 32;
+  const boardGap = 22;   // space between subtitle and board top (mirrored below)
 
   // Board pixel dimensions
   let boardW, boardH;
@@ -3780,13 +5059,35 @@ function renderShareBadge(){
     boardH = bpc * (bh * cellSz + (bh - 1) * cGap) + (bpc - 1) * bGap;
   }
 
+  // Hint counts needed for footer height calculation
+  const hintsUsedBadge = totalHints();
+  const flashesUsedBadge = state.hints.flashes;
+  const hasHintsBadge = hintsUsedBadge > 0 || flashesUsedBadge > 0;
+
+  // Stars between lines for levels (non-tutorial)
+  const isLevelBadge = state.mode === "levels" && !!state.lvl && !isTutorialLevel(state.lvl.cfg.level);
+  const levelStarsBadge = isLevelBadge ? starsFor(Math.round(elapsedMs() / 1000), state.lvl.par) : 0;
+  const starsRowH = isLevelBadge ? 22 : 0;
+
+  // Header: title + optional star row + subtitle + gap before board
+  const line1Y  = pad + 22;       // title baseline
+  const starsY  = pad + 38;       // star row (only if level mode)
+  const line2Y  = pad + 38 + starsRowH;   // subtitle, pushed down when stars present
+  const headerH = line2Y + boardGap;      // board starts here
+
+  // Footer: same gap + optional hint line + URL + bottom pad
+  const footerH = boardGap + (hasHintsBadge ? 18 : 0) + 16 + 12;
+
   const W = boardW + pad * 2;
-  const H = headerH + boardH + footerH + pad;
+  const H = headerH + boardH + footerH;
   const canvas = document.createElement("canvas");
   canvas.width = Math.round(W * dpr);
   canvas.height = Math.round(H * dpr);
   canvas.style.width = W + "px";
   canvas.style.height = H + "px";
+  // Expose logical dimensions so callers can scale the display size correctly.
+  canvas._logW = W;
+  canvas._logH = H;
   const ctx = canvas.getContext("2d");
   ctx.scale(dpr, dpr);
 
@@ -3811,18 +5112,31 @@ function renderShareBadge(){
   const title = state.mode === "levels"
     ? SHARE_NAME + " · Level " + state.lvl.cfg.level
     : SHARE_NAME + " #" + state.day;
-  ctx.fillText(title, W / 2, pad + 20);
+  ctx.fillText(title, W / 2, line1Y);
+
+  // Stars between title and subtitle (levels mode only)
+  if (isLevelBadge) {
+    const starGap = 24;
+    const starStartX = W / 2 - starGap;   // 3 stars centred
+    ctx.font = "bold 16px system-ui,-apple-system,sans-serif";
+    for (let i = 1; i <= 3; i++) {
+      ctx.fillStyle = i <= levelStarsBadge ? "#f1c40f" : (dark ? "#3a3a55" : "#d0d0e0");
+      ctx.fillText("★", starStartX + (i - 1) * starGap, starsY);
+    }
+  }
+
   ctx.fillStyle = dim;
   ctx.font = "12px ui-monospace,monospace";
+  ctx.textAlign = "center";
   const st = load(LS_STATS, blankStats());
-  const streakStr = state.mode !== "levels" && st.streak > 1
-    ? " · 🔥" + st.streak : "";
+  const streakStr = state.mode !== "levels" && streakInfo().cur > 1
+    ? " · 🔥" + streakInfo().cur : "";
   const sub = state.mode === "levels"
     ? (state.lvl.cfg.theme ? state.lvl.cfg.theme.name : state.lvl.cfg.title || "Tutorial") + " · " + fmtTime(elapsedMs())
     : (state.latin ? "Latin " : "") + sizeOf(state.size).label + " " + diffOf2(state.diff, state.n).label
       + (state.dbl ? " · Double" : "") + (state.scramble ? " · Scramble" : "")
       + " · " + fmtTime(elapsedMs()) + streakStr;
-  ctx.fillText(sub, W / 2, pad + 38);
+  ctx.fillText(sub, W / 2, line2Y);
 
   // Draw each cell
   const bx = pad, by = headerH;
@@ -3908,14 +5222,28 @@ function renderShareBadge(){
     }
   }
 
-  // Hints disclosure
-  const hintsUsed = totalHints();
-  if (hintsUsed > 0){
+  // ── Footer: optional hint line + game URL ─────────────────────────────────
+  // The completed puzzle already shows every colour — no swatches needed.
+  ctx.textAlign = "center";
+  let footerY = headerH + boardH + boardGap;
+
+  if (hasHintsBadge){
+    ctx.font = "11px ui-monospace,monospace";
     ctx.fillStyle = dim;
-    ctx.font = "10px ui-monospace,monospace";
-    ctx.textAlign = "center";
-    ctx.fillText("💡×" + hintsUsed, W / 2, H - 10);
+    let hintTxt = "";
+    const reveals = state.hints.reveals;
+    const timeHints = state.hints.freezes + state.hints.adds;
+    if (reveals > 0)   hintTxt += "💡×" + reveals;
+    if (timeHints > 0) hintTxt += (hintTxt ? "  " : "") + "⏱×" + timeHints;
+    if (flashesUsedBadge > 0) hintTxt += (hintTxt ? "  " : "") + "🔦×" + flashesUsedBadge;
+    ctx.fillText(hintTxt, W / 2, footerY);
+    footerY += 18;
   }
+
+  // Game URL so recipients know where to play
+  ctx.fillStyle = dim;
+  ctx.font = "9px ui-monospace,monospace";
+  ctx.fillText("ronacul.github.io/wine-cellar/chromoku", W / 2, footerY);
 
   return canvas;
 }
@@ -3940,13 +5268,23 @@ async function shareAsImage(){
 
 /* ================= modals ================= */
 
-function openModal(html){
+// `sticky` modals (end of a level, out of lives) ignore taps outside the card,
+// so the player always lands on one of its buttons instead of a dead board.
+let modalSticky = false, modalOnClose = null;
+function openModal(html, sticky, onClose){
+  modalSticky = !!sticky;
+  modalOnClose = onClose || null;
   document.getElementById("modal").innerHTML = html;
   document.getElementById("overlay").classList.remove("hide");
 }
-function closeModal(){ document.getElementById("overlay").classList.add("hide"); }
+function closeModal(){
+  modalSticky = false;
+  document.getElementById("overlay").classList.add("hide");
+  const f = modalOnClose; modalOnClose = null;
+  if (f) f();
+}
 document.getElementById("overlay").onclick = e => {
-  if (e.target.id === "overlay") closeModal();
+  if (e.target.id === "overlay" && !modalSticky) closeModal();
 };
 
 function showHelp(){
@@ -4047,7 +5385,11 @@ function hintBestCell(layerIdx){
 // In non-tutorial mode, consumes a pool charge and tracks state.hints.flashes.
 // Does NOT fill the cell — just shows you where to look. No star penalty.
 function flashHint(isManual){
-  if (!state.lvl) return;
+  // Auto-hints (from the tutorial timer) must only fire inside a tutorial level.
+  if (!isManual && !(state.mode === "levels" && state.lvl && state.lvl.cfg.tutorial)) return;
+  // Manual flash needs a loaded board; state.lvl is null in daily/practice — that's fine.
+  if (state.mode === "levels" && !state.lvl) return;
+  if (!state.layers || !state.layers.length) return;
   const isTutManual = isManual && state.lvl && state.lvl.cfg.tutorial;
   if (isManual){
     if (state.done) return;
@@ -4153,9 +5495,9 @@ function flashHint(isManual){
   }
 
   // Consume resources for manual use — but not in tutorial (🔦 is free there).
-  if (isManual && state.mode === "levels" && !isTutManual){
+  if (isManual && !isTutManual){
     state.hints.flashes++;
-    usePoolCharge();
+    if (state.mode === "levels") usePoolCharge();
     const left = HINT_LIMITS.flashes - state.hints.flashes;
     toast("🔦 Flash hint · " + left + " left");
     renderPowerups();
@@ -4170,7 +5512,7 @@ function showAbout(){
       .inner { stroke: white; stroke-width: 1.5; }
     </style>`;
 
-  const HUES = ["#c10020","#007d34","#00538a","#f4c800","#ff6800","#803e75","#a6bdd7","#232c16","#593315","#ffb300","#cea262","#817066","#f6768e","#ff7a5c","#53377a","#ff8e00"];
+  const HUES = ["#c10020","#007d34","#00538a","#f4c800","#ff6800","#803e75","#a6bdd7","#f6768e","#593315","#ffb300","#cea262","#817066","#f6768e","#ff7a5c","#53377a","#ff8e00"];
 
   const pattern = [[0,1,2,3,4,5,6,7,8],[9,10,11,12,13,14,15,0,1],[2,3,4,5,6,7,8,9,10],[11,12,13,14,15,0,1,2,3],[4,5,6,7,8,9,10,11,12],[13,14,15,0,1,2,3,4,5],[6,7,8,9,10,11,12,13,14],[15,0,1,2,3,4,5,6,7],[8,9,10,11,12,13,14,15,0]];
   const innerPattern = [[8,9,10,11,12,13,14,15,0],[1,2,3,4,5,6,7,8,9],[10,11,12,13,14,15,0,1,2],[3,4,5,6,7,8,9,10,11],[12,13,14,15,0,1,2,3,4],[5,6,7,8,9,10,11,12,13],[14,15,0,1,2,3,4,5,6],[7,8,9,10,11,12,13,14,15],[0,1,2,3,4,5,6,7,8]];
@@ -4194,8 +5536,21 @@ function showAbout(){
     + '<p style="font-size:13px; color:var(--ink-dim); margin:16px 0; line-height:1.6">The logo above is a digital recreation of a quilt pattern made by the developer\'s mother. The nested squares represent Chromoku\'s Double mechanic — two puzzles, one unified solution. A tribute to the art of patterns and the joy of puzzles.</p>'
     + '<p style="font-size:12px; color:var(--ink-faint); margin-top:20px"><b>Coming:</b> Nov 8 daily puzzle featuring this exact pattern — a homage to quilting and motherhood.</p>'
     + '<p style="font-size:11px; color:var(--ink-faint); margin-top:16px; font-family:var(--mono)">' + CHROMOKU_VERSION + '</p>'
-    + '<button class="btn ghost" onclick="closeModal()">Done</button>'
+    + '<div class="toggle-row" style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">'
+    + '<div><div class="toggle-lbl" style="font-size:12px">Admin tools</div>'
+    + '<div class="toggle-desc" style="font-size:10px">Level jump · date pin · progress reset</div></div>'
+    + '<button class="toggle-sw' + (adminMode ? " on" : "") + '" id="abtTogAdmin" aria-label="Admin tools"></button>'
+    + '</div>'
+    + '<button class="btn ghost" onclick="closeModal()" style="margin-top:12px">Done</button>'
   );
+  const abtBtn = document.getElementById("abtTogAdmin");
+  if (abtBtn) abtBtn.onclick = () => {
+    adminMode = !adminMode;
+    try { localStorage.setItem(LS_ADMIN, adminMode ? "1" : "0"); } catch {}
+    syncAdminControls();
+    toast(adminMode ? "Admin ON" : "Admin OFF");
+    showAbout();  // re-open to refresh toggle state
+  };
 }
 
 function showStats(){
@@ -4227,8 +5582,8 @@ function showStats(){
     + '<div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:8px">Your stats</div>'
     + '<div class="stats" style="margin-bottom:12px">'
     + '<div class="stat"><div class="n">' + st.played + '</div><div class="l">Solved</div></div>'
-    + '<div class="stat"><div class="n">' + st.streak + '</div><div class="l">Streak</div></div>'
-    + '<div class="stat"><div class="n">' + st.maxStreak + '</div><div class="l">Best</div></div>'
+    + '<div class="stat"><div class="n">' + streakInfo().cur + '</div><div class="l">Streak</div></div>'
+    + '<div class="stat"><div class="n">' + streakInfo().best + '</div><div class="l">Best</div></div>'
     + "</div>"
     + '<div class="times"><div class="l" style="font-size:9.5px;color:var(--ink-faint);'
     + 'text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">Best times</div>'
@@ -4247,7 +5602,7 @@ function showStats(){
 // a stack of separate grids. This is the thing worth showing off.
 function miniBoard(){
   const n = state.n;
-  const rotate = !!(state.lvl && state.lvl.cfg.boxRotate);
+  const rotate = activeBoxRotate();
   const { bw, bh } = boxDims(n, rotate);
   let html = "";
   const marksAt = i => {
@@ -4281,35 +5636,87 @@ function miniBoard(){
        + ",1fr);grid-template-rows:repeat(" + (n / bh) + ',1fr)">' + html + "</div>";
 }
 
+// Scale a share-badge canvas to fit inside the win modal while preserving
+// its exact aspect ratio. CSS max-height/max-width alone break the ratio
+// when both inline width and height are set as absolute pixels — so we
+// compute the correct display size here and write both dimensions back.
+function fitBadgeInModal(badge){
+  const W = badge._logW || parseFloat(badge.style.width)  || badge.width;
+  const H = badge._logH || parseFloat(badge.style.height) || badge.height;
+  // Modal inner width ≈ min(360, viewport) − 40px padding.
+  const maxW = Math.min(window.innerWidth - 48, 320);
+  // Reserve ≈ 30 % of viewport height for the badge.
+  const maxH = Math.round(window.innerHeight * 0.30);
+  const scale = Math.min(maxW / W, maxH / H, 1);
+  badge.style.width  = Math.round(W * scale) + "px";
+  badge.style.height = Math.round(H * scale) + "px";
+  badge.style.display = "block";
+  badge.style.margin  = "0 auto";
+  badge.style.borderRadius = "12px";
+}
+
+// Banner for stars earned by this win; also sets off the fireworks. The size of
+// the show follows the biggest star: week/weekday small, then month, quarter, year.
+function starWinHTML(){
+  const list = state._newStars || [];
+  state._newStars = null;
+  if (!list.length) return "";
+  const top = Math.max(...list.map(x => x.tier));
+  const show = { 1:[3, 1500], 2:[6, 3000], 3:[10, 4500], 4:[16, 7000] }[top];
+  setTimeout(() => fireFireworks(show[0], show[1]), 500);
+  return list.map(x => '<div class="star-win"><div class="sw-s">' + x.stars + '</div><div class="sw-t">' + x.text + '</div></div>').join("");
+}
+
 function showWin(){
   fireConfetti();
   const st = load(LS_STATS, blankStats());
   const hintsUsed = totalHints();
+  const flashesUsed = state.hints.flashes;
   // Challenge info — if they beat a friend's time, celebrate it
   const challTime = getChallengeTime();
   const beatChall = challTime && elapsedMs() < challTime * 1000;
+  // Clean win: no badge icon — the board canvas is the share artefact.
+  // Hint wins: 💡×N + optional 🔦×N flash line.
+  const isClean = hintsUsed === 0 && flashesUsed === 0;
+  // Build per-type hint chips for the modal badge
+  const reveals = state.hints.reveals;
+  const timeHints = state.hints.freezes + state.hints.adds;
+  let badgeChips = '';
+  if (reveals > 0)   badgeChips += '<span style="font-size:20px">💡</span><span style="font-size:11px;font-family:var(--mono);color:var(--ink-dim)">×' + reveals + '</span> ';
+  if (timeHints > 0) badgeChips += '<span style="font-size:20px">⏱️</span><span style="font-size:11px;font-family:var(--mono);color:var(--ink-dim)">×' + timeHints + '</span> ';
+  if (flashesUsed > 0) badgeChips += '<span style="font-size:18px">🔦</span><span style="font-size:11px;font-family:var(--mono);color:var(--ink-dim)">×' + flashesUsed + '</span>';
+  const badgeIcon = isClean ? '' :
+    '<div style="text-align:center;margin:10px 0 0;line-height:1.6">' + badgeChips + '</div>';
   openModal(
     "<h2>Solved</h2>"
-    + '<p class="lede">' + SHARE_NAME + " #" + state.day + " · " + sizeOf(state.size).label + " " + diffOf2(state.diff, state.n).label
-    + (hintsUsed ? ' · 💡×' + hintsUsed : '') + "</p>"
     + '<div class="win-time">' + fmtTime(elapsedMs()) + "</div>"
-    + '<div class="badge-wrap" id="badgeWrap"></div>'
+    + badgeIcon
+    + starWinHTML()
+    + '<div class="badge-wrap" id="badgeWrap" style="margin-top:' + (isClean ? '12' : '8') + 'px"></div>'
     + (beatChall ? '<p class="lede" style="color:var(--ok)">⚡ Beat the challenge time!</p>' : '')
     + '<div class="stats">'
-    + '<div class="stat"><div class="n">' + st.streak + '</div><div class="l">Streak</div></div>'
+    + '<div class="stat"><div class="n">' + streakInfo().cur + '</div><div class="l">Streak</div></div>'
     + '<div class="stat"><div class="n">' + st.played + '</div><div class="l">Solved</div></div>'
     + '<div class="stat"><div class="n">' + fmtTime((st.best[compositeId(state.size, state.diff)] || 0) * 1000)
     + '</div><div class="l">Best</div></div>'
     + "</div>"
-    + '<button class="btn" id="shareBtn">Share badge</button>'
-    + '<button class="btn ghost" id="shareTxt">Copy as text</button>'
-    + '<button class="btn ghost" id="challBtn">⚡ Challenge a friend</button>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">'
+    + '<button class="btn" id="shareBtn" style="margin:0">Share</button>'
+    + '<button class="btn ghost" id="shareTxt" style="margin:0">Copy text</button>'
+    + '<button class="btn ghost" id="challBtn" style="margin:0">⚡ Challenge</button>'
+    + '<button class="btn ghost" onclick="closeModal()" style="margin:0">Close</button>'
+    + '</div>'
+    + '<button class="btn ghost" id="winLevels" style="margin-top:8px">▶ Play levels</button>'
     + leaderboardHTML()
-    + '<button class="btn ghost" onclick="closeModal()">Close</button>'
+    + winBannerHTML()
   );
-  // Render the share badge canvas into the modal
+  document.getElementById("winLevels").onclick = () => { closeModal(); const lv = progress().level; if (isTutorialLevel(lv)) loadLevel(lv); else showProgression(lv); };
+  // Render the share badge canvas into the modal, scaled to fit while
+  // preserving aspect ratio — CSS max-height alone breaks the ratio when
+  // both width and height are set as inline pixels, so we do it in JS.
   try {
     const badge = renderShareBadge();
+    fitBadgeInModal(badge);
     document.getElementById("badgeWrap").appendChild(badge);
   } catch { /* canvas rendering failed, mini board fallback */
     document.getElementById("badgeWrap").innerHTML = '<div class="mini-wrap">' + miniBoard() + '</div>';
@@ -4341,7 +5748,7 @@ function copyStats(){
     "level reached: " + p.level,
     "levels cleared: " + cleared,
     "stars: " + Object.values(p.stars).reduce((a, b) => a + b, 0) + " of " + cleared * 3,
-    "daily solved: " + st.played + ", streak " + st.streak + " (best " + st.maxStreak + ")",
+    "daily solved: " + st.played + ", streak " + streakInfo().cur + " (best " + streakInfo().best + ")",
     "",
     "per level (level: seconds, stars)",
   ];
@@ -4388,10 +5795,29 @@ function showSettings(){
 
   openModal(
     "<h2>Settings</h2>"
-    + '<p class="lede">Patterns work without relying on colour vision.</p>'
-    + '<div class="fld">Marks</div><div class="seg">' + palOpts + "</div>"
     + '<div class="fld">Theme</div>'
     + seg([["auto","Auto"],["light","Light"],["dark","Dark"]], theme)
+    + '<p class="lede">Patterns work without relying on colour vision.</p>'
+    // Admin tools at the top so they're easy to find; long-press ⚙ enables admin without opening settings first.
+    + '<div class="toggle-row">'
+    + '<div><div class="toggle-lbl">Admin tools</div>'
+    + '<div class="toggle-desc">Level jump, date pin, progress reset · or long-press ⚙</div></div>'
+    + '<button class="toggle-sw' + (adminMode ? " on" : "") + '" id="togAdmin" aria-label="Admin tools"></button>'
+    + '</div>'
+    + (adminMode
+        ? '<div class="fld">Debug — puzzle date</div>'
+          + '<div class="dbg"><input type="date" id="dbgDate" value="' + dayToISO(state.day) + '">'
+          + '<button id="dbgToday">Today</button></div>'
+          + '<p class="lede" style="margin-top:-8px">Puzzle #' + state.day
+          + (load(LS_DAY, null) !== null ? " · pinned" : " · live") + "</p>"
+          + '<div class="fld">Debug — jump to level</div>'
+          + '<div class="dbg"><input type="number" id="dbgLevel" min="1" max="500" value="'
+          + (state.mode === "levels" && state.lvl ? state.lvl.cfg.level : progress().level)
+          + '"><button id="dbgGo">Go</button>'
+          + '<button id="dbgReset">Reset progress</button></div>'
+          + '<p class="lede" style="margin-top:-8px">Reset clears levels, stars and lives; the daily is not affected.</p>'
+        : "")
+    + '<div class="fld">Marks</div><div class="seg">' + palOpts + "</div>"
     + '<div class="fld" style="margin-top:4px">Gameplay</div>'
     + '<div class="toggle-row">'
     + '<div><div class="toggle-lbl">Fade completed</div>'
@@ -4403,24 +5829,7 @@ function showSettings(){
     + '<div class="toggle-desc">Your guesses have rounded corners</div></div>'
     + '<button class="toggle-sw' + (load(LS_ROUND, true) ? " on" : "") + '" id="togRound" aria-label="Rounded mark corners"></button>'
     + '</div>'
-    + '<div class="toggle-row">'
-    + '<div><div class="toggle-lbl">Admin tools</div>'
-    + '<div class="toggle-desc">Level jump, date pin, progress reset</div></div>'
-    + '<button class="toggle-sw' + (adminMode ? " on" : "") + '" id="togAdmin" aria-label="Admin tools"></button>'
-    + '</div>'
-    + (adminMode
-        ? '<div class="fld">Debug — puzzle date</div>'
-          + '<div class="dbg"><input type="date" id="dbgDate" value="' + dayToISO(state.day) + '">'
-          + '<button id="dbgToday">Today</button></div>'
-          + '<p class="lede" style="margin-top:-8px">Puzzle #' + state.day
-          + (load(LS_DAY, null) !== null ? " · pinned" : " · live") + "</p>"
-          + '<div class="fld">Debug — jump to level</div>'
-          + '<div class="dbg"><input type="number" id="dbgLevel" min="1" max="500" value="'
-          + progress().level + '"><button id="dbgGo">Go</button>'
-          + '<button id="dbgReset">Reset</button></div>'
-          + '<p class="lede" style="margin-top:-8px">Reset clears levels, stars and lives; the daily is not affected.</p>'
-        : "")
-    + '<button class="btn ghost" id="copyStats">Copy my stats</button>' 
+    + '<button class="btn ghost" id="copyStats">Copy my stats</button>'
     + '<button class="btn" onclick="closeModal()">Done</button>'
   );
 
@@ -4448,8 +5857,7 @@ function showSettings(){
   m.querySelector("#togAdmin").onclick = () => {
     adminMode = !adminMode;
     try { localStorage.setItem(LS_ADMIN, adminMode ? "1" : "0"); } catch {}
-    if (adminMode) document.documentElement.classList.add("dev");
-    else document.documentElement.classList.remove("dev");
+    syncAdminControls();
     showSettings();
   };
   if (adminMode) m.querySelector("#dbgDate").onchange = e => {
@@ -4506,7 +5914,6 @@ function showSettings(){
 })();
 document.getElementById("btnUndo").onclick  = undo;
 document.getElementById("btnStats").onclick = showStats;
-document.getElementById("btnHint").onclick  = showHintModal;
 document.getElementById("btnReset").onclick = confirmReset;
 document.getElementById("btnMark").onclick  = () => state.bookmark ? openMarkModal() : setBookmark();
 document.getElementById("btnNew").onclick = () => loadPuzzle(state.size, state.diff, true);
@@ -4520,10 +5927,10 @@ document.getElementById("btnQuit").onclick = confirmQuit;
   sb.addEventListener("pointerdown", function(){
     _st = setTimeout(function(){
       _st = null;
-      adminMode = true;
-      try { localStorage.setItem(LS_ADMIN, "1"); } catch {}
-      document.documentElement.classList.add("dev");
-      toast("Admin mode enabled");
+      adminMode = !adminMode;
+      try { localStorage.setItem(LS_ADMIN, adminMode ? "1" : "0"); } catch {}
+      syncAdminControls();
+      toast(adminMode ? "Admin ON" : "Admin OFF");
       showSettings();
     }, 800);
   });
@@ -4533,11 +5940,20 @@ document.getElementById("btnQuit").onclick = confirmQuit;
   sb.addEventListener("pointerleave", function(){
     if (_st){ clearTimeout(_st); _st = null; }
   });
+  // pointercancel fires on iOS/Android when the browser takes over the gesture
+  // (scroll, text selection, context menu). Without this the timeout keeps
+  // running silently and the next pointerdown double-fires.
+  sb.addEventListener("pointercancel", function(){
+    if (_st){ clearTimeout(_st); _st = null; }
+  });
   sb.addEventListener("contextmenu", function(e){ e.preventDefault(); });
 })();
 
 // Initialize adds badge and update it
 updateAddsBadge();
+
+// Stamp version into the playtest banner (banner text is static HTML; version lives in JS).
+(function(){ var b = document.getElementById("playtestBanner"); if (b) b.textContent = "🧪 PLAYTEST " + CHROMOKU_VERSION + " — feedback welcome"; })();
 
 // Launch tutorial on first play
 // NOTE: Disabled mixing tutorial level with daily puzzle initialization.
@@ -4551,10 +5967,15 @@ updateAddsBadge();
 //  markTutorialSeen();
 //}
 
-if (adminMode) document.documentElement.classList.add("dev");
+// Sync admin state: html.dev class drives CSS visibility of .tiers (size + diff rows).
+// Call whenever adminMode changes.
+function syncAdminControls(){
+  if (adminMode) document.documentElement.classList.add("dev");
+  else document.documentElement.classList.remove("dev");
+  renderDailyNav();
+}
+syncAdminControls();
 
-// An uncaught error used to leave a blank page with no way back. Show a panel
-// with an escape hatch instead.
 window.addEventListener("error", e => showCrash(e.message));
 window.addEventListener("unhandledrejection", e => showCrash(String(e.reason)));
 let crashed = false;
@@ -4608,6 +6029,78 @@ state.day = dayNumber();
 enterDaily();
 if (!load(LS_HELP, false)) showHelp();
 
+// ── Admin bar wiring ─────────────────────────────────────────────────────────
+// The bar (#adminBar) is a dev-only strip visible whenever html.dev is set.
+// Buttons are bound once here; the inputs update on every loadLevel/enterDaily
+// call via updateAdminBar().
+function updateAdminBar(){
+  const dateEl = document.getElementById("adminDate");
+  if (dateEl) dateEl.value = dayToISO(state.day);
+  const lvlEl = document.getElementById("adminLevel");
+  if (lvlEl) lvlEl.value = (state.mode === "levels" && state.lvl) ? state.lvl.cfg.level : progress().level;
+  // Keep the → Next day button label in sync so the tester can see what comes next
+  const nextBtn = document.getElementById("adminNext");
+  if (nextBtn){
+    const dc = getDailyConfig();
+    nextBtn.title = dayToISO(state.day) + " · " + dc.label + " · " + dc.tier;
+  }
+}
+(function(){
+  const go = document.getElementById("adminGo");
+  if (go) go.onclick = () => {
+    const n = Math.max(1, Math.min(500, parseInt(document.getElementById("adminLevel").value, 10) || 1));
+    loadLevel(n);
+  };
+  const dateInput = document.getElementById("adminDate");
+  if (dateInput){
+    dateInput.value = dayToISO(state.day);
+    dateInput.onchange = e => {
+      const d = isoToDay(e.target.value);
+      if (!isFinite(d)) return;
+      save(LS_DAY, d); state.day = d;
+      enterDaily();
+    };
+  }
+  const todayBtn = document.getElementById("adminToday");
+  if (todayBtn) todayBtn.onclick = () => {
+    try { localStorage.removeItem(LS_DAY); } catch {}
+    state.day = dayNumber();
+    updateAdminBar();
+    loadPuzzle(state.size, state.diff);
+  };
+  const resetBtn = document.getElementById("adminReset");
+  if (resetBtn) resetBtn.onclick = () => {
+    const stayLevel = state.mode === "levels" && state.lvl ? state.lvl.cfg.level : null;
+    openModal(
+      '<h2>Reset all progress?</h2>'
+      + '<p class="lede">Clears all stars, level progress and lives. Cannot be undone.</p>'
+      + '<button class="btn" id="adminResetConfirm">Clear progress</button>'
+      + '<button class="btn ghost" id="adminResetCancel">Cancel</button>'
+    );
+    document.getElementById("adminResetConfirm").onclick = () => {
+      try { localStorage.removeItem(LS_PROG); } catch {}
+      toast("Progress reset");
+      closeModal();
+      if (stayLevel) loadLevel(stayLevel);
+      else render();
+    };
+    document.getElementById("adminResetCancel").onclick = () => closeModal();
+  };
+  const dailyBtn = document.getElementById("adminDaily");
+  if (dailyBtn) dailyBtn.onclick = () => enterDaily();
+  // → Next day: advance state.day by 1 (wraps through the weekly schedule) and
+  // reload the daily. Lets testers walk Mon → Tue → … → Sun → Mon without
+  // touching the date picker.
+  const nextBtn = document.getElementById("adminNext");
+  if (nextBtn) nextBtn.onclick = () => {
+    state.day = state.day + 1;
+    save(LS_DAY, state.day);
+    updateAdminBar();
+    enterDaily();
+  };
+  updateAdminBar();
+})();
+
 // Exposed for verification in the console.
 window.CHROMOKU = { state, DIFFS, SIZES, DIFFICULTIES, CURR_SIZES, CURR_DIFFS,
                     MARKSETS, buildLevel, levelConfig,
@@ -4618,7 +6111,7 @@ window.CHROMOKU = { state, DIFFS, SIZES, DIFFICULTIES, CURR_SIZES, CURR_DIFFS,
                     revealCell, freezeClock, addTime, showHintModal,
                     paintCompletedUnits, applySharp, shareAsImage,
                     rotatedMarkSet, buildMarks, emojiFor,
-                    render, winLevel, enterDaily,
+                    render, winLevel, enterDaily, skipTutorial,
                     fireConfetti, shareChallenge, showProgression,
                     poolRemaining, powerPool,
                     showExplainers, seenMechanics, markMechanicSeen,

@@ -204,6 +204,15 @@ For manual assignment or AI identification from labels:
 
 ## Lessons learned
 
+### Chromoku service worker — bump CACHE on every deploy
+- `sw.js` uses cache-first with a versioned name (`chromoku-vN`). If the cache name is not bumped, browsers serve old `index.html` forever regardless of what GitHub Pages has.
+- `skipWaiting()` + `clients.claim()` means the first refresh installs the new SW but still serves old cached content. The second refresh serves new content. Hard refresh (Cmd+Shift+R) saves one cycle. Do not mistake this for a deployment failure — it is normal SW lifecycle behaviour.
+- Fixes that rely on `localStorage` state may not take effect until after two refreshes. A runtime guard that detects corruption at load time (e.g. scanning given cells for conflicts) is more reliable than a guard that only fires on a fresh cache.
+
+### Chromoku `loadPuzzle` — `fresh=true` sets `state.practice = true`
+- `fresh=true` does two things: uses a random seed instead of the day seed, AND marks the session as practice (`state.practice = true`), which hides the daily UI (week list, difficulty tabs, streak).
+- When you need to discard a corrupted cache and regenerate from the day seed without touching `state.practice`, pass `fresh=false` and an internal skip flag instead of `fresh=true`.
+
 ### Gemini API models retire fast
 - `gemini-2.0-flash` shut down June 1, 2026; `gemini-2.0-flash-lite` also retired
 - Always use a fallback chain, not a single model
@@ -307,7 +316,7 @@ Two persistent branches always exist — **never collapse them**:
 Claude always develops on a task branch (`claude/chromoku-*`):
 
 1. **Develop** on task branch (invisible, not served anywhere)
-2. **"Push to playtest"** → Claude merges task branch → `main`. Banner stays. GitHub Pages updates in ~1 min. Bump `CHROMOKU_VERSION` PATCH or MINOR. Add a CHANGELOG.md entry.
+2. **"Push to playtest"** → Claude merges task branch → `main`. Banner stays. GitHub Pages updates in ~1 min. Bump `CHROMOKU_VERSION` PATCH or MINOR. Add a CHANGELOG.md entry. The banner auto-displays the version (JS stamps it on load) — no separate banner edit needed.
 3. **User tests** at the playtest URL
 4. **"Push to release"** (or "push to mainline") → Claude merges `main` → `release`, removes the banner line in that commit, tags `chromoku-vX.Y.Z`, pushes. Moves CHANGELOG entry from Playtest → Released section.
 
@@ -338,3 +347,60 @@ git push origin release --tags
 - 🧪 **Playtest** (live on `main`): https://ronacul.github.io/wine-cellar/chromoku/
 
 Always push to `main` at the end of every Chromoku session so phone/other devices can test the latest version.
+
+### Chromoku game systems (as of v0.20.2)
+
+All of this is in `chromoku/index.html`. Version history lives in `chromoku/CHANGELOG.md`.
+
+#### Home screen (daily mode)
+- `renderDailyNav()` draws two large buttons: **Today's puzzle** (tier, number, tick when solved) and **Levels** (progress minus the 7 tutorial levels, out of 500), plus a streak line, a 🌓 theme button and a **Calendar** button. The old 7-day strip is gone.
+- Opening a past day from the calendar shows a "Viewing #N" line. The Today button is the way back.
+- **Levels** opens the intro card (`showProgression`) first. Tutorial levels (0 to 6) load directly.
+- Real level numbers are raw (`Level 45` on the bar and splash) while the Levels button shows raw minus 7. They disagree by 7 and have not been reconciled.
+- The `.tiers` rows (size, difficulty, Latin, Double, Scramble, Levels toggles) are admin-only. Admin mode defaults ON whenever the playtest banner exists, so playtest shows them. Release does not.
+
+#### Daily history, streak, calendar
+- `chromoku.history.v1` is a permanent `{ [dayNumber]: { secs, onTime } }`. `onTime` means solved on its own day. The per-day slot store (`chromoku.daily.v3`) still prunes to 30 days and is not the source for the calendar. First run seeds history from the slot store and the old streak.
+- `recordDayWin(day, secs)` is called from `win()`. `streakInfo()` returns `{cur, best}` computed from history. Only `onTime` days count. The streak breaks after a full missed day and stays alive through "today still open".
+- `LS_STATS.streak/maxStreak/lastWinDay` are legacy and no longer read, except for the one-time seed. Do not read them for display.
+- `showCalendar(year, month, selDay)` is a month grid, Monday first, from the first puzzle (`EPOCH` 15 Aug 2026) to today. Filled ✓ = solved on the day, outline ✓ = solved later. Tapping a day shows its time and Play or View board. The explanation lives behind a ? button. Keep text off the calendar.
+- `calModel(year, month, h, today)` is the single source for what the calendar draws. The on-screen view and the share image both use it. Change it there.
+- **Stars count any solve (on the day or later) and ignore hints.** Reason: hints and add-time are the ad hooks, so nothing rewards "no helps". Cheating is accepted: everything is local and personal, so there is no anti-cheat. Do not add a no-hints bonus without revisiting the monetization trade-off.
+- Whole periods only. A week, a weekday column or a month needs every day inside the game's life, so the 15 Aug opening week and August 2026 can never be starred. Row ★ = full Mon to Sun week. Column ★ (footer) = every one of that weekday in the month. Month ★, quarter ★★, year ★★★ via `periodDone()` and `superStars()`. A trophy shelf under the grid shows the year.
+- `dayStars()` and `newStarList()` compare stars before and after a win is recorded, so each star celebrates once. `starWinHTML()` shows the gold banner in the win modal and calls `fireFireworks(bursts, ms)`. Show size scales with the biggest star (week/column 3 bursts up to year 16). Fireworks are skipped under `prefers-reduced-motion`.
+- Share: `renderCalendarImage()` draws a canvas PNG, `shareCalendar()` uses the system share sheet with the image and text, falling back to clipboard image then text. `gameURL()` builds the link from the current host so playtest and release (Cloudflare) both work. Some apps drop text when a file is attached, so the address is also printed on the image.
+- Storage is browser localStorage. It is per device and per browser and is wiped by clearing site data. Safari can evict it after about 7 days without a visit unless the app is on the Home Screen. An export/import button has not been built.
+
+#### Level ladder
+- Raw level numbers 0 to 6 are the tutorial; 7 to 500 are the real ladder, in 5 worlds of 100 levels (`WORLDS`, `LEVELS_PER_STAGE` 20, `PEEK_STEP` 15). `levelConfig(level)` is a pure function of the level number. Never add state to it.
+- **Waves:** each block of ten levels is a sawtooth, `WAVE = [-2,-2,-1,-1,0,0,1,1,2,3]` (positive = harder). The wave changes the clue count (about 3.5% of the grid per step, floor at the sparsest clue count that grid type already uses elsewhere, minus 3 on 9×9 and up) and the clock via `waveClock(cfg)` (±7% per step). Small grids have no clues to spare, so the clock carries the swing. Big double grids only get easier-direction clue changes. Peeks (step 15) are exempt.
+- **Challenge levels:** every 10th level from `CHALLENGE_FROM` 20 (so levels 20, 30, 40...). On grids up to 8×8 they use Scramble (`cfg.scramble`, mark set alternates classic and shapes). The decoy is unreadable on 9×9 and up, so those only get the tightest clues. `loadLevel` sets `state.scramble` from the config so the daily toggle can never leak into levels. `scrambleDecoy` seeds from the level number in level mode.
+- `levelRating(cfg)` gives 1 to 5 (Warm-up, Easy, Medium, Hard, Brutal): base from par seconds (thresholds 30/60/110/200), plus the wave (-1, 0, +1) and +2 for a challenge. It is computed from config, not from play data, so it will need tuning after real play.
+- **Intro card** (`showProgression`): level number, rating dots and label, ⚡ Challenge tag, goal card (`levelGoal`/`levelMarkInfo`: "Match the colours/shapes/patterns", grid size, rule, double/rotated/scramble notes), the stage as two rows of ten with stars earned (`renderStagePath(cfg, true)`; ⚡ challenge, ◈ preview, ★ boss), and a mini worked example when entering a new world. "Level data" is admin-only.
+- **Level bar** is deliberately minimal: back, undo, reset (36px buttons), `Level N` (⚡ on challenges), a goal line (`🎨 colours · 4×4 ⓘ`, 🌀 = scramble) and hearts plus clock. Tapping the goal line opens `showLevelGoal()` which stops the clock until closed. Do not put the stage map back in the bar.
+- Fail and out-of-time screen: **Retry** is the primary button. Retry costs the life already taken at failure. The two ad options (+15s, +30s and 2 reveals) are always visible under it, or a "No bonus time left" note once the level's 2 are spent. **Watching an ad to continue refunds the life** lost at failure (`afterFail` in `showAddTimeModal`). A mid-level add-time does not refund because nothing was lost. Out of lives: Retry is disabled until a heart returns, and the main button is "Play today's puzzle" (dailies use no lives).
+- Win, fail and out-of-lives modals are **sticky** (`openModal(html, true)`): tapping outside does nothing and each has a 🏠 Home button. `openModal(html, sticky, onClose)` takes an optional close callback.
+
+#### Phone fit (one screen, no scroll)
+- Target: the daily and every level up to 10×10 fit without scrolling at 390×844, 375×667 and 360×640. The big win was the ad slot: a 300×250 placeholder was the cause of all scrolling. It is now a 50px row. Re-measure after any layout change (see Testing recipes).
+- Controls: header icons 36px, level-bar buttons 36px with a background, power-up buttons 36px tall with 20px icons. Safari toolbars shrink the real viewport below `innerHeight` on a phone, so check on a device.
+- Theme: first item in Settings (Auto, Light, Dark) and the 🌓 button on the home row.
+
+### Chromoku lessons learned
+
+- **The difficulty rater could loop forever.** `nakedPairs`/`hiddenPairs` reported "progress" for candidate eliminations, but `rateDifficulty` rebuilds candidates from the grid every pass, so an elimination with no placement looped forever. About a third of the 9×9 Latin levels (around 267 to 300) froze the page on playtest v0.18.1. Fix: only a placement counts as progress. After any change to generation, rating or `levelConfig`, sweep **every** level 7 to 500 (see below). Level 281 was the first tell.
+- A hung level blocks the whole tab, so never run `buildLevel` for many levels in one page call without a watchdog. Run in chunks and kill a stuck page from the Node side.
+- A `<details>` that hides a monetization option hides it from the player. If an option matters, show it, and say so when it is exhausted.
+- Do not reward "no helps": it works against the ad and hint design. Reward what was solved instead (weeks, weekdays, months).
+- When a screen needs more space, check what is actually tall before shrinking controls. The ad block, not the board, caused the scrolling.
+- `confirmReset` and `showAddTimeModal` call `pauseTimer()`, which only stops the display interval, not the elapsed clock (`state.since`). Opening them may still burn level time. Not verified. `showLevelGoal` stops the real clock (`stopTimer`, then `startTimer` on close).
+- Service worker: bump `CACHE` in `sw.js` on every deploy (currently `chromoku-v32`). Players need two refreshes to see a new build.
+
+### Chromoku testing recipes
+
+- No test suite. Verify with headless Chromium through Playwright (`/opt/node22/lib/node_modules/playwright`, `executablePath:'/opt/pw-browsers/chromium'`) loading `file:///home/user/wine-cellar/chromoku/index.html`.
+- Syntax check: extract the `<script>` and run it through `new Function(...)` in Node.
+- Seed state through localStorage keys (`chromoku.history.v1`, `chromoku.progress.v1`, `chromoku.seen-mech.v1` to skip explainers, `chromoku.dev` = `"0"` to turn admin mode off) and reload.
+- Call globals directly from `page.evaluate`: `loadLevel(n)`, `showProgression(n)`, `failLevel()`, `showCalendar(y, m, day)`, `calModel`, `levelConfig`, `levelRating`, `buildLevel`.
+- Level sweep: loop `buildLevel(L)` for L in 7 to 500, one page call per level, with a Node timer that closes the browser if a level takes more than 6 s. A healthy build finishes every level in under 0.8 s.
+- Fit check: for each phone size, compare `document.documentElement.scrollHeight` to `innerHeight` in the daily and in levels 20, 41, 101, 301 and 401.
