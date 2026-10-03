@@ -8,6 +8,15 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.14.0] 2026-10-03 — Home buttons, calendar, real streaks
+
+- The 8-chip week strip is replaced by two large buttons (**Today's puzzle** with tier and solved tick, **Levels** with N / 500), a streak line and a **Calendar** button. Opening a past day shows a "Viewing #N" line; Today is the way back.
+- **Calendar:** month view from the first puzzle to today. Filled = solved on the day, outline = solved later, ring = today. Tap a day for its time, then Play or View board.
+- **Permanent history** (`chromoku.history.v1`): `{day: {secs, onTime}}`, seeded once from the 30-day slot store and the old streak. Slot records still prune at 30 days; history does not.
+- **Streak fix:** it is now computed from history and counts only puzzles solved on their own day, and it breaks after a missed day. Before, winning an old day from the strip could overwrite `lastWinDay` and corrupt the streak, and the displayed streak never reset on a miss.
+- Data is browser localStorage: per device and per browser, and cleared if the player clears site data.
+- Bumped SW cache to `"chromoku-v22"`.
+
 ### [v0.13.1] 2026-10-03 — Level flow polish
 
 - Splash: 20 pips replaced by a progress bar ("Step N of 20", boss flagged). New worlds get a mini worked example of their rule. "Level data" is shown only with admin tools on.

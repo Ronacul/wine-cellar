@@ -311,36 +311,60 @@ html.in-level #sizeRow{display:none !important}
   background:#4a8feb; border-radius:9px; padding:7px 20px;
   white-space:nowrap; border:none; cursor:pointer;
 }
-/* ── Weekly schedule navigation strip ── */
-/* Two rows of four — fixed Mon–Sun schedule so every day type is always visible.
-   Future days are shown grayed; past and today are interactive. */
+/* ── Home buttons: today's puzzle, levels, calendar ── */
 .day-nav{
-  display:grid; grid-template-columns:repeat(4,1fr); gap:4px;
+  display:grid; grid-template-columns:1fr 1fr; gap:10px;
   padding:2px 0; width:100%; max-width:min(460px,100%);
 }
-.day-nav button{
-  font-size:10px; font-family:var(--mono); padding:4px 2px;
-  border-radius:8px; background:var(--panel2); border:1px solid var(--line);
-  color:var(--ink-dim); cursor:pointer; white-space:nowrap; line-height:1.2;
-  min-width:0; overflow:hidden; text-overflow:ellipsis;
+.day-nav .home-big{
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+  min-height:68px; padding:10px 8px; border-radius:14px; cursor:pointer;
+  background:var(--panel2); border:1px solid var(--line-2); color:var(--ink);
 }
-/* Levels is a different destination, not another day — colour says so. */
-.day-nav button.lvl-chip{
+.day-nav .home-big .hb-t{font-size:17px; font-weight:700; letter-spacing:-.01em}
+.day-nav .home-big .hb-s{font-family:var(--mono); font-size:11px; opacity:.75}
+.day-nav .home-big.on{background:var(--ink); color:var(--bg); border-color:var(--ink)}
+.day-nav .home-big.lvl{
   background:rgba(201,162,39,.15); border-color:rgba(201,162,39,.45); color:#c9a227;
-  font-weight:700;
 }
-.day-nav button.lvl-chip:hover{background:rgba(201,162,39,.26); color:#c9a227}
-/* Today / selected day: inverted — you are here. */
-.day-nav button.today{
-  background:var(--ink); color:var(--bg); border-color:var(--ink); font-weight:700;
+.day-nav .home-big.lvl:hover{background:rgba(201,162,39,.26)}
+.day-nav .home-row{
+  grid-column:1 / -1; display:flex; align-items:center; justify-content:space-between;
+  gap:8px; font-family:var(--mono); font-size:12px; color:var(--ink-dim);
 }
-.day-nav button.past:hover{background:var(--panel); color:var(--ink)}
-/* All 7 recent days completed — pulse the Levels chip as a nudge. */
+.day-nav .home-row button{
+  min-height:36px; padding:6px 14px; border-radius:10px; cursor:pointer;
+  background:var(--panel2); border:1px solid var(--line-2); color:var(--ink);
+  font-family:var(--mono); font-size:12px;
+}
+.day-nav .home-view{grid-column:1 / -1; text-align:center; font-family:var(--mono); font-size:11px; color:#c9a227}
+/* Today's puzzle already solved — pulse the Levels button as a nudge. */
 @keyframes lvl-pulse{0%,100%{box-shadow:0 0 0 0 rgba(201,162,39,.5)}50%{box-shadow:0 0 0 5px rgba(201,162,39,0)}}
-.day-nav button.lvl-nudge{
+.day-nav .home-big.lvl-nudge{
   animation:lvl-pulse 1.8s ease-in-out infinite;
   border-color:rgba(201,162,39,.8);
 }
+/* ── Calendar ── */
+.cal-head{display:flex; align-items:center; justify-content:space-between; margin:4px 0 8px}
+.cal-head b{font-size:16px}
+.cal-head button{width:44px; height:40px; border-radius:10px; background:var(--panel2);
+  border:1px solid var(--line-2); color:var(--ink); font-size:18px; cursor:pointer}
+.cal-head button:disabled{opacity:.3}
+.cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:4px}
+.cal-grid .dow{font-family:var(--mono); font-size:10px; color:var(--ink-faint); text-align:center}
+.cal-grid button, .cal-grid span.blank{
+  aspect-ratio:1; border-radius:10px; font-family:var(--mono); font-size:13px;
+  border:1px solid var(--line); background:var(--panel2); color:var(--ink-dim); cursor:pointer; padding:0;
+}
+.cal-grid span.blank{visibility:hidden}
+.cal-grid button:disabled{opacity:.3; cursor:default}
+.cal-grid button.solved{background:rgba(125,168,123,.28); border-color:var(--ok); color:var(--ink)}
+.cal-grid button.late{background:transparent; border:1.5px solid var(--ok); color:var(--ink)}
+.cal-grid button.today{box-shadow:0 0 0 2px var(--gold, #c9a227)}
+.cal-grid button.sel{outline:2px solid var(--ink); outline-offset:1px}
+.cal-detail{margin-top:12px; padding:12px; border:1px solid var(--line-2); border-radius:12px;
+  background:var(--panel2); text-align:center; font-size:13px; color:var(--ink-dim); min-height:84px}
+.cal-key{font-family:var(--mono); font-size:10px; color:var(--ink-faint); text-align:center; margin-top:8px}
 
 /* ================= tutorial tip ================= */
 .tut-tip{
@@ -1241,7 +1265,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.13.1";
+const CHROMOKU_VERSION = "v0.14.0";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -1961,6 +1985,56 @@ function save(key, val){
 }
 const blankStats = () => ({ played:0, streak:0, maxStreak:0, lastWinDay:null, best:{} });
 
+// ── Permanent daily history ──────────────────────────────────────────────────
+// The per-day slot store prunes to 30 days, so the calendar and streak read
+// from their own record: { [dayNumber]: { secs, onTime } }. `onTime` means the
+// puzzle was solved on its own day, which is what the streak counts; solving an
+// old day later fills the calendar but cannot extend a streak.
+const LS_HIST = "chromoku.history.v1";
+function loadHistory(){
+  let h = load(LS_HIST, null);
+  if (h) return h;
+  // First run: seed from what the older stores still hold.
+  h = {};
+  const store = load(LS_DAILY3, {}) || {};
+  for (const [day, rec] of Object.entries(store)){
+    const done = Object.values(rec || {}).filter(v => v && v.done);
+    if (done.length) h[day] = { secs:Math.round(Math.min(...done.map(v => (v.elapsed || 0) / 1000))), onTime:false };
+  }
+  const st = load(LS_STATS, null);
+  if (st && st.lastWinDay && st.streak > 0){
+    for (let i = 0; i < st.streak; i++){
+      const d = String(st.lastWinDay - i);
+      h[d] = h[d] || { secs:0 };
+      h[d].onTime = true;
+    }
+  }
+  save(LS_HIST, h);
+  return h;
+}
+function recordDayWin(day, secs){
+  const h = loadHistory(), k = String(day), old = h[k];
+  h[k] = {
+    secs: old && old.secs ? Math.min(old.secs, secs) : secs,
+    onTime: !!(old && old.onTime) || day === dayNumber(),
+  };
+  save(LS_HIST, h);
+}
+// Current streak counts back from today, or from yesterday while today is still
+// open, so it only breaks once a whole day has passed unsolved.
+function streakInfo(){
+  const h = loadHistory();
+  const on = d => !!(h[String(d)] && h[String(d)].onTime);
+  let d = dayNumber();
+  if (!on(d)) d--;
+  let cur = 0;
+  while (d >= 1 && on(d)){ cur++; d--; }
+  const days = Object.keys(h).map(Number).filter(on).sort((a, b) => a - b);
+  let best = 0, run = 0;
+  days.forEach((x, i) => { run = i && x === days[i - 1] + 1 ? run + 1 : 1; best = Math.max(best, run); });
+  return { cur, best: Math.max(best, cur) };
+}
+
 // ── v3 multi-day helpers ─────────────────────────────────────────────────────
 // Returns the per-day slot record for a given day (defaults to {}), migrating
 // v2 single-day data into the v3 store on first access.
@@ -2414,10 +2488,9 @@ function isDayDone(day){
   return Object.values(rec).some(v => v && v.done);
 }
 
-// Render the weekly schedule navigation strip in daily mode.
-// Always shows Mon–Sun for the current week (7 chips + Levels = 8, 4×2 grid).
-// Past days and today are interactive; future/pre-epoch days are greyed out.
-// Completed days show a ✓ badge; today's chip shows a ◆ marker.
+// Home buttons in daily mode: today's puzzle, levels, and the calendar.
+// A past day opened from the calendar shows a one-line reminder; the Today
+// button is always the way back.
 function renderDailyNav(){
   const el = document.getElementById("dayNav");
   if (!el) return;
@@ -2427,59 +2500,114 @@ function renderDailyNav(){
   el.style.display = "";
 
   const today = dayNumber();
-  const DOW_ABBR = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  const tc = getDailyConfig(today);
+  const todayDone = isDayDone(today);
+  const viewing = state.day !== today;
+  const lvlTotal = WORLDS.length * LEVELS_PER_WORLD;
+  const lvlNum   = Math.max(0, Math.min(progress().level - TUTORIAL_CONFIGS.length, lvlTotal));
+  const sk = streakInfo();
 
-  // Rolling 7-day lookback: oldest on left, today on right.
-  // Every chip is a real past or present day — no locked/future chips.
-  let html = "";
-  let allDone = true;
-  for (let i = 6; i >= 0; i--){
-    const d = today - i;
-    if (d < 1){ allDone = false; continue; } // pre-epoch: skip slot
-
-    // Derive day-of-week for this day-number.
-    const dow = (d === today)
-      ? new Date().getDay()
-      : new Date(EPOCH + (d - 1) * 86400000).getUTCDay();
-    const sc = getDailyConfig(d);
-    const isToday    = d === today;
-    const isSelected = d === state.day;
-    const done       = isDayDone(d);
-    if (!done) allDone = false;
-
-    // Calendar date label — use UTC so it stays consistent with EPOCH arithmetic
-    const dt  = new Date(EPOCH + (d - 1) * 86400000);
-    const dStr = dt.getUTCDate() + "/" + (dt.getUTCMonth() + 1);
-
-    const cls = isSelected ? "today" : "past";
-    html += '<button class="' + cls + '" data-day="' + d + '">'
-          + (isToday ? "Today" : DOW_ABBR[dow])
-          + (done ? ' ✓' : '')
-          + '<br><span style="font-size:8px;color:inherit;opacity:.7">' + dStr + ' · ' + sc.tier + '</span>'
-          + '</button>';
+  let html = '<button class="home-big' + (viewing ? '' : ' on') + '" id="dnToday">'
+    + '<span class="hb-t">Today\'s puzzle' + (todayDone ? ' ✓' : '') + '</span>'
+    + '<span class="hb-s">' + tc.tier + ' · #' + today + '</span></button>'
+    + '<button class="home-big lvl' + (todayDone ? ' lvl-nudge' : '') + '" id="dnLevels">'
+    + '<span class="hb-t">Levels</span>'
+    + '<span class="hb-s">' + lvlNum + ' / ' + lvlTotal + '</span></button>';
+  if (viewing){
+    const dt = new Date(EPOCH + (state.day - 1) * 86400000);
+    html += '<div class="home-view">Viewing #' + state.day + ' · ' + dayLabel(dt) + '</div>';
   }
-
-  // Levels chip — shows progress as X/total; pulses when all 7 recent days done.
-  // Tutorial levels don't count toward the 1-500 real-level track.
-  const lvlTotal   = WORLDS.length * LEVELS_PER_WORLD;
-  const lvlNum     = Math.max(0, Math.min(progress().level - TUTORIAL_CONFIGS.length, lvlTotal));
-  const lvlDone    = allDone;
-  html += '<button class="lvl-chip' + (lvlDone ? ' lvl-nudge' : '') + '" id="dnLevels">'
-        + '<span style="font-size:13px;font-weight:700;letter-spacing:-.01em">Levels</span>'
-        + (lvlDone ? ' ✓' : '')
-        + '<br><span style="font-size:8px;opacity:.8">' + lvlNum + '/' + lvlTotal + '</span>'
-        + '</button>';
+  html += '<div class="home-row"><span>' + (sk.cur ? '🔥 ' + sk.cur + ' day streak' : 'No streak yet')
+    + (sk.best > sk.cur ? ' · best ' + sk.best : '') + '</span>'
+    + '<button id="dnCal">📅 Calendar</button></div>';
 
   el.innerHTML = html;
-  el.querySelectorAll("[data-day]").forEach(btn => {
-    btn.onclick = () => {
+  el.querySelector("#dnToday").onclick = () => {
+    if (_winTimer){ clearTimeout(_winTimer); _winTimer = null; }
+    if (viewing){ state.day = today; enterDaily(); }
+  };
+  el.querySelector("#dnLevels").onclick = () => { closeModal(); loadLevel(progress().level); };
+  el.querySelector("#dnCal").onclick = () => showCalendar();
+}
+
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const dayLabel = dt => ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][dt.getUTCDay()] + " " + dt.getUTCDate() + " " + MONTHS[dt.getUTCMonth()].slice(0, 3);
+
+// Month view of every daily since the first puzzle. Filled = solved on the
+// day (counts towards the streak); outlined = solved later; ringed = today.
+function showCalendar(year, month, selDay){
+  const today = dayNumber();
+  const tDate = new Date(EPOCH + (today - 1) * 86400000);
+  const first = new Date(EPOCH);
+  if (year === undefined){
+    const base = new Date(EPOCH + ((selDay || today) - 1) * 86400000);
+    year = base.getUTCFullYear(); month = base.getUTCMonth();
+  }
+  const h = loadHistory();
+  const sk = streakInfo();
+  const solvedCount = Object.keys(h).length;
+  const dayOf = (y, m, d) => Math.round((Date.UTC(y, m, d) - EPOCH) / 86400000) + 1;
+  const lead = (new Date(Date.UTC(year, month, 1)).getUTCDay() + 6) % 7;   // Monday first
+  const dim = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const atFirst = year === first.getUTCFullYear() && month === first.getUTCMonth();
+  const atLast  = year === tDate.getUTCFullYear() && month === tDate.getUTCMonth();
+
+  let grid = ["M","T","W","T","F","S","S"].map(x => '<div class="dow">' + x + '</div>').join("");
+  for (let i = 0; i < lead; i++) grid += '<span class="blank"></span>';
+  for (let d = 1; d <= dim; d++){
+    const n = dayOf(year, month, d), rec = h[String(n)];
+    const ok = n >= 1 && n <= today;
+    const cls = (rec ? (rec.onTime ? "solved" : "late") : "")
+      + (n === today ? " today" : "") + (n === selDay ? " sel" : "");
+    grid += '<button class="' + cls + '" data-day="' + n + '"' + (ok ? "" : " disabled") + '>'
+          + (rec ? "✓" : d) + '</button>';
+  }
+
+  openModal(
+    '<h2>Calendar</h2>'
+    + '<div class="stats" style="margin-bottom:8px">'
+    + '<div class="stat"><div class="n">' + sk.cur + '</div><div class="l">Streak</div></div>'
+    + '<div class="stat"><div class="n">' + sk.best + '</div><div class="l">Best</div></div>'
+    + '<div class="stat"><div class="n">' + solvedCount + '</div><div class="l">Solved</div></div></div>'
+    + '<div class="cal-head"><button id="calPrev"' + (atFirst ? " disabled" : "") + ' aria-label="Previous month">‹</button>'
+    + '<b>' + MONTHS[month] + ' ' + year + '</b>'
+    + '<button id="calNext"' + (atLast ? " disabled" : "") + ' aria-label="Next month">›</button></div>'
+    + '<div class="cal-grid">' + grid + '</div>'
+    + '<div class="cal-key">filled = solved on the day · outline = solved later</div>'
+    + '<div class="cal-detail" id="calDetail">Tap a day.</div>'
+    + '<button class="btn ghost" id="calDone" style="margin-top:12px">Done</button>'
+  );
+  const step = dm => {
+    const t = new Date(Date.UTC(year, month + dm, 1));
+    showCalendar(t.getUTCFullYear(), t.getUTCMonth(), selDay);
+  };
+  document.getElementById("calPrev").onclick = () => step(-1);
+  document.getElementById("calNext").onclick = () => step(1);
+  document.getElementById("calDone").onclick = closeModal;
+
+  const detail = n => {
+    const rec = h[String(n)], dt = new Date(EPOCH + (n - 1) * 86400000), cfg = getDailyConfig(n);
+    const solved = !!rec;
+    document.getElementById("calDetail").innerHTML =
+      '<div style="font-weight:700;color:var(--ink)">#' + n + ' · ' + dayLabel(dt) + ' · ' + cfg.tier + '</div>'
+      + '<div style="margin:4px 0 10px">' + (solved
+          ? 'Solved' + (rec.secs ? ' in ' + fmtTime(rec.secs * 1000) : '') + (rec.onTime ? '' : ' (played later)')
+          : (n === today ? 'Not solved yet' : 'Not played')) + '</div>'
+      + '<button class="btn" id="calGo" style="margin:0">' + (solved ? 'View board' : 'Play') + '</button>';
+    document.getElementById("calGo").onclick = () => {
+      closeModal();
       if (_winTimer){ clearTimeout(_winTimer); _winTimer = null; }
-      state.day = +btn.dataset.day;
-      enterDaily();
+      state.day = n; enterDaily();
+    };
+  };
+  document.querySelectorAll(".cal-grid button[data-day]").forEach(b => {
+    b.onclick = () => {
+      document.querySelectorAll(".cal-grid button.sel").forEach(x => x.classList.remove("sel"));
+      b.classList.add("sel");
+      detail(+b.dataset.day);
     };
   });
-  const dnLvl = el.querySelector("#dnLevels");
-  if (dnLvl) dnLvl.onclick = () => { closeModal(); loadLevel(progress().level); };
+  if (selDay) detail(selDay);
 }
 
 function render(){
@@ -2697,8 +2825,8 @@ function renderSub(){
 
   // Streak chip — visible at a glance, not buried in the win modal
   const st = load(LS_STATS, blankStats());
-  if (st.streak > 1 && state.mode !== "levels"){
-    sub.innerHTML = base + ' <span class="streak-chip">🔥' + st.streak + '</span>';
+  if (streakInfo().cur > 1 && state.mode !== "levels"){
+    sub.innerHTML = base + ' <span class="streak-chip">🔥' + streakInfo().cur + '</span>';
   } else {
     sub.textContent = base;
   }
@@ -3339,12 +3467,8 @@ function win(){
 
   const st = load(LS_STATS, blankStats());
   st.played++;
-  if (st.lastWinDay !== state.day){
-    st.streak = st.lastWinDay === state.day - 1 ? st.streak + 1 : 1;
-    st.lastWinDay = state.day;
-    st.maxStreak = Math.max(st.maxStreak, st.streak);
-  }
   const secs = Math.floor(elapsedMs() / 1000);
+  recordDayWin(state.day, secs);
   const bk = compositeId(state.size, state.diff);
   if (!st.best[bk] || secs < st.best[bk]) st.best[bk] = secs;
   save(LS_STATS, st);
@@ -3638,7 +3762,7 @@ function shareText(){
   // 🔦×N appended when flash hints were used (flash is free, shown separately)
   const hintBadge = hintsUsed === 0 ? " 🧠" : " " + "💡".repeat(Math.min(hintsUsed, 3));
   const flashBit  = flashesUsed > 0 ? " 🔦×" + flashesUsed : "";
-  const streakBit = st.streak > 1 ? " · 🔥" + st.streak : "";
+  const streakBit = streakInfo().cur > 1 ? " · 🔥" + streakInfo().cur : "";
   // Show actual mark glyphs on small grids — more interesting than row counts.
   // 9×9 and up use spoiler-free row counts (9 rows of 9 glyphs is too dense).
   const grid = state.n <= 6 ? emojiGrid(0) : spoilerFreeGrid();
@@ -4601,8 +4725,8 @@ function renderShareBadge(){
   ctx.font = "12px ui-monospace,monospace";
   ctx.textAlign = "center";
   const st = load(LS_STATS, blankStats());
-  const streakStr = state.mode !== "levels" && st.streak > 1
-    ? " · 🔥" + st.streak : "";
+  const streakStr = state.mode !== "levels" && streakInfo().cur > 1
+    ? " · 🔥" + streakInfo().cur : "";
   const sub = state.mode === "levels"
     ? (state.lvl.cfg.theme ? state.lvl.cfg.theme.name : state.lvl.cfg.title || "Tutorial") + " · " + fmtTime(elapsedMs())
     : (state.latin ? "Latin " : "") + sizeOf(state.size).label + " " + diffOf2(state.diff, state.n).label
@@ -5044,8 +5168,8 @@ function showStats(){
     + '<div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:8px">Your stats</div>'
     + '<div class="stats" style="margin-bottom:12px">'
     + '<div class="stat"><div class="n">' + st.played + '</div><div class="l">Solved</div></div>'
-    + '<div class="stat"><div class="n">' + st.streak + '</div><div class="l">Streak</div></div>'
-    + '<div class="stat"><div class="n">' + st.maxStreak + '</div><div class="l">Best</div></div>'
+    + '<div class="stat"><div class="n">' + streakInfo().cur + '</div><div class="l">Streak</div></div>'
+    + '<div class="stat"><div class="n">' + streakInfo().best + '</div><div class="l">Best</div></div>'
     + "</div>"
     + '<div class="times"><div class="l" style="font-size:9.5px;color:var(--ink-faint);'
     + 'text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">Best times</div>'
@@ -5144,7 +5268,7 @@ function showWin(){
     + '<div class="badge-wrap" id="badgeWrap" style="margin-top:' + (isClean ? '12' : '8') + 'px"></div>'
     + (beatChall ? '<p class="lede" style="color:var(--ok)">⚡ Beat the challenge time!</p>' : '')
     + '<div class="stats">'
-    + '<div class="stat"><div class="n">' + st.streak + '</div><div class="l">Streak</div></div>'
+    + '<div class="stat"><div class="n">' + streakInfo().cur + '</div><div class="l">Streak</div></div>'
     + '<div class="stat"><div class="n">' + st.played + '</div><div class="l">Solved</div></div>'
     + '<div class="stat"><div class="n">' + fmtTime((st.best[compositeId(state.size, state.diff)] || 0) * 1000)
     + '</div><div class="l">Best</div></div>'
@@ -5195,7 +5319,7 @@ function copyStats(){
     "level reached: " + p.level,
     "levels cleared: " + cleared,
     "stars: " + Object.values(p.stars).reduce((a, b) => a + b, 0) + " of " + cleared * 3,
-    "daily solved: " + st.played + ", streak " + st.streak + " (best " + st.maxStreak + ")",
+    "daily solved: " + st.played + ", streak " + streakInfo().cur + " (best " + streakInfo().best + ")",
     "",
     "per level (level: seconds, stars)",
   ];
