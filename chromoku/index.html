@@ -1306,7 +1306,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.20.1";
+const CHROMOKU_VERSION = "v0.20.2";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -3504,6 +3504,9 @@ function resumeTimer(){
 
 function showAddTimeModal(useBundle){
   if (!state.lvl || !state.lvl.cfg) return;
+  // Reached from the out-of-time screen, failLevel() has already taken a life
+  // and set done; continuing the same attempt gives that life back.
+  const afterFail = state.done && state.mode === "levels";
   pauseTimer();
   // Level mode: quick = 15s, bundle = 30s+bonus. Daily always 30s.
   const quickSecs = state.mode === "levels" ? LEVEL_ADD_SECS : ADD_SECS;
@@ -3554,6 +3557,12 @@ function showAddTimeModal(useBundle){
       // failLevel() sets state.done = true before calling this modal.
       // Clear it so the puzzle is actually playable again.
       state.done = false;
+      if (afterFail){
+        const p = progress();
+        p.lives = Math.min(LIVES_MAX, p.lives + 1);
+        saveProgress2(p);
+        renderLevelBar();
+      }
       // Strip "won" CSS classes that renderBoard() may have added while done=true.
       document.getElementById("board").classList.remove("done");
       document.querySelectorAll("[data-i]").forEach(el => el.classList.remove("won"));
@@ -3562,8 +3571,8 @@ function showAddTimeModal(useBundle){
       closeModal();
       resumeTimer();
       const msg = useBundle
-        ? "🎁 +" + rewardSecs + "s + " + BUNDLE_BONUS + " reveals — go!"
-        : "⏰ +" + rewardSecs + "s — keep going!";
+        ? "🎁 +" + rewardSecs + "s + " + BUNDLE_BONUS + " reveals" + (afterFail ? ", life back" : "") + " — go!"
+        : "⏰ +" + rewardSecs + "s" + (afterFail ? ", life back" : "") + " — keep going!";
       toast(msg);
     }
   }, 1000);
@@ -3900,7 +3909,7 @@ function failLevel(){
   // Always visible but secondary to Retry. When the level's quota is spent the
   // section says so, rather than silently vanishing.
   const adBtns = addTimeAvailable
-    ? '<div class="lede" style="margin:14px 0 6px;font-size:12px">Or keep going from here:</div>'
+    ? '<div class="lede" style="margin:14px 0 6px;font-size:12px">Or watch an ad and keep going (your life is refunded):</div>'
       + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
       + '<button class="btn ghost" id="mAddTime" style="margin:0;font-size:12px">⏰ +' + LEVEL_ADD_SECS + 's<br><span style="font-size:10px;opacity:.6;font-weight:400">watch 15s · ' + addLeft + ' left</span></button>'
       + '<button class="btn ghost" id="mAddBundle" style="margin:0;font-size:12px">🎁 +' + BUNDLE_ADD_SECS + 's + ' + BUNDLE_BONUS + ' reveals<br><span style="font-size:10px;opacity:.8;font-weight:400">watch 30s</span></button>'

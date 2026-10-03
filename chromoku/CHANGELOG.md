@@ -8,6 +8,11 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.20.2] 2026-10-03 — Watching an ad to continue refunds the life
+
+- After "Out of time", watching a bonus ad to keep going now refunds the life taken at failure. The button copy says so, and the toast says "life back". A mid-level add-time does not refund (nothing was lost).
+- Bumped SW cache to `"chromoku-v32"`.
+
 ### [v0.20.1] 2026-10-03 — Bigger level controls, bonus options always visible
 
 - **Out of time** now always shows the bonus-time options under Retry ("Or keep going from here"). In v0.13 I had put them in a collapsed "Need more time?" section, which hid them. When the level's two bonuses are used up it says "No bonus time left on this level" instead of showing nothing.
