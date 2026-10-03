@@ -227,6 +227,16 @@ html.in-level #sizeRow{display:none !important}
 .shake{animation:shake .4s ease-out}
 /* Confetti canvas — overlays the board on win */
 .confetti{position:fixed; inset:0; pointer-events:none; z-index:1000}
+.star-win{
+  text-align:center; margin:10px 0 2px; padding:10px 8px; border-radius:12px;
+  border:1px solid rgba(241,196,15,.55); background:rgba(241,196,15,.12);
+}
+.star-win .sw-s{font-size:26px; color:#f1c40f; letter-spacing:4px; line-height:1}
+.star-win .sw-t{font-weight:700; margin-top:4px}
+@media (prefers-reduced-motion:no-preference){
+  .star-win .sw-s{display:inline-block; animation:star-pop .9s cubic-bezier(.2,1.6,.4,1) both}
+  @keyframes star-pop{0%{transform:scale(0) rotate(-40deg); opacity:0}60%{transform:scale(1.5) rotate(8deg); opacity:1}100%{transform:scale(1) rotate(0)}}
+}
 /* Challenge banner — shown when playing someone's challenge */
 .challenge-bar{
   display:flex; align-items:center; gap:8px; justify-content:center;
@@ -1278,7 +1288,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.17.0";
+const CHROMOKU_VERSION = "v0.18.0";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -3653,7 +3663,9 @@ function win(){
   const st = load(LS_STATS, blankStats());
   st.played++;
   const secs = Math.floor(elapsedMs() / 1000);
+  const starsBefore = dayStars(loadHistory(), state.day, dayNumber());
   recordDayWin(state.day, secs);
+  state._newStars = newStarList(starsBefore, dayStars(loadHistory(), state.day, dayNumber()));
   const bk = compositeId(state.size, state.diff);
   if (!st.best[bk] || secs < st.best[bk]) st.best[bk] = secs;
   save(LS_STATS, st);
@@ -3856,6 +3868,79 @@ function failLevel(){
 
 // Lightweight particle burst — fires on win. Canvas cleans itself up after the
 // last particle falls offscreen. Colour pulled from the game's own HUES palette.
+// Fireworks for the big stars: radial bursts with trails, spread over `spanMs`.
+// Skipped entirely when the player has asked the OS for reduced motion; the
+// banner in the win modal still says what was earned.
+function fireFireworks(bursts, spanMs){
+  if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const cvs = document.createElement("canvas");
+  cvs.className = "confetti";
+  cvs.width = window.innerWidth; cvs.height = window.innerHeight;
+  document.body.appendChild(cvs);
+  const ctx = cvs.getContext("2d");
+  const cols = ["#f1c40f", "#ffd966", "#ffffff"].concat(HUES.slice(0, 6).map(h => h.hex));
+  const parts = [];
+  let fired = 0, raf;
+  const burst = () => {
+    const cx = cvs.width * (0.15 + Math.random() * 0.7), cy = cvs.height * (0.12 + Math.random() * 0.38);
+    const col = cols[Math.floor(Math.random() * cols.length)], N = 48;
+    for (let i = 0; i < N; i++){
+      const a = Math.PI * 2 * i / N + Math.random() * 0.2, sp = 2 + Math.random() * 4.5;
+      parts.push({ x:cx, y:cy, vx:Math.cos(a) * sp, vy:Math.sin(a) * sp, life:1, col, r:1.6 + Math.random() * 1.6 });
+    }
+    fired++;
+  };
+  for (let k = 0; k < bursts; k++) setTimeout(burst, k * spanMs / bursts + Math.random() * 150);
+  const tick = () => {
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.fillStyle = "rgba(0,0,0,.2)"; ctx.fillRect(0, 0, cvs.width, cvs.height);
+    ctx.globalCompositeOperation = "source-over";
+    let alive = false;
+    for (const q of parts){
+      if (q.life <= 0) continue;
+      q.x += q.vx; q.y += q.vy; q.vx *= 0.985; q.vy = q.vy * 0.985 + 0.06; q.life -= 0.011;
+      alive = true;
+      ctx.globalAlpha = Math.max(0, q.life); ctx.fillStyle = q.col;
+      ctx.beginPath(); ctx.arc(q.x, q.y, q.r, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    if (alive || fired < bursts) raf = requestAnimationFrame(tick); else cvs.remove();
+  };
+  raf = requestAnimationFrame(tick);
+  setTimeout(() => { cancelAnimationFrame(raf); cvs.remove(); }, spanMs + 4000);
+}
+
+// Which stars a given day belongs to, and whether each is complete in `h`.
+// Comparing this before and after recording a win says what the win earned.
+function dayStars(h, day, today){
+  const dt = new Date(EPOCH + (day - 1) * 86400000);
+  const y = dt.getUTCFullYear(), m = dt.getUTCMonth();
+  const dow = (dt.getUTCDay() + 6) % 7;
+  const all = days => days.every(n => n >= 1 && n <= today && h[String(n)]);
+  const week = []; for (let i = 0; i < 7; i++) week.push(day - dow + i);
+  const col = [];
+  const dim = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  for (let d = 1; d <= dim; d++){
+    const n = Math.round((Date.UTC(y, m, d) - EPOCH) / 86400000) + 1;
+    if ((new Date(Date.UTC(y, m, d)).getUTCDay() + 6) % 7 === dow) col.push(n);
+  }
+  const q = Math.floor(m / 3) * 3;
+  return { week:all(week), col:all(col), month:periodDone(h, y, m, m, today),
+           quarter:periodDone(h, y, q, q + 2, today), year:periodDone(h, y, 0, 11, today),
+           weekday:["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"][dow],
+           monthName:MONTHS[m] };
+}
+// Newly earned stars, biggest last, as { tier, stars, text }.
+function newStarList(before, after){
+  const out = [];
+  if (!before.week && after.week)       out.push({ tier:1, stars:"★",    text:"Week complete" });
+  if (!before.col && after.col)         out.push({ tier:1, stars:"★",    text:"Every " + after.weekday + " in " + after.monthName });
+  if (!before.month && after.month)     out.push({ tier:2, stars:"★",    text:after.monthName + " complete" });
+  if (!before.quarter && after.quarter) out.push({ tier:3, stars:"★★",   text:"Quarter complete" });
+  if (!before.year && after.year)       out.push({ tier:4, stars:"★★★",  text:"Year complete" });
+  return out;
+}
+
 function fireConfetti(){
   const cvs = document.createElement("canvas");
   cvs.className = "confetti";
@@ -5426,6 +5511,18 @@ function fitBadgeInModal(badge){
   badge.style.borderRadius = "12px";
 }
 
+// Banner for stars earned by this win; also sets off the fireworks. The size of
+// the show follows the biggest star: week/weekday small, then month, quarter, year.
+function starWinHTML(){
+  const list = state._newStars || [];
+  state._newStars = null;
+  if (!list.length) return "";
+  const top = Math.max(...list.map(x => x.tier));
+  const show = { 1:[3, 1500], 2:[6, 3000], 3:[10, 4500], 4:[16, 7000] }[top];
+  setTimeout(() => fireFireworks(show[0], show[1]), 500);
+  return list.map(x => '<div class="star-win"><div class="sw-s">' + x.stars + '</div><div class="sw-t">' + x.text + '</div></div>').join("");
+}
+
 function showWin(){
   fireConfetti();
   const st = load(LS_STATS, blankStats());
@@ -5450,6 +5547,7 @@ function showWin(){
     "<h2>Solved</h2>"
     + '<div class="win-time">' + fmtTime(elapsedMs()) + "</div>"
     + badgeIcon
+    + starWinHTML()
     + '<div class="badge-wrap" id="badgeWrap" style="margin-top:' + (isClean ? '12' : '8') + 'px"></div>'
     + (beatChall ? '<p class="lede" style="color:var(--ok)">⚡ Beat the challenge time!</p>' : '')
     + '<div class="stats">'

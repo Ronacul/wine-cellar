@@ -8,6 +8,14 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.18.0] 2026-10-03 — Fireworks for earned stars
+
+- Winning a daily that completes a week, a weekday column, a month, a quarter or a year shows a gold star banner in the win modal (star pops in) and sets off fireworks on top of the usual confetti.
+- Show size follows the biggest star earned: week/weekday (3 bursts), month (6), quarter (10), year (16 over 7 s).
+- Newly earned stars are found by comparing `dayStars()` before and after the win is recorded, so replays and backfilled days celebrate too, but a star is only celebrated once.
+- Fireworks are skipped under `prefers-reduced-motion: reduce`; the banner still shows.
+- Bumped SW cache to `"chromoku-v26"`.
+
 ### [v0.17.0] 2026-10-03 — Whole-period stars, plus quarter and year
 
 - **Whole periods only.** A week, weekday column or month can only be starred if every day in it falls on or after the first puzzle (15 Aug 2026). The partial opening week and August 2026 can never earn a star; the first starrable week is 17–23 Aug.
