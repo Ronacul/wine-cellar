@@ -8,6 +8,12 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.18.1] 2026-10-03 — Calendar: explanation moves behind a ?
+
+- The legend text under the calendar is gone. A **?** button next to the title shows or hides a short explanation of fills, outlines and stars.
+- The empty "Tap a day." box is hidden until a day is selected.
+- Bumped SW cache to `"chromoku-v27"`.
+
 ### [v0.18.0] 2026-10-03 — Fireworks for earned stars
 
 - Winning a daily that completes a week, a weekday column, a month, a quarter or a year shows a gold star banner in the win modal (star pops in) and sets off fireworks on top of the usual confetti.

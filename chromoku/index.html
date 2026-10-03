@@ -376,6 +376,8 @@ html.in-level #sizeRow{display:none !important}
 .cal-grid button.late{background:transparent; border:1.5px solid var(--ok); color:var(--ink)}
 .cal-grid button.today{box-shadow:0 0 0 2px var(--gold, #c9a227)}
 .cal-grid button.sel{outline:2px solid var(--ink); outline-offset:1px}
+.cal-help{margin:8px 0 0; padding:10px 12px; border:1px solid var(--line-2); border-radius:10px;
+  background:var(--panel2); font-size:12px; line-height:1.6; color:var(--ink-dim)}
 .cal-detail{margin-top:12px; padding:12px; border:1px solid var(--line-2); border-radius:12px;
   background:var(--panel2); text-align:center; font-size:13px; color:var(--ink-dim); min-height:84px}
 .cal-trophies{margin-top:12px}
@@ -1288,7 +1290,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.18.0";
+const CHROMOKU_VERSION = "v0.18.1";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -2753,8 +2755,13 @@ function showCalendar(year, month, selDay){
   const yr = year, trophyHTML = trophyShelf(h, yr, today);
 
   openModal(
-    '<h2>Calendar</h2>'
-    + '<div class="stats" style="margin-bottom:8px">'
+    '<div style="display:flex;align-items:center;justify-content:space-between"><h2 style="margin:0">Calendar</h2>'
+    + '<button class="icon-btn" id="calHelp" aria-label="How the calendar works" style="font-weight:700">?</button></div>'
+    + '<div class="cal-help" id="calHelpBox" hidden>'
+    + '<b>Filled</b> solved on the day · <b>outline</b> solved later<br>'
+    + '<b>★</b> right of a row: full week · under a column: every one of that weekday · by the month: full month<br>'
+    + '<b>★★</b> quarter · <b>★★★</b> year. Only whole periods count.</div>'
+    + '<div class="stats" style="margin:8px 0">'
     + '<div class="stat"><div class="n">' + sk.cur + '</div><div class="l">Streak</div></div>'
     + '<div class="stat"><div class="n">' + sk.best + '</div><div class="l">Best</div></div>'
     + '<div class="stat"><div class="n">' + solvedCount + '</div><div class="l">Solved</div></div></div>'
@@ -2763,8 +2770,7 @@ function showCalendar(year, month, selDay){
     + '<button id="calNext"' + (atLast ? " disabled" : "") + ' aria-label="Next month">›</button></div>'
     + '<div class="cal-grid">' + grid + '</div>'
     + trophyHTML
-    + '<div class="cal-key">filled = solved on the day · outline = solved later<br>★ right = full week · ★ below = every one of that weekday · corner = full month. Only whole periods count.</div>'
-    + '<div class="cal-detail" id="calDetail">Tap a day.</div>'
+    + '<div class="cal-detail" id="calDetail" hidden></div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">'
     + '<button class="btn" id="calShare" style="margin:0">Share calendar</button>'
     + '<button class="btn ghost" id="calCopy" style="margin:0">Copy invite link</button></div>'
@@ -2777,12 +2783,16 @@ function showCalendar(year, month, selDay){
   document.getElementById("calPrev").onclick = () => step(-1);
   document.getElementById("calNext").onclick = () => step(1);
   document.getElementById("calDone").onclick = closeModal;
+  document.getElementById("calHelp").onclick = () => {
+    const b = document.getElementById("calHelpBox"); b.hidden = !b.hidden;
+  };
   document.getElementById("calShare").onclick = () => shareCalendar(year, month);
   document.getElementById("calCopy").onclick = () => copyText(calendarShareText(year, month));
 
   const detail = n => {
     const rec = h[String(n)], dt = new Date(EPOCH + (n - 1) * 86400000), cfg = getDailyConfig(n);
     const solved = !!rec;
+    document.getElementById("calDetail").hidden = false;
     document.getElementById("calDetail").innerHTML =
       '<div style="font-weight:700;color:var(--ink)">#' + n + ' · ' + dayLabel(dt) + ' · ' + cfg.tier + '</div>'
       + '<div style="margin:4px 0 10px">' + (solved
