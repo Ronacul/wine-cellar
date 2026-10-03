@@ -264,6 +264,13 @@ html.in-level #sizeRow{display:none !important}
   text-align:center; font-family:var(--mono); font-size:12px;
   color:#c9a227; margin:8px 0; letter-spacing:.04em;
 }
+.prog-lv{display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-top:2px}
+.prog-lv b{font-size:18px}
+.prog-lv .prog-rate{color:var(--gold, #c9a227); letter-spacing:1px; font-size:11px}
+.prog-lv .prog-rate i{font-style:normal; color:var(--line-2)}
+.prog-lv span:not(.prog-rate){font-family:var(--mono); font-size:12px; color:var(--ink-dim)}
+.prog-lv em{font-style:normal; font-family:var(--mono); font-size:11px; font-weight:700; color:#fff;
+  background:var(--claret, #a03040); border-radius:6px; padding:2px 7px}
 .prog-goal{
   text-align:center; margin:10px 0 4px; padding:12px 12px 10px;
   border:1px solid var(--line-2); border-radius:10px; background:var(--panel2);
@@ -300,11 +307,12 @@ html.in-level #sizeRow{display:none !important}
 /* ================= ad banner mockup ================= */
 /* Full-width, slightly compact — enough breathing room without taking over the screen */
 .ad-banner{
-  width:100%;
-  display:flex; flex-direction:column; align-items:center; justify-content:center;
-  gap:6px; background:var(--panel2); border-radius:12px; padding:12px 16px;
+  width:100%; max-width:min(400px,100%);
+  display:flex; flex-direction:row; align-items:center; justify-content:space-between;
+  gap:8px; background:var(--panel2); border-radius:12px; padding:6px 10px; min-height:50px;
   border:1px solid var(--line);
 }
+.ad-banner .ad-sub{display:block; font-weight:400}
 .ad-label{
   font-family:var(--mono); font-size:9px; font-weight:700; letter-spacing:.06em;
   text-transform:uppercase; color:var(--ink-faint); border:1px solid var(--line);
@@ -318,17 +326,17 @@ html.in-level #sizeRow{display:none !important}
 }
 .ad-cta{
   font-size:12px; font-weight:700; color:#fff;
-  background:#4a8feb; border-radius:9px; padding:7px 20px;
+  background:#4a8feb; border-radius:9px; padding:7px 12px;
   white-space:nowrap; border:none; cursor:pointer;
 }
 /* ── Home buttons: today's puzzle, levels, calendar ── */
 .day-nav{
-  display:grid; grid-template-columns:1fr 1fr; gap:10px;
-  padding:2px 0; width:100%; max-width:min(460px,100%);
+  display:grid; grid-template-columns:1fr 1fr; gap:8px;
+  padding:0; width:100%; max-width:min(460px,100%);
 }
 .day-nav .home-big{
   display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
-  min-height:68px; padding:10px 8px; border-radius:14px; cursor:pointer;
+  min-height:56px; padding:6px 8px; border-radius:14px; cursor:pointer;
   background:var(--panel2); border:1px solid var(--line-2); color:var(--ink);
 }
 .day-nav .home-big .hb-t{font-size:17px; font-weight:700; letter-spacing:-.01em}
@@ -343,7 +351,7 @@ html.in-level #sizeRow{display:none !important}
   gap:8px; font-family:var(--mono); font-size:12px; color:var(--ink-dim);
 }
 .day-nav .home-row button{
-  min-height:36px; padding:6px 14px; border-radius:10px; cursor:pointer;
+  min-height:34px; padding:4px 12px; border-radius:10px; cursor:pointer;
   background:var(--panel2); border:1px solid var(--line-2); color:var(--ink);
   font-family:var(--mono); font-size:12px;
 }
@@ -832,9 +840,8 @@ html.dev #adminBar{display:flex}
   <div class="palette pal-pad" id="palette"></div>
   <!-- Ad banner — full-width strip -->
   <div class="ad-banner" id="adBanner" style="display:none">
-    <span class="ad-label">Ad · 300×250</span>
-    <div class="ad-copy">🎮 PuzzleVault</div>
-    <div class="ad-sub">500+ brain games — free to play</div>
+    <span class="ad-label">Ad</span>
+    <div class="ad-copy">🎮 PuzzleVault <span class="ad-sub">500+ brain games</span></div>
     <button class="ad-cta">Try it free →</button>
   </div>
 </div>
@@ -1133,7 +1140,7 @@ const emojiFor = (L, i) => {
 // board stays consistent on re-render, but the decoy is always different
 // from the real value so every cell lies.
 function scrambleDecoy(i, v, n){
-  const seed = state.day * 31 + state.n * 7;
+  const seed = (state.lvl ? state.lvl.cfg.level : state.day) * 31 + state.n * 7;
   let d = ((i * 17 + seed) * 13 + 37) % n;
   if (d === v) d = (d + 1) % n;
   return d;
@@ -1290,7 +1297,7 @@ const LS_SEEN  = "chromoku.seen-mech.v1";    // set of mechanic IDs the player h
 // ── Build identity ──────────────────────────────────────────────────────────
 // Bump on every push to main (playtest).  See chromoku/CHANGELOG.md.
 // PATCH = bug fix / polish.  MINOR = new gameplay feature.  MAJOR = redesign.
-const CHROMOKU_VERSION = "v0.18.1";
+const CHROMOKU_VERSION = "v0.19.0";
 
 // The re-roll and the date picker are development tools. A player who finds the
 // Admin mode: enable with ?dev=1 (sticks in localStorage), or toggle in
@@ -1620,6 +1627,9 @@ function lockedCandidates(g, cand, n, U, FULL, rotate){
 // singles. Works for both Sudoku and Latin rulesets — no boxes needed.
 function nakedPairs(g, cand, n, U){
   const empty = i => g[i] === null || g[i] === undefined;
+  // Only a placement counts as progress. The caller rebuilds candidates from the
+  // grid every pass, so a bare elimination is forgotten, and reporting it as
+  // progress made the rater loop forever on some sparse boards.
   let progress = false;
   for (const u of U){
     const twos = [];
@@ -1642,9 +1652,9 @@ function nakedPairs(g, cand, n, U){
           if (i === twos[a].i || i === twos[b].i || !empty(i)) continue;
           if (cand[i] & mask){
             cand[i] &= ~mask;
-            progress = true;
             if (cand[i] && (cand[i] & (cand[i] - 1)) === 0){
               g[i] = 31 - Math.clz32(cand[i]);
+              progress = true;
             }
           }
         }
@@ -1680,13 +1690,11 @@ function hiddenPairs(g, cand, n, U){
         }
         if (placed2 || cells2.length !== 2) continue;
         if (cells1[0] === cells2[0] && cells1[1] === cells2[1]){
+          // Narrows candidates but places nothing, and candidates are not kept
+          // between passes, so this cannot report progress. Left as a no-op
+          // until the rater carries eliminations forward.
           const mask = b1 | b2;
-          for (const i of [cells1[0], cells1[1]]){
-            if (cand[i] & ~mask){
-              cand[i] = mask;
-              progress = true;
-            }
-          }
+          for (const i of [cells1[0], cells1[1]]) cand[i] &= mask;
         }
       }
     }
@@ -1724,6 +1732,10 @@ const LEVELS_PER_STAGE = 20, STAGES_PER_WORLD = 5, PEEK_STEP = 15;
 // Step-3 inner peek is retired: mark rotation now carries the variety role.
 
 const LEVELS_PER_WORLD = LEVELS_PER_STAGE * STAGES_PER_WORLD;
+// Wave shape across a block of ten levels: breather, build, climb, challenge.
+// Positive = harder (fewer givens). The tenth level is the challenge.
+const DECADE = 10, CHALLENGE_FROM = 20;
+const WAVE = [-2, -2, -1, -1, 0, 0, 1, 1, 2, 3];
 
 /* ================= TUTORIAL SYSTEM ================= */
 // 7-level guided onboarding, highly seeded, with interactive hints
@@ -1838,6 +1850,17 @@ const worldOf = level => Math.min(WORLDS.length, Math.floor((level - 1) / LEVELS
 const stageOf = level => Math.floor(((level - 1) % LEVELS_PER_WORLD) / LEVELS_PER_STAGE) + 1;
 const stepOf  = level => ((level - 1) % LEVELS_PER_STAGE) + 1;
 
+// 1–5 difficulty shown on the splash: size and clue load set the base (from the
+// par time), then the wave nudges it so breathers read easier and challenges harder.
+const RATING_LABELS = ["", "Warm-up", "Easy", "Medium", "Hard", "Brutal"];
+function levelRating(cfg){
+  const par = parSeconds(cfg, 2);
+  const base = par <= 30 ? 1 : par <= 60 ? 2 : par <= 110 ? 3 : par <= 200 ? 4 : 5;
+  const off = cfg.challenge ? 2 : cfg.wave <= -1 ? -1 : cfg.wave === 0 ? 0 : 1;
+  const r = Math.max(1, Math.min(5, base + off));
+  return { r, label: RATING_LABELS[r] };
+}
+
 // A level's configuration is a pure function of its number, so level N is the
 // same puzzle for everyone and no table has to be maintained.
 function levelConfig(level){
@@ -1870,12 +1893,39 @@ function levelConfig(level){
   // full complement — it is meant to intrigue, not to punish.
   // Trim 1 given every 6 steps on 9×9+ for a gentle within-stage ramp.
   const trim = !peek && cfg.n >= 9 ? Math.floor((step - 1) / 6) : 0;
-  const givens = Math.max(cfg.givens - trim, Math.ceil(cfg.n * cfg.n * 0.25));
+
+  // Waves: difficulty is a sawtooth over each block of ten levels, not a ramp.
+  // Steps 1–2 are a breather, then it climbs, and every tenth level is a
+  // challenge. A wave unit moves the clue count by ~3.5% of the grid, so a
+  // breather has a few more givens and a climb a few fewer. Peeks are exempt.
+  const decade = ((level - 1) % DECADE) + 1;
+  const challenge = level >= CHALLENGE_FROM && decade === DECADE && !peek;
+  const wave = peek ? 0 : WAVE[decade - 1];
+  let unit = Math.round(cfg.n * cfg.n * 0.035 * wave);
+  // Big double grids are already at the edge of what the generator can make
+  // unique, so their climbs are carried by the clock rather than thinner clues.
+  if (cfg.layers > 1 && cfg.n >= 9) unit = Math.min(unit, 0);
+  // Never go thinner than the sparsest clue count this grid type already uses
+  // elsewhere (less the stage trim): below that the generator may not find a
+  // unique puzzle at all.
+  let sparsest = cfg.givens;
+  for (const wd of WORLDS) for (const e of wd.pool)
+    if (e.n === cfg.n && !!e.boxless === !!cfg.boxless) sparsest = Math.min(sparsest, e.givens);
+  const floorG = Math.max(Math.ceil(cfg.n * cfg.n * 0.25), cfg.n >= 9 ? sparsest - 3 : 0);
+  const givens = Math.min(cfg.n * cfg.n - 2, Math.max(cfg.givens - trim - unit, floorG));
+
+  // Challenge levels scramble the marks (colours wear misleading shapes, shapes
+  // misleading colours). The decoy is only readable on grids up to 8×8, and
+  // patterns have no second dimension to scramble, so those sizes keep the
+  // tighter clues but no decoys.
+  const scramble = challenge && cfg.n < 9;
+  let markSet = cfg.markSet || null;
+  if (scramble) markSet = (Math.floor(level / DECADE) % 2 && MARKSETS.shapes.build(cfg.n)) ? "shapes" : "classic";
 
   return { ...cfg, givens, level, world:w, stage, step, peek,
            boss:step === LEVELS_PER_STAGE, theme:world,
            peekOf: peek ? WORLDS[w].name : null,
-           markSet: cfg.markSet || null };
+           markSet, wave, challenge, scramble };
 }
 
 const levelSeed = level => level * 7919 + 13;
@@ -1900,6 +1950,10 @@ function generosity(level, peek){
              + TUNE.generositySpan * Math.exp(-block / TUNE.generosityDecayBlocks);
   return base + (peek ? TUNE.peekRelief : 0);
 }
+
+// The wave also moves the clock, because on small grids the clue count has no
+// room left to move: a breather gets up to 14% more time, a challenge 21% less.
+const waveClock = cfg => 1 - 0.07 * (cfg.peek ? 0 : cfg.wave);
 
 // Everything needed to play a level: the puzzle, its measured difficulty, and
 // the clock it has to be beaten against.
@@ -1927,7 +1981,7 @@ function buildLevel(level){
   const stalls = rated.reduce((s, r) => s + r.stalls, 0);
 
   const par = parSeconds(cfg, tier);
-  return { cfg, layers, tier, stalls, par, limit: par * generosity(level, cfg.peek) };
+  return { cfg, layers, tier, stalls, par, limit: par * generosity(level, cfg.peek) * waveClock(cfg) };
 }
 
 /* ================= progression state ================= */
@@ -2334,6 +2388,7 @@ function loadLevel(n){
   state.n = lv.cfg.n;
   state.latin = lv.cfg.boxless;
   state.dbl = lv.cfg.layers > 1;
+  state.scramble = !!lv.cfg.scramble;   // never inherit the daily's toggle
   state.practice = true;          // levels keep their own record, not the daily one
   // A preview can advertise a mark set as well as a rule; restore the player's
   // own choice as soon as the level ends.
@@ -2544,7 +2599,8 @@ function renderDailyNav(){
   }
   html += '<div class="home-row"><span>' + (sk.cur ? '🔥 ' + sk.cur + ' day streak' : 'No streak yet')
     + (sk.best > sk.cur ? ' · best ' + sk.best : '') + '</span>'
-    + '<button id="dnCal">📅 Calendar</button></div>';
+    + '<span><button id="dnTheme" aria-label="Switch theme" title="Theme">🌓</button> '
+    + '<button id="dnCal">📅 Calendar</button></span></div>';
 
   el.innerHTML = html;
   el.querySelector("#dnToday").onclick = () => {
@@ -2553,6 +2609,12 @@ function renderDailyNav(){
   };
   el.querySelector("#dnLevels").onclick = () => { closeModal(); loadLevel(progress().level); };
   el.querySelector("#dnCal").onclick = () => showCalendar();
+  el.querySelector("#dnTheme").onclick = () => {
+    const order = ["auto", "light", "dark"], cur = load(LS_THEME, "auto");
+    const next = order[(order.indexOf(cur) + 1) % 3];
+    save(LS_THEME, next); applyTheme();
+    toast(next === "auto" ? "Theme: auto" : "Theme: " + next);
+  };
 }
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -2960,7 +3022,7 @@ function renderLevelBar(){
     + '<button class="icon-btn" id="lvUndo" aria-label="Undo" title="Undo" disabled>↶</button>'
     + '<button class="icon-btn" id="lvReset" aria-label="Reset puzzle" title="Reset">↻</button>'
     + '</div>'
-    + '<div class="lvl-c"><b>Level ' + c.level
+    + '<div class="lvl-c"><b>Level ' + c.level + (c.challenge ? ' ⚡' : '')
     + (c.peek ? ' <span class="pk">' + (c.peekOf || "ahead") + "</span>" : "") + "</b>"
     + '<span class="lvl-sub">' + (c.peek ? "Preview" : c.theme.name) + " · " + tag
     + (c.boss ? " · boss" : "") + "</span>"
@@ -3776,10 +3838,10 @@ function winLevel(){
       + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px">'
       + '<button class="btn ghost" id="shareBtn" style="margin:0;font-size:13px">Share</button>'
       + '<button class="btn ghost" id="mRetry" style="margin:0;font-size:13px">Replay</button>'
-      + '<button class="btn ghost" id="mStop" style="margin:0;font-size:13px">Done</button>'
+      + '<button class="btn ghost" id="mStop" style="margin:0;font-size:13px">🏠 Home</button>'
       + '</div>'
       + winBannerHTML()
-    );
+    , true);
     try {
       const badge = renderShareBadge();
       fitBadgeInModal(badge);
@@ -3850,7 +3912,8 @@ function failLevel(){
     + (out
         ? '<p class="lede" style="margin-top:12px">Daily puzzles don\'t use lives.</p>'
           + '<button class="btn" id="mBack">Play today\'s puzzle while you wait</button>'
-        : '<button class="btn ghost" id="mBack" style="margin-top:8px">Back to daily</button>')
+        : '<button class="btn ghost" id="mBack" style="margin-top:8px">🏠 Home</button>')
+    , true
   );
 
   const r = document.getElementById("mRetry");
@@ -4126,9 +4189,9 @@ const MECHANIC_EXPLAINERS = {
   scramble: {
     title:"Scramble mode",
     icon:"🌀",
-    body:"Colours shift position on the palette when placed.<br>"
-       + "The same colour still means the same value — it just moves around to keep you on your toes.<br>"
-       + "Trust the board, not the palette order.",
+    body:"Every mark wears a decoy: colours get odd shapes, shapes get odd colours.<br>"
+       + "Only the real mark counts: the colour of a colour board, the shape of a shape board.<br>"
+       + "Ignore the decoy.",
   },
   boxRotate: {
     title:"Rotated boxes",
@@ -4169,6 +4232,7 @@ function newMechanics(cfg){
   if (cfg.boxless && !seen.has("latin")) out.push("latin");
   if (cfg.layers > 1 && !seen.has("double")) out.push("double");
   if (cfg.boxRotate && !seen.has("boxRotate")) out.push("boxRotate");
+  if (cfg.scramble && !seen.has("scramble")) out.push("scramble");
   // Scramble is a daily-mode toggle, not a level config — but the preview
   // config can flag it, or the player can encounter it first in daily mode.
   return out;
@@ -4215,6 +4279,7 @@ function levelGoal(level){
   const extras = [];
   if (cfg.layers > 1) extras.push("Two overlaid grids to solve.");
   if (cfg.boxRotate) extras.push("The boxes are turned on their side.");
+  if (cfg.scramble) extras.push("Scramble: every mark wears a decoy, so trust the real " + noun + ".");
   return {
     icon,
     head: "Match the " + noun + "s",
@@ -4248,6 +4313,7 @@ function showProgression(nextLevel){
   const step = cfg.step;
   const theme = cfg.theme || WORLDS[cfg.world - 1];
   const goal = levelGoal(nextLevel);
+  const rating = levelRating(cfg);
   const isNewWorld = nextLevel > 1 && cfg.world !== levelConfig(nextLevel - 1).world;
   const isNewStage = nextLevel > 1 && cfg.stage !== prevStage;
 
@@ -4267,7 +4333,11 @@ function showProgression(nextLevel){
 
   openModal(
     '<h2 style="color:' + theme.tint + '">' + theme.name + '</h2>'
-    + '<p class="lede">Stage ' + cfg.stage + ' · step ' + step + '</p>'
+    + '<div class="prog-lv"><b>Level ' + nextLevel + '</b>'
+    + '<span class="prog-rate" aria-label="Difficulty ' + rating.r + ' of 5">' + '●'.repeat(rating.r) + '<i>' + '●'.repeat(5 - rating.r) + '</i></span>'
+    + '<span>' + rating.label + '</span>'
+    + (cfg.challenge ? '<em>⚡ Challenge</em>' : '') + '</div>'
+    + '<p class="lede" style="margin:2px 0 0">Stage ' + cfg.stage + ' · step ' + step + '</p>'
     + '<div class="prog-goal"><div class="pg-icon">' + goal.icon + '</div>'
     + '<div class="pg-head">' + goal.head + '</div>'
     + '<div class="pg-sub">' + goal.sub + '</div>'
@@ -4276,7 +4346,7 @@ function showProgression(nextLevel){
     + unlock
     + demo
     + '<button class="btn" id="mGo">Play</button>'
-    + '<button class="btn ghost" id="mBack2">Done for now</button>'
+    + '<button class="btn ghost" id="mBack2">🏠 Home</button>'
   );
   document.getElementById("mGo").onclick = () => { closeModal(); loadLevel(nextLevel); };
   document.getElementById("mBack2").onclick = () => { closeModal(); enterDaily(); };
@@ -5144,13 +5214,17 @@ async function shareAsImage(){
 
 /* ================= modals ================= */
 
-function openModal(html){
+// `sticky` modals (end of a level, out of lives) ignore taps outside the card,
+// so the player always lands on one of its buttons instead of a dead board.
+let modalSticky = false;
+function openModal(html, sticky){
+  modalSticky = !!sticky;
   document.getElementById("modal").innerHTML = html;
   document.getElementById("overlay").classList.remove("hide");
 }
-function closeModal(){ document.getElementById("overlay").classList.add("hide"); }
+function closeModal(){ modalSticky = false; document.getElementById("overlay").classList.add("hide"); }
 document.getElementById("overlay").onclick = e => {
-  if (e.target.id === "overlay") closeModal();
+  if (e.target.id === "overlay" && !modalSticky) closeModal();
 };
 
 function showHelp(){
@@ -5572,9 +5646,11 @@ function showWin(){
     + '<button class="btn ghost" id="challBtn" style="margin:0">⚡ Challenge</button>'
     + '<button class="btn ghost" onclick="closeModal()" style="margin:0">Close</button>'
     + '</div>'
+    + '<button class="btn ghost" id="winLevels" style="margin-top:8px">▶ Play levels</button>'
     + leaderboardHTML()
     + winBannerHTML()
   );
+  document.getElementById("winLevels").onclick = () => { closeModal(); loadLevel(progress().level); };
   // Render the share badge canvas into the modal, scaled to fit while
   // preserving aspect ratio — CSS max-height alone breaks the ratio when
   // both width and height are set as inline pixels, so we do it in JS.
@@ -5659,6 +5735,8 @@ function showSettings(){
 
   openModal(
     "<h2>Settings</h2>"
+    + '<div class="fld">Theme</div>'
+    + seg([["auto","Auto"],["light","Light"],["dark","Dark"]], theme)
     + '<p class="lede">Patterns work without relying on colour vision.</p>'
     // Admin tools at the top so they're easy to find; long-press ⚙ enables admin without opening settings first.
     + '<div class="toggle-row">'
@@ -5680,8 +5758,6 @@ function showSettings(){
           + '<p class="lede" style="margin-top:-8px">Reset clears levels, stars and lives; the daily is not affected.</p>'
         : "")
     + '<div class="fld">Marks</div><div class="seg">' + palOpts + "</div>"
-    + '<div class="fld">Theme</div>'
-    + seg([["auto","Auto"],["light","Light"],["dark","Dark"]], theme)
     + '<div class="fld" style="margin-top:4px">Gameplay</div>'
     + '<div class="toggle-row">'
     + '<div><div class="toggle-lbl">Fade completed</div>'

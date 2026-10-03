@@ -8,6 +8,17 @@ Move an entry from **Playtest** to **Released** when it merges to `release`.
 
 ## Playtest (on `main`, not yet released)
 
+### [v0.19.0] 2026-10-03 — Difficulty waves, challenge levels, one-screen fit, escape routes
+
+- **Difficulty waves.** Each block of ten levels is now a sawtooth: two breather levels with extra clues and a roomier clock, a build, a climb, and a challenge on the tenth. `WAVE` shifts the clue count (about 3.5% of the grid per step) and `waveClock()` moves the time limit (±7% per step) so small grids, which have no clues to spare, still feel the swing. Peeks are exempt.
+- **Challenge levels** (every 10th level from 20): Scramble. Colours wear misleading shapes, shapes wear misleading colours. On 9×9 and up the decoy is unreadable, so those challenges only get the tighter clues. Scramble no longer leaks into levels from the daily toggle, and its explainer now describes what it does.
+- **Splash:** level number, a 1–5 difficulty rating with a label (Warm-up to Brutal) and a ⚡ Challenge tag. The rating is the par-based size/clue load plus the wave.
+- **Home is always reachable.** Level wins, fails and the out-of-lives screen ignore taps outside the card and have a 🏠 Home button. The daily win screen has Play levels.
+- **Theme** is now the first setting, and a 🌓 button on the home row cycles Auto / Light / Dark.
+- **One screen on phones.** The ad slot is a 50px strip instead of a 300×250 block and the home buttons are tighter. Checked at 390×844, 375×667 and 360×640: no scrolling in the daily or in levels up to 10×10.
+- **Fix: levels no longer freeze.** The difficulty rater looped forever when its pair techniques eliminated candidates without placing anything. About a third of the 9×9 Latin levels (around 267–300) hung the page. Now all levels 7–500 build in under 0.8 s.
+- Bumped SW cache to `"chromoku-v28"`.
+
 ### [v0.18.1] 2026-10-03 — Calendar: explanation moves behind a ?
 
 - The legend text under the calendar is gone. A **?** button next to the title shows or hides a short explanation of fills, outlines and stars.
