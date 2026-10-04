@@ -4671,7 +4671,7 @@
     "name": "Brouilly Pisse-Vieille",
     "vintage": "2023",
     "type": "Red",
-    "qty": 1,
+    "qty": 0,
     "region": "Brouilly, France",
     "drinkFrom": "2024",
     "drinkTo": "2027",
@@ -4684,7 +4684,25 @@
     "price": "~$30 CAD (est.)",
     "location": "L",
     "notes": "100% Gamay; a vibrant, fruit-forward Beaujolais cru showing classic red berry notes and supple tannins.",
-    "imagePath": "images/mslegx9jwgj3u.jpg"
+    "imagePath": "images/mslegx9jwgj3u.jpg",
+    "tastingHistory": [
+      {
+        "date": "2026-10-04",
+        "rating": 4,
+        "notes": "Tasty with the chicken",
+        "bottleNum": 1
+      },
+      {
+        "date": "2026-10-04",
+        "rating": 4,
+        "bottleNum": 2
+      }
+    ],
+    "drankDate": "2026-10-04",
+    "rating": 4,
+    "drinkNotes": null,
+    "buyAgain": null,
+    "giftedTo": null
   },
   {
     "id": "msleiaeosmz70",
@@ -4737,7 +4755,7 @@
     "name": "Bordeaux Clairet",
     "vintage": "2024",
     "type": "Rosé",
-    "qty": 1,
+    "qty": 0,
     "region": "Bordeaux, France",
     "drinkFrom": "2025",
     "drinkTo": "2026",
@@ -4750,7 +4768,20 @@
     "price": "~$22 CAD (est.)",
     "location": "L",
     "notes": "Predominantly Merlot and Cabernet Sauvignon. Bordeaux Clairet is a style of rose that is darker, more concentrated, and more structured than typical Provencal rose, offering vibrant red fruit flavors.",
-    "imagePath": "images/mslek7764lilz.jpg"
+    "imagePath": "images/mslek7764lilz.jpg",
+    "tastingHistory": [
+      {
+        "date": "2026-10-04",
+        "rating": 5,
+        "notes": "Daniela loved, a little Frisante, and nicely sweet",
+        "bottleNum": 1
+      }
+    ],
+    "drankDate": "2026-10-04",
+    "rating": 5,
+    "drinkNotes": "Daniela loved, a little Frisante, and nicely sweet",
+    "buyAgain": null,
+    "giftedTo": null
   },
   {
     "id": "mslem37i5ruqf",
@@ -5676,7 +5707,7 @@
     "name": "Chateau La Gravière",
     "vintage": "2015",
     "type": "Red",
-    "qty": 3,
+    "qty": 2,
     "region": "Côtes-de-Bourg, France",
     "drinkFrom": "2018",
     "drinkTo": "2025",
@@ -5689,7 +5720,14 @@
     "price": "~$25 CAD (est.)",
     "location": "N",
     "notes": "Primarily Merlot-based blend; a structured, approachable, and fruit-forward Right Bank Bordeaux typical of the Côtes-de-Bourg appellation.",
-    "imagePath": "images/msm0hm3r1zvsg.jpg"
+    "imagePath": "images/msm0hm3r1zvsg.jpg",
+    "tastingHistory": [
+      {
+        "date": "2026-09-29",
+        "rating": 3,
+        "bottleNum": 1
+      }
+    ]
   },
   {
     "id": "msm0ii8d5jgqy",
@@ -6246,5 +6284,95 @@
     "buyAgain": null,
     "giftedTo": null,
     "imagePath": "images/mtrvs3awsi16e.jpg"
+  },
+  {
+    "id": "mumxhblmwfm95",
+    "added": "2026-09-29",
+    "producer": "Vignalta",
+    "name": "Pinot Nero",
+    "vintage": "2018",
+    "type": "Red",
+    "qty": 1,
+    "region": "Veneto, Italy",
+    "drinkFrom": "2024",
+    "drinkTo": "2027",
+    "shelfSection": "",
+    "binCode": "",
+    "titi": false,
+    "fire": 1,
+    "pairings": "mushrooms, truffles, oily fish, salmon, tuna",
+    "source": "CB (09/26)",
+    "price": "$33.95 CAD",
+    "location": "I",
+    "notes": "Pinot Nero. Refined with developing garnet tone. The nose opens with mild smoky, earthy and red fruit, followed by delicate floral notes, dried herbs, and a nice savory nuance. The palate is elegant and dry; delicate and vibrant red fruit emerge. Medium body, elegant finish.",
+    "drankDate": null,
+    "rating": null,
+    "drinkNotes": null,
+    "buyAgain": null,
+    "giftedTo": null,
+    "marketValue": null,
+    "lastValueCheck": null,
+    "tastingHistory": [],
+    "imagePath": "images/mumxhblmwfm95.jpg"
+  },
+  {
+    "id": "mumxhblrs3w6h",
+    "added": "2026-09-29",
+    "producer": "Vignalta",
+    "name": "Pinot Bianco Colli Euganei",
+    "vintage": 2022,
+    "type": "White",
+    "qty": 1,
+    "region": "Colli Euganei, Italy",
+    "drinkFrom": "2024",
+    "drinkTo": "2026",
+    "shelfSection": "",
+    "binCode": "",
+    "titi": false,
+    "fire": 0,
+    "pairings": "vegetables, light pasta dishes",
+    "source": "CB (09/26)",
+    "price": "~$30 CAD (est.)",
+    "location": "E",
+    "notes": "Pinot Bianco. Pale straw with lemon highlights. The nose is fresh and inviting, showing notes of pear, white peach, citrus and delicate floral aromas, with a subtle mineral character. It is crisp yet round on the palate, very lively with a great balance between freshness and substance.",
+    "drankDate": null,
+    "rating": null,
+    "drinkNotes": null,
+    "buyAgain": null,
+    "giftedTo": null,
+    "marketValue": null,
+    "lastValueCheck": null,
+    "tastingHistory": [],
+    "imagePath": "images/mumxhblrs3w6h.jpg"
+  },
+  {
+    "id": "mumxhblrvoso5",
+    "added": "2026-09-29",
+    "producer": "Vignalta",
+    "name": "Rosso Riserva Colli Euganei",
+    "vintage": "2020",
+    "type": "Red",
+    "qty": 1,
+    "region": "Colli Euganei, Italy",
+    "drinkFrom": "2024",
+    "drinkTo": "2032",
+    "shelfSection": "",
+    "binCode": "",
+    "titi": false,
+    "fire": 1,
+    "pairings": "meats, game",
+    "source": "CB (09/26)",
+    "price": "~$35 CAD (est.)",
+    "location": "I",
+    "notes": "Merlot, Cabernet Blend. Deep ruby with garnet reflections. The nose reveals layers of black cherry, black berry, plum and leather, complemented by notes of mocha, cedar, and spices. The palate is full and structured with generous dark fruit, supported by polished tannins and balanced acidity with a long and persistent finish.",
+    "drankDate": null,
+    "rating": null,
+    "drinkNotes": null,
+    "buyAgain": null,
+    "giftedTo": null,
+    "marketValue": null,
+    "lastValueCheck": null,
+    "tastingHistory": [],
+    "imagePath": "images/mumxhblrvoso5.jpg"
   }
 ]
