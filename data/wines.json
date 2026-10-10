@@ -1422,7 +1422,7 @@
     "name": "Khvanchkara",
     "vintage": "2017",
     "type": "Red",
-    "qty": 1,
+    "qty": 0,
     "region": "Racha, Georgia",
     "drinkFrom": "2018",
     "drinkTo": "2024",
@@ -1434,7 +1434,20 @@
     "price": "~$30 CAD (est.)",
     "location": "G",
     "notes": "Made from Alexanderi and Mujuretuli grapes; this is a classic Georgian naturally semi-sweet red wine known for its velvety texture and prominent strawberry and raspberry notes.",
-    "imagePath": "images/msgsvdd9pneej.jpg"
+    "imagePath": "images/msgsvdd9pneej.jpg",
+    "tastingHistory": [
+      {
+        "date": "2026-10-10",
+        "rating": 4,
+        "notes": "Sweet wine",
+        "bottleNum": 1
+      }
+    ],
+    "drankDate": "2026-10-10",
+    "rating": 4,
+    "drinkNotes": "Sweet wine",
+    "buyAgain": null,
+    "giftedTo": null
   },
   {
     "id": "msgswgj0fejyu",
@@ -5054,7 +5067,7 @@
     "name": "Locorosso",
     "vintage": "2024",
     "type": "Red",
-    "qty": 1,
+    "qty": 0,
     "region": "Toscana IGT, Italy",
     "drinkFrom": "2025",
     "drinkTo": "2028",
@@ -5067,7 +5080,19 @@
     "price": "~$22 CAD (est.)",
     "location": "L",
     "notes": "Sangiovese. A fresh, fruit-forward, and easy-drinking Tuscan red showing bright red berry notes, lively acidity, and smooth tannins, designed to be enjoyed youthful.",
-    "imagePath": "images/mslxipc5fkluc.jpg"
+    "imagePath": "images/mslxipc5fkluc.jpg",
+    "tastingHistory": [
+      {
+        "date": "2026-10-10",
+        "rating": 3,
+        "bottleNum": 1
+      }
+    ],
+    "drankDate": "2026-10-10",
+    "rating": 3,
+    "drinkNotes": null,
+    "buyAgain": null,
+    "giftedTo": null
   },
   {
     "id": "mslxjqns5pq7o",
@@ -5296,7 +5321,7 @@
     "name": "Pinot Noir",
     "vintage": "2022",
     "type": "Red",
-    "qty": 1,
+    "qty": 0,
     "region": "Pays d'Oc IGP, France",
     "drinkFrom": "2023",
     "drinkTo": "2026",
@@ -5309,7 +5334,20 @@
     "price": "~$22 CAD (est.)",
     "location": "L",
     "notes": "100% Pinot Noir. A fresh, light-to-medium-bodied red with bright cherry and raspberry fruit, made in an accessible style with guidance from Burgundian winemaker David Duband.",
-    "imagePath": "images/mslzncx63bvbc.jpg"
+    "imagePath": "images/mslzncx63bvbc.jpg",
+    "tastingHistory": [
+      {
+        "date": "2026-10-09",
+        "rating": 4,
+        "notes": "Nice...very thin, mild",
+        "bottleNum": 1
+      }
+    ],
+    "drankDate": "2026-10-09",
+    "rating": 4,
+    "drinkNotes": "Nice...very thin, mild",
+    "buyAgain": null,
+    "giftedTo": null
   },
   {
     "id": "mslzoahcd4qrw",
