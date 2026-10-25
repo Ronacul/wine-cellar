@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Survivor Pool 2026</title>
+  <style>
+    :root {
+      --bg: #0f1923;
+      --surface: #1a2535;
+      --card: #1a2535;
+      --border: #2a3a50;
+      --text: #e8edf3;
+      --muted: #5a7090;
+      --gold: #f0a825;
+      --green: #3dbb78;
+      --red: #e84545;
+      --orange: #e88030;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header-title { font-size: 1.05rem; font-weight: 700; }
+    .header-season { font-size: 0.75rem; color: var(--muted); }
+
+    .week-nav {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .week-btn {
+      background: var(--border);
+      border: none;
+      color: var(--text);
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      font-size: 1.2rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .week-btn:active { opacity: 0.7; }
+    .week-label { font-size: 1rem; font-weight: 600; }
+
+    .pick-bar {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 62px;
+      background: rgba(240, 168, 37, 0.04);
+    }
+    .pick-bar-left { flex: 1; min-width: 0; }
+    .pick-label {
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .pick-team {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: var(--gold);
+    }
+    .pick-team .nick {
+      font-size: 0.75rem;
+      font-weight: 400;
+      color: var(--muted);
+      margin-left: 5px;
+    }
+    .pick-none {
+      font-size: 0.85rem;
+      color: var(--muted);
+      font-style: italic;
+    }
+    .opp-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin-top: 5px;
+    }
+    .opp-label { font-size: 0.7rem; color: var(--muted); }
+    .opp-input {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 0.8rem;
+      width: 72px;
+      text-transform: uppercase;
+      font-family: inherit;
+    }
+    .opp-input::placeholder { color: var(--muted); text-transform: none; }
+    .div-warn {
+      font-size: 0.7rem;
+      color: var(--orange);
+      font-weight: 600;
+    }
+
+    .result-btns { display: flex; gap: 6px; }
+    .result-btn {
+      border: 1.5px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      border-radius: 7px;
+      padding: 7px 13px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .result-btn.w { border-color: var(--green); color: var(--green); }
+    .result-btn.w.on { background: var(--green); color: #000; }
+    .result-btn.l { border-color: var(--red); color: var(--red); }
+    .result-btn.l.on { background: var(--red); color: #fff; }
+
+    .rules-bar {
+      padding: 8px 16px;
+      background: rgba(232, 69, 69, 0.06);
+      border-bottom: 1px solid rgba(232, 69, 69, 0.15);
+      font-size: 0.72rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .rules-bar strong { color: var(--red); }
+
+    .teams-wrap { padding: 10px 14px 14px; }
+
+    .div-group { margin-bottom: 12px; }
+    .div-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      padding-bottom: 5px;
+      margin-bottom: 5px;
+      border-bottom: 1px solid var(--border);
+    }
+    .div-cards {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+
+    .team-card {
+      background: var(--card);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 4px 8px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.1s, background 0.1s;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .team-card:active { transform: scale(0.93); }
+    .team-card.avail:hover { border-color: #3a5070; }
+    .team-card.sel {
+      border-color: var(--gold);
+      background: rgba(240, 168, 37, 0.1);
+    }
+    .team-card.used {
+      opacity: 0.25;
+      pointer-events: none;
+    }
+    .team-card.banned {
+      opacity: 0.22;
+      pointer-events: none;
+      border-style: dashed;
+    }
+
+    .t-abbr { font-size: 0.92rem; font-weight: 800; letter-spacing: 0.02em; }
+    .t-nick {
+      font-size: 0.52rem;
+      color: var(--muted);
+      margin-top: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .t-badge {
+      font-size: 0.56rem;
+      font-weight: 600;
+      margin-top: 4px;
+      min-height: 10px;
+    }
+    .t-badge.sel-b { color: var(--gold); }
+    .t-badge.used-b { color: #3a5070; }
+    .t-badge.ban-b { color: var(--red); }
+
+    .history-wrap { padding: 0 14px 40px; }
+    .section-title {
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .history-empty { font-size: 0.82rem; color: var(--muted); font-style: italic; }
+    .h-list { display: flex; flex-direction: column; gap: 5px; }
+    .h-row {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .h-wk { font-size: 0.7rem; color: var(--muted); min-width: 40px; }
+    .h-team { font-weight: 700; font-size: 0.9rem; flex: 1; }
+    .h-nick { font-size: 0.68rem; font-weight: 400; color: var(--muted); margin-left: 4px; }
+    .h-vs { font-size: 0.72rem; color: var(--muted); }
+    .h-res { font-size: 0.8rem; font-weight: 700; }
+    .h-res.W { color: var(--green); }
+    .h-res.L { color: var(--red); }
+    .h-res.P { color: var(--muted); font-weight: 400; font-style: italic; font-size: 0.7rem; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-title">🏈 Survivor Pool</div>
+  <div class="header-season">2026 Season</div>
+</div>
+
+<div id="root"></div>
+
+<script>
+const KEY = 'survivor-2026';
+
+const BANNED = new Set(['NYJ','SEA','DAL','KC','GB']);
+
+const DIV = {
+  BUF:'AFC East', MIA:'AFC East', NE:'AFC East',  NYJ:'AFC East',
+  BAL:'AFC North',CIN:'AFC North',CLE:'AFC North',PIT:'AFC North',
+  HOU:'AFC South',IND:'AFC South',JAX:'AFC South',TEN:'AFC South',
+  DEN:'AFC West', KC:'AFC West',  LAC:'AFC West', LV:'AFC West',
+  DAL:'NFC East', NYG:'NFC East', PHI:'NFC East', WSH:'NFC East',
+  CHI:'NFC North',DET:'NFC North',GB:'NFC North', MIN:'NFC North',
+  ATL:'NFC South',CAR:'NFC South',NO:'NFC South', TB:'NFC South',
+  ARI:'NFC West', LAR:'NFC West', SF:'NFC West',  SEA:'NFC West',
+};
+
+const DIVISIONS = [
+  ['AFC East',  ['BUF','MIA','NE','NYJ']],
+  ['AFC North', ['BAL','CIN','CLE','PIT']],
+  ['AFC South', ['HOU','IND','JAX','TEN']],
+  ['AFC West',  ['DEN','KC','LAC','LV']],
+  ['NFC East',  ['DAL','NYG','PHI','WSH']],
+  ['NFC North', ['CHI','DET','GB','MIN']],
+  ['NFC South', ['ATL','CAR','NO','TB']],
+  ['NFC West',  ['ARI','LAR','SF','SEA']],
+];
+
+const NICKS = {
+  BUF:'Bills',   MIA:'Dolphins', NE:'Patriots',  NYJ:'Jets',
+  BAL:'Ravens',  CIN:'Bengals',  CLE:'Browns',   PIT:'Steelers',
+  HOU:'Texans',  IND:'Colts',    JAX:'Jaguars',  TEN:'Titans',
+  DEN:'Broncos', KC:'Chiefs',    LAC:'Chargers', LV:'Raiders',
+  DAL:'Cowboys', NYG:'Giants',   PHI:'Eagles',   WSH:'Commanders',
+  CHI:'Bears',   DET:'Lions',    GB:'Packers',   MIN:'Vikings',
+  ATL:'Falcons', CAR:'Panthers', NO:'Saints',    TB:'Buccaneers',
+  ARI:'Cardinals',LAR:'Rams',    SF:'49ers',     SEA:'Seahawks',
+};
+
+function load() {
+  try {
+    const d = JSON.parse(localStorage.getItem(KEY));
+    if (d && d.picks) return d;
+  } catch {}
+  return { week: 8, picks: {} };
+}
+
+function save() { localStorage.setItem(KEY, JSON.stringify(state)); }
+
+let state = load();
+
+// Teams used in weeks OTHER than the current one
+function usedElsewhere() {
+  const w = state.week;
+  return new Set(
+    Object.entries(state.picks)
+      .filter(([wk]) => Number(wk) !== w)
+      .map(([, p]) => p.team)
+      .filter(Boolean)
+  );
+}
+
+function isDivGame(team, opp) {
+  if (!team || !opp) return false;
+  const o = opp.toUpperCase().trim();
+  return !!(DIV[team] && DIV[o] && DIV[team] === DIV[o]);
+}
+
+function setWeek(w) {
+  w = Math.max(1, Math.min(18, w));
+  state.week = w;
+  save();
+  render();
+}
+
+function toggleTeam(id) {
+  const used = usedElsewhere();
+  if (BANNED.has(id) || used.has(id)) return;
+  const w = state.week;
+  const cur = state.picks[w];
+  if (cur && cur.team === id) {
+    delete state.picks[w];
+  } else {
+    state.picks[w] = { team: id, opponent: cur ? (cur.opponent || '') : '', result: null };
+  }
+  save();
+  render();
+}
+
+function setOpponent(val) {
+  const w = state.week;
+  const pick = state.picks[w];
+  if (!pick) return;
+  pick.opponent = val.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
+  save();
+  const warn = document.getElementById('div-warn');
+  if (warn) {
+    const show = isDivGame(pick.team, pick.opponent);
+    warn.textContent = show ? '⚠ Division game!' : '';
+  }
+}
+
+function setResult(res) {
+  const w = state.week;
+  const pick = state.picks[w];
+  if (!pick || !pick.team) return;
+  pick.result = pick.result === res ? null : res;
+  save();
+  render();
+}
+
+function render() {
+  const w = state.week;
+  const used = usedElsewhere();
+  const pick = state.picks[w] || null;
+
+  const pastWeeks = Object.keys(state.picks)
+    .map(Number)
+    .filter(wk => wk !== w && state.picks[wk] && state.picks[wk].team)
+    .sort((a, b) => b - a);
+
+  let h = '';
+
+  // Week nav
+  h += `<div class="week-nav">
+    <button class="week-btn" onclick="setWeek(${w - 1})">&#8249;</button>
+    <span class="week-label">Week ${w}</span>
+    <button class="week-btn" onclick="setWeek(${w + 1})">&#8250;</button>
+  </div>`;
+
+  // Pick bar
+  h += `<div class="pick-bar"><div class="pick-bar-left"><div class="pick-label">Week ${w} Pick</div>`;
+  if (pick && pick.team) {
+    const divWarn = isDivGame(pick.team, pick.opponent);
+    h += `<div class="pick-team">${pick.team}<span class="nick">${NICKS[pick.team] || ''}</span></div>`;
+    h += `<div class="opp-row">
+      <span class="opp-label">vs</span>
+      <input class="opp-input" type="text" maxlength="4" placeholder="OPP"
+        value="${pick.opponent || ''}"
+        oninput="setOpponent(this.value)"
+        autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
+      <span class="div-warn" id="div-warn">${divWarn ? '⚠ Division game!' : ''}</span>
+    </div>`;
+  } else {
+    h += `<div class="pick-none">No pick — tap a team below</div>`;
+  }
+  h += `</div>`;
+
+  if (pick && pick.team) {
+    const wOn = pick.result === 'W' ? ' on' : '';
+    const lOn = pick.result === 'L' ? ' on' : '';
+    h += `<div class="result-btns">
+      <button class="result-btn w${wOn}" onclick="setResult('W')">W</button>
+      <button class="result-btn l${lOn}" onclick="setResult('L')">L</button>
+    </div>`;
+  }
+  h += `</div>`;
+
+  // Rules bar
+  h += `<div class="rules-bar">
+    <strong>No division games</strong> &nbsp;·&nbsp;
+    <strong>Banned:</strong> NYJ · SEA · DAL · KC · GB (unless last resort)
+  </div>`;
+
+  // Team grid
+  h += `<div class="teams-wrap">`;
+  for (const [divName, teams] of DIVISIONS) {
+    h += `<div class="div-group"><div class="div-label">${divName}</div><div class="div-cards">`;
+    for (const id of teams) {
+      let cls, badge, badgeCls;
+      if (BANNED.has(id)) {
+        cls = 'banned'; badge = '⊘'; badgeCls = 'ban-b';
+      } else if (used.has(id)) {
+        cls = 'used'; badge = '✓ used'; badgeCls = 'used-b';
+      } else if (pick && pick.team === id) {
+        cls = 'sel'; badge = '★ pick'; badgeCls = 'sel-b';
+      } else {
+        cls = 'avail'; badge = ''; badgeCls = '';
+      }
+      h += `<div class="team-card ${cls}" onclick="toggleTeam('${id}')">
+        <div class="t-abbr">${id}</div>
+        <div class="t-nick">${NICKS[id]}</div>
+        <div class="t-badge ${badgeCls}">${badge}</div>
+      </div>`;
+    }
+    h += `</div></div>`;
+  }
+  h += `</div>`;
+
+  // History
+  h += `<div class="history-wrap"><div class="section-title">Pick History</div>`;
+  if (pastWeeks.length === 0) {
+    h += `<div class="history-empty">No previous picks recorded.</div>`;
+  } else {
+    h += `<div class="h-list">`;
+    for (const wk of pastWeeks) {
+      const p = state.picks[wk];
+      const resCls = p.result === 'W' ? 'W' : p.result === 'L' ? 'L' : 'P';
+      const resLabel = p.result || '–';
+      h += `<div class="h-row">
+        <span class="h-wk">Wk ${wk}</span>
+        <span class="h-team">${p.team}<span class="h-nick">${NICKS[p.team] || ''}</span></span>
+        ${p.opponent ? `<span class="h-vs">vs ${p.opponent}</span>` : ''}
+        <span class="h-res ${resCls}">${resLabel}</span>
+      </div>`;
+    }
+    h += `</div>`;
+  }
+  h += `</div>`;
+
+  document.getElementById('root').innerHTML = h;
+}
+
+render();
+</script>
+</body>
+</html>
