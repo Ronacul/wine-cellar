@@ -1388,7 +1388,7 @@
     "name": "Estate Reserva",
     "vintage": "2022",
     "type": "White",
-    "qty": 1,
+    "qty": 0,
     "region": "Aconcagua Valley, Chile",
     "drinkFrom": "2023",
     "drinkTo": "2025",
@@ -1400,7 +1400,20 @@
     "price": "~$15 CAD (est.)",
     "location": "K",
     "notes": "100% Sauvignon Blanc; a crisp, vibrant, and aromatic expression with classic zesty citrus and tropical fruit notes typical of the cool-climate Aconcagua region.",
-    "imagePath": "images/msgsr7op8f6wx.jpg"
+    "imagePath": "images/msgsr7op8f6wx.jpg",
+    "tastingHistory": [
+      {
+        "date": "2026-11-04",
+        "rating": 5,
+        "notes": "Dry, clean, Daniela liked ot",
+        "bottleNum": 1
+      }
+    ],
+    "drankDate": "2026-11-04",
+    "rating": 5,
+    "drinkNotes": "Dry, clean, Daniela liked ot",
+    "buyAgain": null,
+    "giftedTo": null
   },
   {
     "id": "msgstr86duacu",
